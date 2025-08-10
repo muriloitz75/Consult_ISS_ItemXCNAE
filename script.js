@@ -364,30 +364,11 @@ function App() {
 
     console.log('App renderizando...', { darkMode, isLoading, data: data.length });
     
-    // Renderização forçada do texto da resolução
-    const resolucaoElement = React.createElement('div', {
-        style: {
-            width: '100%',
-            backgroundColor: '#1e40af',
-            color: 'white',
-            textAlign: 'center',
-            padding: '12px',
-            fontWeight: 'bold',
-            fontSize: '18px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            position: 'relative',
-            zIndex: 9999
-        }
-    }, 'de Acordo com a RESOLUÇÃO Nº 01 DE 07/07/2021 - SEFAZGO');
-    
     return (
         <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900'}`}>
-            {/* TEXTO DA RESOLUÇÃO SEFAZGO - RENDERIZAÇÃO FORÇADA */}
-            {resolucaoElement}
-            
-            {/* BACKUP COM TAILWIND */}
-            <div className="w-full bg-blue-700 text-white text-center py-3 font-bold text-lg shadow-lg" style={{position: 'relative', zIndex: 9998}}>
-                de Acordo com a RESOLUÇÃO Nº 01 DE 07/07/2021 - SEFAZGO (BACKUP)
+            {/* TEXTO DA RESOLUÇÃO SEFAZGO */}
+            <div className="w-full bg-blue-700 text-white text-center py-3 font-bold text-lg shadow-lg" style={{position: 'relative', zIndex: 9999}}>
+                de Acordo com a RESOLUÇÃO Nº 01 DE 07/07/2021 - SEFAZGO
             </div>
             
             {/* Background mais limpo */}
@@ -860,14 +841,7 @@ if (rootElement) {
     root.render(<App />);
     console.log('React renderizado com sucesso!');
     
-    // Ocultar o fallback HTML após renderização do React
-    setTimeout(() => {
-        const fallback = document.getElementById('resolucao-fallback');
-        if (fallback) {
-            fallback.style.display = 'none';
-            console.log('Fallback HTML ocultado');
-        }
-    }, 1000);
+    // Código de fallback removido - elemento não existe mais
 } else {
     console.error('Elemento root não encontrado!');
 }
