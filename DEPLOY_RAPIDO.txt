@@ -1,0 +1,37 @@
+🚀 DEPLOY RÁPIDO - HOSTGATOR
+================================
+
+📁 ARQUIVOS PARA UPLOAD:
+- .htaccess
+- index.html
+- script.js
+- style.css
+- dados.xml
+
+📍 DESTINO: public_html/
+
+🔧 PASSOS:
+1. Acesse cPanel > Gerenciador de Arquivos
+2. Vá para public_html
+3. Faça upload de TODOS os 5 arquivos
+4. Teste: https://seudominio.com.br
+
+✅ VERIFICAR:
+- Página carrega
+- Busca funciona
+- Mobile responsivo
+- Modo escuro
+
+🔒 SSL (OPCIONAL):
+Se tiver SSL, edite .htaccess e descomente as linhas:
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+📞 PROBLEMAS?
+- Erro 500: Verifique permissões .htaccess
+- Não carrega: Confirme todos os arquivos enviados
+- XML não funciona: Verifique dados.xml na raiz
+
+✨ PRONTO PARA PRODUÇÃO!
+Desenvolvido por Murilo Miguel

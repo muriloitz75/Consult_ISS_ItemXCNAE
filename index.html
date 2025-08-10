@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de consulta fiscal para códigos CNAE e LIST LC. Consulte alíquotas de ISS e informações fiscais de forma rápida e eficiente.">
+    <meta name="keywords" content="CNAE, LIST LC, ISS, consulta fiscal, alíquota, código fiscal, tributação">
+    <meta name="author" content="Murilo Miguel">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Sistema de Consulta Fiscal">
+    <meta property="og:description" content="Consulte códigos CNAE e LIST LC com alíquotas de ISS atualizadas">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:title" content="Sistema de Consulta Fiscal">
+    <meta property="twitter:description" content="Consulte códigos CNAE e LIST LC com alíquotas de ISS atualizadas">
+    
+    <!-- Performance -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <title>Sistema de Consulta Fiscal - CNAE e LIST LC</title>
+    <!-- React Production Build -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Sistema de Consulta Fiscal",
+        "description": "Sistema para consulta de códigos CNAE e LIST LC com alíquotas de ISS",
+        "url": "https://seudominio.com.br",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web Browser",
+        "author": {
+            "@type": "Person",
+            "name": "Murilo Miguel"
+        }
+    }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+    <!-- TEXTO DA RESOLUÇÃO SEFAZGO - FALLBACK HTML -->
+    <div id="resolucao-fallback" style="width: 100%; background-color: #1e40af; color: white; text-align: center; padding: 12px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); position: relative; z-index: 10000;">
+        de Acordo com a RESOLUÇÃO Nº 01 DE 07/07/2021 - SEFAZGO
+    </div>
+    
+    <div id="root" role="main" aria-label="Aplicação de Consulta Fiscal"></div>
+
+    <!-- Removido bloco <script type='text/babel'> para modularização -->
+    <script type="text/babel" src="./script.js"></script>
+
+
+
+</body>
+</html>
