@@ -1,20 +1,678 @@
 const { useState, useEffect } = React;
 
+// 🔐 Sistema de Gerenciamento de Credenciais
+
+// Utilitários de Hash (simulação para ambiente cliente)
+const CryptoUtils = {
+    // Simulação de hash simples para ambiente cliente
+    hashPassword: (password) => {
+        let hash = 0;
+        for (let i = 0; i < password.length; i++) {
+            const char = password.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(16);
+    },
+    
+    comparePassword: (password, hash) => {
+        return CryptoUtils.hashPassword(password) === hash;
+    }
+};
+
+// Regras de validação de senha
+const passwordRules = {
+    minLength: 8,
+    maxLength: 50,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumbers: true,
+    requireSpecialChars: true,
+    preventReuse: 5,
+    specialChars: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+};
+
+// Validador de Credenciais
+class CredentialValidator {
+    static validateUsername(username) {
+        const errors = [];
+        
+        if (!username || username.length < 3) {
+            errors.push('Nome de usuário deve ter pelo menos 3 caracteres');
+        }
+        
+        if (username.length > 20) {
+            errors.push('Nome de usuário deve ter no máximo 20 caracteres');
+        }
+        
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            errors.push('Nome de usuário deve conter apenas letras, números, _ ou -');
+        }
+        
+        const reservedUsernames = ['admin', 'root', 'system', 'null', 'undefined'];
+        if (reservedUsernames.includes(username.toLowerCase())) {
+            errors.push('Este nome de usuário é reservado');
+        }
+        
+        return { isValid: errors.length === 0, errors };
+    }
+    
+    static validatePassword(password) {
+        const errors = [];
+        
+        if (!password || password.length < passwordRules.minLength) {
+            errors.push(`A senha deve ter pelo menos ${passwordRules.minLength} caracteres`);
+        }
+        
+        if (password.length > passwordRules.maxLength) {
+            errors.push(`A senha deve ter no máximo ${passwordRules.maxLength} caracteres`);
+        }
+        
+        if (passwordRules.requireUppercase && !/[A-Z]/.test(password)) {
+            errors.push('A senha deve conter pelo menos uma letra maiúscula');
+        }
+        
+        if (passwordRules.requireLowercase && !/[a-z]/.test(password)) {
+            errors.push('A senha deve conter pelo menos uma letra minúscula');
+        }
+        
+        if (passwordRules.requireNumbers && !/\d/.test(password)) {
+            errors.push('A senha deve conter pelo menos um número');
+        }
+        
+        if (passwordRules.requireSpecialChars) {
+            const specialCharsRegex = new RegExp(`[${passwordRules.specialChars.replace(/[\-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`);
+            if (!specialCharsRegex.test(password)) {
+                errors.push('A senha deve conter pelo menos um caractere especial');
+            }
+        }
+        
+        return { isValid: errors.length === 0, errors };
+    }
+    
+    static generatePasswordStrengthScore(password) {
+        let score = 0;
+        
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/\d/.test(password)) score++;
+        if (new RegExp(`[${passwordRules.specialChars.replace(/[\-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`).test(password)) score++;
+        
+        return Math.min(score, 5);
+    }
+    
+    static checkUsernameAvailability(username, currentUserId, users) {
+        return !users.some(user => user.username === username && user.id !== currentUserId);
+    }
+}
+
+// Gerenciador de Usuários
+class UserManager {
+    static initializeUsers() {
+        const existingUsers = localStorage.getItem('userProfiles');
+        
+        if (!existingUsers) {
+            // Migração dos usuários existentes
+            const defaultUsers = [
+                { username: 'admin', password: '123456', role: 'admin', name: 'Administrador' },
+                { username: 'user', password: '123', role: 'user', name: 'Usuário' },
+                { username: 'consultor', password: '456', role: 'user', name: 'Consultor' }
+            ];
+            
+            const migratedUsers = defaultUsers.map((user, index) => ({
+                id: `user_${index + 1}`,
+                username: user.username,
+                password: CryptoUtils.hashPassword(user.password),
+                role: user.role,
+                name: user.name,
+                email: '',
+                firstLogin: true,
+                lastPasswordChange: new Date().toISOString(),
+                passwordHistory: [CryptoUtils.hashPassword(user.password)],
+                accountLocked: false,
+                failedAttempts: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+            
+            localStorage.setItem('userProfiles', JSON.stringify(migratedUsers));
+            return migratedUsers;
+        }
+        
+        return JSON.parse(existingUsers);
+    }
+    
+    static getUsers() {
+        return JSON.parse(localStorage.getItem('userProfiles') || '[]');
+    }
+    
+    static updateUser(userId, updates) {
+        const users = UserManager.getUsers();
+        const userIndex = users.findIndex(user => user.id === userId);
+        
+        if (userIndex !== -1) {
+            users[userIndex] = {
+                ...users[userIndex],
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('userProfiles', JSON.stringify(users));
+            return users[userIndex];
+        }
+        
+        return null;
+    }
+    
+    static checkPasswordHistory(userId, newPassword) {
+        const users = UserManager.getUsers();
+        const user = users.find(u => u.id === userId);
+        
+        if (!user) return false;
+        
+        const newPasswordHash = CryptoUtils.hashPassword(newPassword);
+        const recentPasswords = user.passwordHistory.slice(-passwordRules.preventReuse);
+        
+        return !recentPasswords.includes(newPasswordHash);
+    }
+    
+    static logAuditEvent(userId, action, details = {}) {
+        const auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
+        
+        const event = {
+            userId,
+            action,
+            timestamp: new Date().toISOString(),
+            ipAddress: 'localhost', // Simulação
+            userAgent: navigator.userAgent,
+            success: details.success !== false,
+            details
+        };
+        
+        auditLog.push(event);
+        
+        // Manter apenas os últimos 1000 eventos
+        if (auditLog.length > 1000) {
+            auditLog.splice(0, auditLog.length - 1000);
+        }
+        
+        localStorage.setItem('auditLog', JSON.stringify(auditLog));
+    }
+    
+    static incrementFailedAttempts(userId) {
+        const users = this.getUsers();
+        const userIndex = users.findIndex(u => u.id === userId);
+        
+        if (userIndex === -1) return null;
+        
+        const user = users[userIndex];
+        const newFailedAttempts = (user.failedAttempts || 0) + 1;
+        
+        const updates = {
+            failedAttempts: newFailedAttempts
+        };
+        
+        // Bloquear conta após 5 tentativas
+        if (newFailedAttempts >= 5) {
+            const lockUntil = new Date();
+            lockUntil.setMinutes(lockUntil.getMinutes() + 30); // 30 minutos
+            
+            updates.isLocked = true;
+            updates.lockUntil = lockUntil.toISOString();
+        }
+        
+        return this.updateUser(userId, updates);
+    }
+    
+    static resetFailedAttempts(userId) {
+        return this.updateUser(userId, {
+            failedAttempts: 0,
+            isLocked: false,
+            lockUntil: null
+        });
+    }
+}
+
+// Componente de Perfil do Usuário
+function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+        name: user.name || '',
+        email: user.email || '',
+        username: user.username || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPasswordFields, setShowPasswordFields] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        
+        // Limpar erro específico quando usuário começa a digitar
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+        }
+        
+        // Limpar mensagem de sucesso
+        if (successMessage) {
+            setSuccessMessage('');
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+        
+        // Validar nome
+        if (!formData.name.trim()) {
+            newErrors.name = 'Nome é obrigatório';
+        }
+        
+        // Validar email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email.trim()) {
+            newErrors.email = 'Email é obrigatório';
+        } else if (!emailRegex.test(formData.email)) {
+            newErrors.email = 'Email inválido';
+        }
+        
+        // Validar username
+        const usernameValidation = CredentialValidator.validateUsername(formData.username);
+        if (!usernameValidation.isValid) {
+            newErrors.username = usernameValidation.errors[0];
+        } else {
+            // Verificar disponibilidade do username
+            const users = UserManager.getUsers();
+            const isAvailable = CredentialValidator.checkUsernameAvailability(
+                formData.username, 
+                user.id, 
+                users
+            );
+            if (!isAvailable) {
+                newErrors.username = 'Nome de usuário já está em uso';
+            }
+        }
+        
+        // Se alterando senha
+        if (showPasswordFields) {
+            // Validar senha atual
+            if (!formData.currentPassword) {
+                newErrors.currentPassword = 'Senha atual é obrigatória';
+            } else if (!CryptoUtils.comparePassword(formData.currentPassword, user.password)) {
+                newErrors.currentPassword = 'Senha atual incorreta';
+            }
+            
+            // Validar nova senha
+            if (formData.newPassword) {
+                const passwordValidation = CredentialValidator.validatePassword(formData.newPassword);
+                if (!passwordValidation.isValid) {
+                    newErrors.newPassword = passwordValidation.errors[0];
+                } else {
+                    // Verificar histórico de senhas
+                    const isPasswordReused = !UserManager.checkPasswordHistory(user.id, formData.newPassword);
+                    if (isPasswordReused) {
+                        newErrors.newPassword = `Não é possível reutilizar uma das últimas ${passwordRules.preventReuse} senhas`;
+                    }
+                }
+            }
+            
+            // Validar confirmação de senha
+            if (formData.newPassword !== formData.confirmPassword) {
+                newErrors.confirmPassword = 'Senhas não coincidem';
+            }
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+        
+        setIsLoading(true);
+        
+        try {
+            const updates = {
+                name: formData.name,
+                email: formData.email,
+                username: formData.username
+            };
+            
+            // Se alterando senha
+            if (showPasswordFields && formData.newPassword) {
+                const hashedPassword = CryptoUtils.hashPassword(formData.newPassword);
+                updates.password = hashedPassword;
+                updates.lastPasswordChange = new Date().toISOString();
+                
+                // Atualizar histórico de senhas
+                const currentHistory = user.passwordHistory || [];
+                updates.passwordHistory = [...currentHistory, hashedPassword].slice(-passwordRules.preventReuse);
+            }
+            
+            // Atualizar usuário
+            const updatedUser = UserManager.updateUser(user.id, updates);
+            
+            if (updatedUser) {
+                // Log da alteração
+                UserManager.logAuditEvent(user.id, 'profile_update', {
+                    fields: Object.keys(updates),
+                    passwordChanged: showPasswordFields && formData.newPassword
+                });
+                
+                setSuccessMessage('Perfil atualizado com sucesso!');
+                setIsEditing(false);
+                setShowPasswordFields(false);
+                setFormData(prev => ({
+                    ...prev,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                }));
+                
+                // Notificar componente pai sobre a alteração
+                if (onCredentialsChanged) {
+                    onCredentialsChanged(updatedUser);
+                }
+            } else {
+                setErrors({ general: 'Erro ao atualizar perfil. Tente novamente.' });
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar perfil:', error);
+            setErrors({ general: 'Erro interno. Tente novamente.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancel = () => {
+        setIsEditing(false);
+        setShowPasswordFields(false);
+        setFormData({
+            name: user.name || '',
+            email: user.email || '',
+            username: user.username || '',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+        });
+        setErrors({});
+        setSuccessMessage('');
+    };
+
+    return (
+        <div className={`profile-container ${darkMode ? 'dark' : ''}`}>
+            <div className="profile-header">
+                <h2>Meu Perfil</h2>
+                <button 
+                    onClick={onLogout}
+                    className="logout-btn"
+                >
+                    Sair
+                </button>
+            </div>
+            
+            {successMessage && (
+                <div className="success-message">
+                    {successMessage}
+                </div>
+            )}
+            
+            {errors.general && (
+                <div className="error-message">
+                    {errors.general}
+                </div>
+            )}
+            
+            <div className="profile-content">
+                <div className="profile-info">
+                    <h3>Informações Pessoais</h3>
+                    
+                    {!isEditing ? (
+                        <div className="info-display">
+                            <div className="info-item">
+                                <label>Nome:</label>
+                                <span>{user.name || 'Não informado'}</span>
+                            </div>
+                            <div className="info-item">
+                                <label>Email:</label>
+                                <span>{user.email || 'Não informado'}</span>
+                            </div>
+                            <div className="info-item">
+                                <label>Usuário:</label>
+                                <span>{user.username}</span>
+                            </div>
+                            <div className="info-item">
+                                <label>Último acesso:</label>
+                                <span>{user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Primeiro acesso'}</span>
+                            </div>
+                            <div className="info-item">
+                                <label>Última alteração de senha:</label>
+                                <span>{user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada'}</span>
+                            </div>
+                            
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="edit-btn"
+                            >
+                                Editar Perfil
+                            </button>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="profile-form">
+                            <div className="form-group">
+                                <label>Nome:</label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    className={errors.name ? 'error' : ''}
+                                    disabled={isLoading}
+                                />
+                                {errors.name && <span className="error-text">{errors.name}</span>}
+                            </div>
+                            
+                            <div className="form-group">
+                                <label>Email:</label>
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => handleInputChange('email', e.target.value)}
+                                    className={errors.email ? 'error' : ''}
+                                    disabled={isLoading}
+                                />
+                                {errors.email && <span className="error-text">{errors.email}</span>}
+                            </div>
+                            
+                            <div className="form-group">
+                                <label>Nome de usuário:</label>
+                                <input
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => handleInputChange('username', e.target.value)}
+                                    className={errors.username ? 'error' : ''}
+                                    disabled={isLoading}
+                                />
+                                {errors.username && <span className="error-text">{errors.username}</span>}
+                            </div>
+                            
+                            <div className="password-section">
+                                <div className="password-toggle">
+                                    <input
+                                        type="checkbox"
+                                        id="changePassword"
+                                        checked={showPasswordFields}
+                                        onChange={(e) => setShowPasswordFields(e.target.checked)}
+                                        disabled={isLoading}
+                                    />
+                                    <label htmlFor="changePassword">Alterar senha</label>
+                                </div>
+                                
+                                {showPasswordFields && (
+                                    <div className="password-fields">
+                                        <div className="form-group">
+                                            <label>Senha atual:</label>
+                                            <input
+                                                type="password"
+                                                value={formData.currentPassword}
+                                                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+                                                className={errors.currentPassword ? 'error' : ''}
+                                                disabled={isLoading}
+                                            />
+                                            {errors.currentPassword && <span className="error-text">{errors.currentPassword}</span>}
+                                        </div>
+                                        
+                                        <div className="form-group">
+                                            <label>Nova senha:</label>
+                                            <input
+                                                type="password"
+                                                value={formData.newPassword}
+                                                onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                                                className={errors.newPassword ? 'error' : ''}
+                                                disabled={isLoading}
+                                            />
+                                            {errors.newPassword && <span className="error-text">{errors.newPassword}</span>}
+                                            
+                                            {formData.newPassword && (
+                                                <PasswordStrengthIndicator 
+                                                    password={formData.newPassword} 
+                                                    darkMode={darkMode}
+                                                />
+                                            )}
+                                        </div>
+                                        
+                                        <div className="form-group">
+                                            <label>Confirmar nova senha:</label>
+                                            <input
+                                                type="password"
+                                                value={formData.confirmPassword}
+                                                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                                className={errors.confirmPassword ? 'error' : ''}
+                                                disabled={isLoading}
+                                            />
+                                            {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="form-actions">
+                                <button 
+                                    type="button" 
+                                    onClick={handleCancel}
+                                    className="cancel-btn"
+                                    disabled={isLoading}
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="save-btn"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Componente de Login
 function LoginForm({ onLogin, darkMode }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+    const [firstLoginUser, setFirstLoginUser] = useState(null);
+    
+    // Inicializar usuários quando o componente monta
+    useEffect(() => {
+        UserManager.initializeUsers();
+    }, []);
+    
+    const handleFirstLoginComplete = (updatedUser) => {
+        setShowFirstLoginModal(false);
+        setFirstLoginUser(null);
+        
+        // Salvar no localStorage
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        onLogin(updatedUser);
+    };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
         
-        // Credenciais simples (em produção, usar método mais seguro)
-        if (username === 'admin' && password === '123456') {
-            onLogin();
-        } else {
-            setError('Usuário ou senha incorretos');
+        try {
+            const users = UserManager.getUsers();
+            const user = users.find(u => u.username === username);
+            
+            if (!user) {
+                setError('Usuário não encontrado');
+                UserManager.logAuditEvent(null, 'login_failed', { username, reason: 'user_not_found' });
+                return;
+            }
+            
+            // Verificar se a conta está bloqueada
+            if (user.isLocked && user.lockUntil && new Date() < new Date(user.lockUntil)) {
+                const lockTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
+                setError(`Conta bloqueada. Tente novamente em ${lockTime} minutos.`);
+                UserManager.logAuditEvent(user.id, 'login_blocked', { lockTime });
+                return;
+            }
+            
+            // Verificar senha
+            if (!CryptoUtils.comparePassword(password, user.password)) {
+                const updatedUser = UserManager.incrementFailedAttempts(user.id);
+                
+                if (updatedUser.failedAttempts >= 5) {
+                    setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
+                    UserManager.logAuditEvent(user.id, 'account_locked', { attempts: updatedUser.failedAttempts });
+                } else {
+                    const remaining = 5 - updatedUser.failedAttempts;
+                    setError(`Senha incorreta. ${remaining} tentativas restantes.`);
+                    UserManager.logAuditEvent(user.id, 'login_failed', { reason: 'wrong_password', attempts: updatedUser.failedAttempts });
+                }
+                return;
+            }
+            
+            // Login bem-sucedido - resetar tentativas falhadas
+            UserManager.resetFailedAttempts(user.id);
+            UserManager.logAuditEvent(user.id, 'login_success', { timestamp: new Date().toISOString() });
+            
+            // Verificar se é primeiro login
+            if (user.firstLogin) {
+                setFirstLoginUser(user);
+                setShowFirstLoginModal(true);
+                return;
+            }
+            
+            // Salvar no localStorage
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            
+            onLogin(user);
+        } catch (error) {
+            console.error('Erro no login:', error);
+            setError('Erro interno. Tente novamente.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -62,12 +720,317 @@ function LoginForm({ onLogin, darkMode }) {
                     <div>
                         <button
                             type="submit"
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            disabled={isLoading}
+                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                         >
-                            Entrar
+                            {isLoading ? 'Entrando...' : 'Entrar'}
                         </button>
                     </div>
                 </form>
+            </div>
+            
+            {/* Modal de Primeiro Acesso */}
+            {showFirstLoginModal && firstLoginUser && (
+                <FirstLoginModal 
+                    user={firstLoginUser}
+                    onComplete={handleFirstLoginComplete}
+                    darkMode={darkMode}
+                />
+            )}
+        </div>
+    );
+}
+
+// Componente de Indicador de Força da Senha
+function PasswordStrengthIndicator({ password, darkMode }) {
+    const score = CredentialValidator.generatePasswordStrengthScore(password);
+    const validation = CredentialValidator.validatePassword(password);
+    
+    const getStrengthText = (score) => {
+        switch (score) {
+            case 0:
+            case 1: return 'Muito Fraca';
+            case 2: return 'Fraca';
+            case 3: return 'Média';
+            case 4: return 'Forte';
+            case 5: return 'Muito Forte';
+            default: return 'Muito Fraca';
+        }
+    };
+    
+    const getStrengthColor = (score) => {
+        switch (score) {
+            case 0:
+            case 1: return 'bg-red-500';
+            case 2: return 'bg-orange-500';
+            case 3: return 'bg-yellow-500';
+            case 4: return 'bg-blue-500';
+            case 5: return 'bg-green-500';
+            default: return 'bg-gray-300';
+        }
+    };
+    
+    if (!password) return null;
+    
+    return (
+        <div className="mt-2">
+            <div className="flex items-center justify-between mb-1">
+                <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Força da senha:
+                </span>
+                <span className={`text-xs font-medium ${
+                    score <= 2 ? 'text-red-500' : 
+                    score <= 3 ? 'text-yellow-500' : 
+                    'text-green-500'
+                }`}>
+                    {getStrengthText(score)}
+                </span>
+            </div>
+            <div className={`w-full bg-gray-200 rounded-full h-2 ${darkMode ? 'bg-gray-700' : ''}`}>
+                <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(score)}`}
+                    style={{ width: `${(score / 5) * 100}%` }}
+                ></div>
+            </div>
+            {validation.errors.length > 0 && (
+                <div className="mt-1">
+                    {validation.errors.map((error, index) => (
+                        <p key={index} className="text-xs text-red-500">
+                            • {error}
+                        </p>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Modal de Primeiro Acesso
+function FirstLoginModal({ user, onComplete, darkMode }) {
+    const [formData, setFormData] = useState({
+        name: user.name || '',
+        email: user.email || '',
+        username: user.username,
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const validateForm = () => {
+        const newErrors = {};
+        
+        // Validar nome
+        if (!formData.name.trim()) {
+            newErrors.name = 'Nome é obrigatório';
+        }
+        
+        // Validar username se foi alterado
+        if (formData.username !== user.username) {
+            const usernameValidation = CredentialValidator.validateUsername(formData.username);
+            if (!usernameValidation.isValid) {
+                newErrors.username = usernameValidation.errors[0];
+            } else {
+                const users = UserManager.getUsers();
+                if (!CredentialValidator.checkUsernameAvailability(formData.username, user.id, users)) {
+                    newErrors.username = 'Este nome de usuário já está em uso';
+                }
+            }
+        }
+        
+        // Validar senha
+        const passwordValidation = CredentialValidator.validatePassword(formData.newPassword);
+        if (!passwordValidation.isValid) {
+            newErrors.newPassword = passwordValidation.errors[0];
+        }
+        
+        // Validar confirmação de senha
+        if (formData.newPassword !== formData.confirmPassword) {
+            newErrors.confirmPassword = 'As senhas não coincidem';
+        }
+        
+        // Verificar histórico de senhas
+        if (formData.newPassword && !UserManager.checkPasswordHistory(user.id, formData.newPassword)) {
+            newErrors.newPassword = 'Esta senha foi usada recentemente. Escolha uma diferente';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!validateForm()) return;
+        
+        setIsSubmitting(true);
+        
+        try {
+            // Atualizar usuário
+            const updates = {
+                name: formData.name,
+                email: formData.email,
+                username: formData.username,
+                password: CryptoUtils.hashPassword(formData.newPassword),
+                firstLogin: false,
+                lastPasswordChange: new Date().toISOString(),
+                passwordHistory: [...user.passwordHistory, CryptoUtils.hashPassword(formData.newPassword)]
+            };
+            
+            const updatedUser = UserManager.updateUser(user.id, updates);
+            
+            UserManager.logAuditEvent(user.id, 'first_login_setup', {
+                usernameChanged: formData.username !== user.username,
+                emailAdded: !!formData.email
+            });
+            
+            onComplete(updatedUser);
+        } catch (error) {
+            console.error('Erro ao atualizar usuário:', error);
+            setErrors({ submit: 'Erro interno. Tente novamente.' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`max-w-md w-full mx-4 p-6 rounded-lg shadow-xl ${
+                darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+            }`}>
+                <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold mb-2">🔐 Primeiro Acesso</h2>
+                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        Por segurança, você deve definir suas credenciais personalizadas.
+                    </p>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Nome */}
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                            Nome Completo *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                            } ${errors.name ? 'border-red-500' : ''}`}
+                            placeholder="Seu nome completo"
+                        />
+                        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                    </div>
+                    
+                    {/* Email */}
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                            Email (opcional)
+                        </label>
+                        <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                            }`}
+                            placeholder="seu@email.com"
+                        />
+                    </div>
+                    
+                    {/* Username */}
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                            Nome de Usuário
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.username}
+                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                            } ${errors.username ? 'border-red-500' : ''}`}
+                            placeholder="Seu nome de usuário"
+                        />
+                        {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
+                    </div>
+                    
+                    {/* Nova Senha */}
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                            Nova Senha *
+                        </label>
+                        <input
+                            type="password"
+                            value={formData.newPassword}
+                            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                            } ${errors.newPassword ? 'border-red-500' : ''}`}
+                            placeholder="Sua nova senha segura"
+                        />
+                        <PasswordStrengthIndicator password={formData.newPassword} darkMode={darkMode} />
+                        {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
+                    </div>
+                    
+                    {/* Confirmar Senha */}
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                            Confirmar Nova Senha *
+                        </label>
+                        <input
+                            type="password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                            } ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                            placeholder="Confirme sua nova senha"
+                        />
+                        {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                    </div>
+                    
+                    {errors.submit && (
+                        <div className="text-red-500 text-sm text-center">
+                            {errors.submit}
+                        </div>
+                    )}
+                    
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    >
+                        {isSubmitting ? 'Salvando...' : 'Definir Credenciais'}
+                    </button>
+                </form>
+                
+                <div className={`mt-4 text-xs text-center ${
+                    darkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                    Esta configuração é obrigatória para sua segurança.
+                </div>
             </div>
         </div>
     );
@@ -78,6 +1041,13 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(() => {
         return localStorage.getItem('isAuthenticated') === 'true';
     });
+    const [currentUser, setCurrentUser] = useState(() => {
+        const savedUser = localStorage.getItem('currentUser');
+        return savedUser ? JSON.parse(savedUser) : null;
+    });
+    
+    // Estado de navegação
+    const [currentView, setCurrentView] = useState('main'); // 'main' ou 'profile'
     
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
@@ -95,16 +1065,116 @@ function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
+    
+    // Estados para estatísticas de uso
+    const [statistics, setStatistics] = useState(() => {
+        const saved = localStorage.getItem('appStatistics');
+        return saved ? JSON.parse(saved) : {
+            totalAccesses: 0,
+            totalSearches: 0,
+            universalSearches: 0,
+            advancedSearches: 0,
+            lastAccess: null,
+            dailyAccesses: [],
+            searchHistory: [],
+            userSessions: []
+        };
+    });
 
+    // Funções para estatísticas
+    const updateStatistics = (type, data = {}) => {
+        const now = new Date();
+        const today = now.toDateString();
+        
+        setStatistics(prev => {
+            const newStats = { ...prev };
+            
+            switch(type) {
+                case 'access':
+                    newStats.totalAccesses += 1;
+                    newStats.lastAccess = now.toISOString();
+                    
+                    // Atualizar acessos diários
+                    const todayAccess = newStats.dailyAccesses.find(d => d.date === today);
+                    if (todayAccess) {
+                        todayAccess.count += 1;
+                    } else {
+                        newStats.dailyAccesses.push({ date: today, count: 1 });
+                    }
+                    
+                    // Manter apenas últimos 30 dias
+                    newStats.dailyAccesses = newStats.dailyAccesses.slice(-30);
+                    
+                    // Registrar sessão do usuário
+                    newStats.userSessions.push({
+                        user: data.username,
+                        role: data.role,
+                        timestamp: now.toISOString()
+                    });
+                    
+                    // Manter apenas últimas 100 sessões
+                    newStats.userSessions = newStats.userSessions.slice(-100);
+                    break;
+                    
+                case 'search':
+                    newStats.totalSearches += 1;
+                    if (data.searchMode === 'universal') {
+                        newStats.universalSearches += 1;
+                    } else if (data.searchMode === 'advanced') {
+                        newStats.advancedSearches += 1;
+                    }
+                    
+                    // Adicionar ao histórico de pesquisas
+                    newStats.searchHistory.push({
+                        timestamp: now.toISOString(),
+                        mode: data.searchMode,
+                        user: data.user,
+                        query: data.query,
+                        results: data.results || 0
+                    });
+                    
+                    // Manter apenas últimas 200 pesquisas
+                    newStats.searchHistory = newStats.searchHistory.slice(-200);
+                    break;
+            }
+            
+            // Salvar no localStorage
+            localStorage.setItem('appStatistics', JSON.stringify(newStats));
+            return newStats;
+        });
+    };
+    
     // Funções de autenticação
-    const handleLogin = () => {
+    const handleLogin = (user) => {
         setIsAuthenticated(true);
+        setCurrentUser(user);
         localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Registrar acesso nas estatísticas
+        updateStatistics('access', {
+            username: user.username,
+            role: user.role
+        });
     };
 
     const handleLogout = () => {
         setIsAuthenticated(false);
+        setCurrentUser(null);
+        setCurrentView('main');
         localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('currentUser');
+    };
+
+    const handleCredentialsChanged = (updatedUser) => {
+        setCurrentUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        // Registrar alteração de credenciais nas estatísticas
+        updateStatistics('credentialChange', {
+            username: updatedUser.username,
+            role: updatedUser.role
+        });
     };
 
     useEffect(() => {
@@ -351,12 +1421,31 @@ function App() {
     const handleSearch = () => {
         setIsLoading(true);
         
+        // Preparar dados da consulta para estatísticas
+        const queryData = {
+            searchTerm: searchTerm.trim(),
+            itemCode: itemCode.trim(),
+            serviceDescription: serviceDescription.trim(),
+            cnaeCode: cnaeCode.trim(),
+            cnaeDescription: cnaeDescription.trim()
+        };
+        
+        const queryString = Object.values(queryData).filter(v => v).join(' | ');
+        
         setTimeout(() => {
             const results = filterData();
             setModalResults(results);
             setNoResults(results.length === 0);
             setIsModalOpen(true);
             setIsLoading(false);
+            
+            // Registrar pesquisa nas estatísticas
+            updateStatistics('search', {
+                searchMode: searchMode,
+                user: currentUser?.username || 'unknown',
+                query: queryString || 'consulta vazia',
+                results: results.length
+            });
         }, 500);
     };
 
@@ -384,6 +1473,43 @@ function App() {
         <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
             <div className="container mx-auto px-4 py-8 max-w-6xl">
                 <header className="text-center mb-12 animate-fadeInDown">
+                    {/* Informações do usuário logado */}
+                    <div className="flex justify-between items-center mb-6">
+                        <div className={`flex items-center gap-3 px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-lg`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentUser?.role === 'admin' ? 'bg-red-500' : 'bg-blue-500'} text-white text-sm font-bold`}>
+                                {currentUser?.role === 'admin' ? 'A' : 'U'}
+                            </div>
+                            <div className="text-left">
+                                <div className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    {currentUser?.name || 'Usuário'}
+                                </div>
+                                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {currentUser?.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setCurrentView(currentView === 'profile' ? 'main' : 'profile')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} shadow-lg`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {currentView === 'profile' ? 'Voltar' : 'Perfil'}
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} shadow-lg`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Sair
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div className="flex justify-center items-center mb-6">
                         <div className="relative">
                             <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-all duration-300 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}>
@@ -405,20 +1531,15 @@ function App() {
                     <div className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium ${darkMode ? 'bg-blue-900 text-blue-200 border border-blue-700' : 'bg-blue-100 text-blue-800 border border-blue-200'} animate-pulse-custom`}>
                         <div className="status-indicator status-active mr-2"></div>
                         Sistema Online • {data.length} itens carregados
+                        {currentUser?.role === 'admin' && (
+                            <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">
+                                ADMIN
+                            </span>
+                        )}
                     </div>
                 </header>
 
-                <div className="flex justify-between items-center mb-6">
-                    <button
-                        onClick={handleLogout}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} shadow-lg`}
-                        title="Sair do Sistema"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Sair
-                    </button>
+                <div className="flex justify-end items-center mb-6">
                     <button
                         onClick={() => setDarkMode(!darkMode)}
                         className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${darkMode ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'} shadow-lg`}
@@ -436,6 +1557,15 @@ function App() {
                     </button>
                 </div>
 
+                {/* Navegação condicional entre views */}
+                {currentView === 'profile' ? (
+                    <UserProfilePage 
+                        user={currentUser}
+                        onLogout={handleLogout}
+                        onCredentialsChanged={handleCredentialsChanged}
+                        darkMode={darkMode}
+                    />
+                ) : (
                 <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border backdrop-blur-sm p-8 mb-8 animate-fadeInUp`} style={{animationDelay: '0.2s'}}>
                     <div className="flex items-center justify-between mb-6">
                         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center`}>
@@ -470,19 +1600,21 @@ function App() {
                                 </svg>
                                 Universal
                             </button>
-                            <button
-                                onClick={() => setSearchMode('advanced')}
-                                className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${
-                                    searchMode === 'advanced'
-                                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                        : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
-                                }`}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                                </svg>
+                            {currentUser?.role === 'admin' && (
+                                <button
+                                    onClick={() => setSearchMode('advanced')}
+                                    className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${
+                                        searchMode === 'advanced'
+                                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                            : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
+                                    }`}
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                                    </svg>
                                 Especial
                             </button>
+                            )}
                         </div>
                     </div>
                     
@@ -599,6 +1731,192 @@ function App() {
                         </button>
                     </div>
                 </div>
+                )}
+
+                {/* Painel Informativo para Usuários Regulares */}
+                {currentUser?.role === 'user' && (
+                    <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-blue-600 bg-blue-900/20' : 'border-blue-300 bg-blue-50'} animate-fadeInUp`}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 className={`text-lg font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                                Acesso de Usuário
+                            </h3>
+                        </div>
+                        <div className={`text-sm ${darkMode ? 'text-blue-200' : 'text-blue-700'} space-y-2`}>
+                            <p>• Você pode realizar consultas na base de dados</p>
+                            <p>• Acesso limitado ao modo de pesquisa universal</p>
+                            <p>• Para funcionalidades avançadas, entre em contato com o administrador</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Painel Administrativo - Apenas para Admins */}
+                {currentUser?.role === 'admin' && (
+                    <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h3 className={`text-lg font-bold ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
+                                Dashboard Administrativo
+                            </h3>
+                        </div>
+                        
+                        {/* Estatísticas Principais */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            {/* Card de Acessos Totais */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
+                                </div>
+                                <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
+                            </div>
+                            
+                            {/* Card de Consultas Realizadas */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
+                                </div>
+                                <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
+                            </div>
+                            
+                            {/* Card de Usuários Ativos */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                    </svg>
+                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
+                                </div>
+                                <p className={`text-2xl font-bold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Registrados</p>
+                            </div>
+                            
+                            {/* Card de Acessos Hoje */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
+                                </div>
+                                <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
+                            </div>
+                        </div>
+                        
+                        {/* Seção de Tipos de Consulta */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tipos de Consulta</h4>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Universal:</span>
+                                        <span className={`font-semibold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.universalSearches}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Avançada:</span>
+                                        <span className={`font-semibold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.advancedSearches}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                                        <div 
+                                            className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300" 
+                                            style={{width: `${statistics.totalSearches > 0 ? (statistics.universalSearches / statistics.totalSearches) * 100 : 0}%`}}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                    {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
+                                        <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                                            <div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</div>
+                                            <div className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} truncate`}>{search.query}</div>
+                                            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{search.results} resultados</div>
+                                        </div>
+                                    ))}
+                                    {statistics.searchHistory.length === 0 && (
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nenhuma consulta realizada ainda</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Informações do Sistema */}
+                        <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
+                            <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
+                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
+                                </div>
+                                <div>
+                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
+                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
+                                    <p className={`font-semibold text-green-500`}>Online</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Botões de Ação */}
+                        <div className="flex flex-wrap gap-3">
+                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Exportar Estatísticas
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
+                                        localStorage.removeItem('appStatistics');
+                                        setStatistics({
+                                            totalAccesses: 0,
+                                            totalSearches: 0,
+                                            universalSearches: 0,
+                                            advancedSearches: 0,
+                                            lastAccess: null,
+                                            dailyAccesses: [],
+                                            searchHistory: [],
+                                            userSessions: {}
+                                        });
+                                    }
+                                }}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Limpar Estatísticas
+                            </button>
+                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Backup Sistema
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {isLoading && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
