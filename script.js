@@ -134,6 +134,9 @@ class UserManager {
                 accountLocked: false,
                 failedAttempts: 0,
                 createdAt: new Date().toISOString(),
+                failedAttempts: 0,
+                isAuthorized: true, // Usuários migrados já são autorizados
+                createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             }));
 
@@ -162,8 +165,18 @@ class UserManager {
             localStorage.setItem('userProfiles', JSON.stringify(users));
             return users[userIndex];
         }
-
         return null;
+    }
+
+    static resetUserPassword(userId, newPassword = 'Mudar@123') {
+        const updates = {
+            password: CryptoUtils.hashPassword(newPassword),
+            firstLogin: true, // Força a troca de senha no próximo login
+            isAuthorized: true, // Garante que usuário consiga logar
+            lastPasswordChange: null, // Pode ser null para indicar reset
+            passwordHistory: [] // Opcional: limpar histórico para evitar conflitos
+        };
+        return this.updateUser(userId, updates);
     }
 
     static checkPasswordHistory(userId, newPassword) {
@@ -254,6 +267,11 @@ class UserManager {
             passwordHistory: [CryptoUtils.hashPassword(userData.password)],
             accountLocked: false,
             failedAttempts: 0,
+            createdAt: new Date().toISOString(),
+            passwordHistory: [CryptoUtils.hashPassword(userData.password)],
+            accountLocked: false,
+            failedAttempts: 0,
+            isAuthorized: userData.isAuthorized !== undefined ? userData.isAuthorized : false, // Padrão false para auto-cadastro
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -684,13 +702,15 @@ function LoginForm({ onLogin, darkMode }) {
                 username,
                 password,
                 role: 'user', // Padrão: usuário comum
-                firstLogin: false // Auto-cadastro já define senha, não precisa trocar
+                firstLogin: false, // Auto-cadastro já define senha
+                isAuthorized: false // Requer aprovação de admin
             });
 
-            // Login automático após cadastro
-            localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('currentUser', JSON.stringify(newUser));
-            onLogin(newUser);
+            // Não faz login automático, exibe mensagem de sucesso
+            setError(''); // Limpa erros
+            alert('Cadastro realizado com sucesso! Sua conta aguarda aprovação do administrador para ser ativada.');
+            resetForm();
+            setIsRegistering(false); // Volta para tela de login
         } catch (err) {
             setError(err.message || 'Erro ao criar conta');
         }
@@ -713,6 +733,11 @@ function LoginForm({ onLogin, darkMode }) {
                 return;
             }
 
+            if (user.isAuthorized === false) {
+                setError('Sua conta aguarda autorização do administrador.');
+                return;
+            }
+
             if (!CryptoUtils.comparePassword(password, user.password)) {
                 const updatedUser = UserManager.incrementFailedAttempts(user.id);
                 const remaining = 5 - updatedUser.failedAttempts;
@@ -720,7 +745,11 @@ function LoginForm({ onLogin, darkMode }) {
                 if (updatedUser.failedAttempts >= 5) {
                     setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
                 } else {
-                    setError(`Usuário ou senha incorretos. ${remaining} tentativas restantes.`);
+                    if (user.firstLogin) {
+                        setError('Sua senha foi resetada. Utilize a senha temporária: Mudar@123');
+                    } else {
+                        setError(`Usuário ou senha incorretos. ${remaining} tentativas restantes.`);
+                    }
                 }
                 return;
             }
@@ -1004,10 +1033,9 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
 
         try {
             // Atualizar usuário
+            // Atualizar usuário (apenas senha e histórico)
             const updates = {
-                name: formData.name,
-                email: formData.email,
-                username: formData.username,
+                // name, email, username mantidos inalterados
                 password: CryptoUtils.hashPassword(formData.newPassword),
                 firstLogin: false,
                 lastPasswordChange: new Date().toISOString(),
@@ -1035,9 +1063,9 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
             <div className={`max-w-md w-full mx-4 p-6 rounded-lg shadow-xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
                 }`}>
                 <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold mb-2">🔐 Primeiro Acesso</h2>
+                    <h2 className="text-2xl font-bold mb-2">🔐 Atualização de Senha</h2>
                     <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        Por segurança, você deve definir suas credenciais personalizadas.
+                        Por segurança, é necessário cadastrar uma nova senha.
                     </p>
                 </div>
 
@@ -1051,11 +1079,11 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                         <input
                             type="text"
                             value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            readOnly
                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
-                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                : 'bg-white border-gray-300 text-gray-900'
-                                } ${errors.name ? 'border-red-500' : ''}`}
+                                ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
                             placeholder="Seu nome completo"
                         />
                         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -1070,10 +1098,10 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                         <input
                             type="email"
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            readOnly
                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
-                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                : 'bg-white border-gray-300 text-gray-900'
+                                ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
                                 }`}
                             placeholder="seu@email.com"
                         />
@@ -1088,11 +1116,11 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                         <input
                             type="text"
                             value={formData.username}
-                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            readOnly
                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
-                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                : 'bg-white border-gray-300 text-gray-900'
-                                } ${errors.username ? 'border-red-500' : ''}`}
+                                ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
                             placeholder="Seu nome de usuário"
                         />
                         {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
@@ -1554,6 +1582,28 @@ function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
+
+    // Estado para usuários pendentes (apenas admin)
+    const [pendingUsers, setPendingUsers] = useState([]);
+
+    useEffect(() => {
+        if (currentUser?.role === 'admin' && showDashboard) {
+            loadPendingUsers();
+        }
+    }, [currentUser, showDashboard]);
+
+    const loadPendingUsers = () => {
+        const allUsers = UserManager.getUsers();
+        const pending = allUsers.filter(u => u.isAuthorized === false);
+        setPendingUsers(pending);
+    };
+
+    const handleAuthorizeUser = (userId) => {
+        if (confirm('Deseja autorizar este usuário?')) {
+            UserManager.updateUser(userId, { isAuthorized: true });
+            loadPendingUsers();
+        }
+    };
 
     // Estados para estatísticas de uso
     const [statistics, setStatistics] = useState(() => {
@@ -2293,6 +2343,37 @@ function App() {
                                     <>
                                         {/* Estatísticas Principais */}
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                            {/* Card de Solicitações Pendentes (Novo) */}
+                                            {pendingUsers.length > 0 && (
+                                                <div className={`p-4 rounded-lg md:col-span-4 border-2 border-yellow-400 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'} shadow-sm animate-pulse-custom`}>
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
+                                                            <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                        {pendingUsers.map(user => (
+                                                            <div key={user.id} className={`p-3 rounded-lg flex flex-col justify-between ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                                                                <div className="mb-2">
+                                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
+                                                                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
+                                                                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Usuário: {user.username}</p>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleAuthorizeUser(user.id)}
+                                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-bold uppercase tracking-wider transition-colors"
+                                                                >
+                                                                    Autorizar
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Card de Acessos Totais */}
                                             <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
                                                 <div className="flex items-center gap-2 mb-2">
@@ -2344,10 +2425,38 @@ function App() {
                                                                         <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
                                                                         <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{username}</span>
                                                                     </div>
-                                                                    <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
-                                                                        role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                                                                            (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
-                                                                        }`}>{roleLabel}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
+                                                                            role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
+                                                                                (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
+                                                                            }`}>{roleLabel}</span>
+
+                                                                        {/* Botão de Reset de Senha (apenas para Admin e não para si mesmo, opcional) */}
+                                                                        {currentUser?.role === 'admin' && ( // Verifica no render principal, mas aqui reforça
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (confirm(`Deseja resetar a senha do usuário ${username} para 'Mudar@123'?`)) {
+                                                                                        // Precisamos do ID do usuário. Como userSessions é um objeto {username: count}, não temos o ID direto aqui.
+                                                                                        // Precisamos buscar o usuário pelo username.
+                                                                                        const allUsers = UserManager.getUsers();
+                                                                                        const targetUser = allUsers.find(u => u.username === username);
+                                                                                        if (targetUser) {
+                                                                                            UserManager.resetUserPassword(targetUser.id);
+                                                                                            alert(`Senha de ${username} resetada com sucesso para 'Mudar@123'.`);
+                                                                                        } else {
+                                                                                            alert('Erro ao encontrar usuário.');
+                                                                                        }
+                                                                                    }
+                                                                                }}
+                                                                                title="Resetar Senha"
+                                                                                className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors`}
+                                                                            >
+                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}
