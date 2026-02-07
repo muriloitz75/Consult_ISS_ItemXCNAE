@@ -14,7 +14,7 @@ const CryptoUtils = {
         }
         return Math.abs(hash).toString(16);
     },
-    
+
     comparePassword: (password, hash) => {
         return CryptoUtils.hashPassword(password) === hash;
     }
@@ -36,73 +36,73 @@ const passwordRules = {
 class CredentialValidator {
     static validateUsername(username) {
         const errors = [];
-        
+
         if (!username || username.length < 3) {
             errors.push('Nome de usuário deve ter pelo menos 3 caracteres');
         }
-        
+
         if (username.length > 20) {
             errors.push('Nome de usuário deve ter no máximo 20 caracteres');
         }
-        
+
         if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
             errors.push('Nome de usuário deve conter apenas letras, números, _ ou -');
         }
-        
+
         const reservedUsernames = ['admin', 'root', 'system', 'null', 'undefined'];
         if (reservedUsernames.includes(username.toLowerCase())) {
             errors.push('Este nome de usuário é reservado');
         }
-        
+
         return { isValid: errors.length === 0, errors };
     }
-    
+
     static validatePassword(password) {
         const errors = [];
-        
+
         if (!password || password.length < passwordRules.minLength) {
             errors.push(`A senha deve ter pelo menos ${passwordRules.minLength} caracteres`);
         }
-        
+
         if (password.length > passwordRules.maxLength) {
             errors.push(`A senha deve ter no máximo ${passwordRules.maxLength} caracteres`);
         }
-        
+
         if (passwordRules.requireUppercase && !/[A-Z]/.test(password)) {
             errors.push('A senha deve conter pelo menos uma letra maiúscula');
         }
-        
+
         if (passwordRules.requireLowercase && !/[a-z]/.test(password)) {
             errors.push('A senha deve conter pelo menos uma letra minúscula');
         }
-        
+
         if (passwordRules.requireNumbers && !/\d/.test(password)) {
             errors.push('A senha deve conter pelo menos um número');
         }
-        
+
         if (passwordRules.requireSpecialChars) {
             const specialCharsRegex = new RegExp(`[${passwordRules.specialChars.replace(/[\-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`);
             if (!specialCharsRegex.test(password)) {
                 errors.push('A senha deve conter pelo menos um caractere especial');
             }
         }
-        
+
         return { isValid: errors.length === 0, errors };
     }
-    
+
     static generatePasswordStrengthScore(password) {
         let score = 0;
-        
+
         if (password.length >= 8) score++;
         if (password.length >= 12) score++;
         if (/[A-Z]/.test(password)) score++;
         if (/[a-z]/.test(password)) score++;
         if (/\d/.test(password)) score++;
         if (new RegExp(`[${passwordRules.specialChars.replace(/[\-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`).test(password)) score++;
-        
+
         return Math.min(score, 5);
     }
-    
+
     static checkUsernameAvailability(username, currentUserId, users) {
         return !users.some(user => user.username === username && user.id !== currentUserId);
     }
@@ -112,7 +112,7 @@ class CredentialValidator {
 class UserManager {
     static initializeUsers() {
         const existingUsers = localStorage.getItem('userProfiles');
-        
+
         if (!existingUsers) {
             // Migração dos usuários existentes
             const defaultUsers = [
@@ -120,7 +120,7 @@ class UserManager {
                 { username: 'user', password: '123', role: 'user', name: 'Usuário' },
                 { username: 'consultor', password: '456', role: 'user', name: 'Consultor' }
             ];
-            
+
             const migratedUsers = defaultUsers.map((user, index) => ({
                 id: `user_${index + 1}`,
                 username: user.username,
@@ -136,51 +136,51 @@ class UserManager {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             }));
-            
+
             localStorage.setItem('userProfiles', JSON.stringify(migratedUsers));
             return migratedUsers;
         }
-        
+
         return JSON.parse(existingUsers);
     }
-    
+
     static getUsers() {
         return JSON.parse(localStorage.getItem('userProfiles') || '[]');
     }
-    
+
     static updateUser(userId, updates) {
         const users = UserManager.getUsers();
         const userIndex = users.findIndex(user => user.id === userId);
-        
+
         if (userIndex !== -1) {
             users[userIndex] = {
                 ...users[userIndex],
                 ...updates,
                 updatedAt: new Date().toISOString()
             };
-            
+
             localStorage.setItem('userProfiles', JSON.stringify(users));
             return users[userIndex];
         }
-        
+
         return null;
     }
-    
+
     static checkPasswordHistory(userId, newPassword) {
         const users = UserManager.getUsers();
         const user = users.find(u => u.id === userId);
-        
+
         if (!user) return false;
-        
+
         const newPasswordHash = CryptoUtils.hashPassword(newPassword);
         const recentPasswords = user.passwordHistory.slice(-passwordRules.preventReuse);
-        
+
         return !recentPasswords.includes(newPasswordHash);
     }
-    
+
     static logAuditEvent(userId, action, details = {}) {
         const auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
-        
+
         const event = {
             userId,
             action,
@@ -190,48 +190,80 @@ class UserManager {
             success: details.success !== false,
             details
         };
-        
+
         auditLog.push(event);
-        
+
         // Manter apenas os últimos 1000 eventos
         if (auditLog.length > 1000) {
             auditLog.splice(0, auditLog.length - 1000);
         }
-        
+
         localStorage.setItem('auditLog', JSON.stringify(auditLog));
     }
-    
+
     static incrementFailedAttempts(userId) {
         const users = this.getUsers();
         const userIndex = users.findIndex(u => u.id === userId);
-        
+
         if (userIndex === -1) return null;
-        
+
         const user = users[userIndex];
         const newFailedAttempts = (user.failedAttempts || 0) + 1;
-        
+
         const updates = {
             failedAttempts: newFailedAttempts
         };
-        
+
         // Bloquear conta após 5 tentativas
         if (newFailedAttempts >= 5) {
             const lockUntil = new Date();
             lockUntil.setMinutes(lockUntil.getMinutes() + 30); // 30 minutos
-            
+
             updates.isLocked = true;
             updates.lockUntil = lockUntil.toISOString();
         }
-        
+
         return this.updateUser(userId, updates);
     }
-    
+
     static resetFailedAttempts(userId) {
         return this.updateUser(userId, {
             failedAttempts: 0,
             isLocked: false,
             lockUntil: null
         });
+    }
+
+    static createUser(userData) {
+        const users = this.getUsers();
+
+        // Verificar se usuário já existe
+        if (users.some(u => u.username === userData.username)) {
+            throw new Error('Nome de usuário já existe');
+        }
+
+        const newUser = {
+            id: `user_${Date.now()}`,
+            username: userData.username,
+            password: CryptoUtils.hashPassword(userData.password),
+            role: userData.role || 'user',
+            name: userData.name,
+            email: userData.email,
+            firstLogin: true, // Forçar troca de senha no primeiro login se desejar, ou pode ser false
+            lastPasswordChange: new Date().toISOString(),
+            passwordHistory: [CryptoUtils.hashPassword(userData.password)],
+            accountLocked: false,
+            failedAttempts: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        localStorage.setItem('userProfiles', JSON.stringify(users));
+
+        this.logAuditEvent(newUser.id, 'user_created', { username: newUser.username, role: newUser.role });
+
+        return newUser;
     }
 }
 
@@ -253,12 +285,12 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
 
     const handleInputChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        
+
         // Limpar erro específico quando usuário começa a digitar
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
-        
+
         // Limpar mensagem de sucesso
         if (successMessage) {
             setSuccessMessage('');
@@ -267,12 +299,12 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
 
     const validateForm = () => {
         const newErrors = {};
-        
+
         // Validar nome
         if (!formData.name.trim()) {
             newErrors.name = 'Nome é obrigatório';
         }
-        
+
         // Validar email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!formData.email.trim()) {
@@ -280,7 +312,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
         } else if (!emailRegex.test(formData.email)) {
             newErrors.email = 'Email inválido';
         }
-        
+
         // Validar username
         const usernameValidation = CredentialValidator.validateUsername(formData.username);
         if (!usernameValidation.isValid) {
@@ -289,15 +321,15 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
             // Verificar disponibilidade do username
             const users = UserManager.getUsers();
             const isAvailable = CredentialValidator.checkUsernameAvailability(
-                formData.username, 
-                user.id, 
+                formData.username,
+                user.id,
                 users
             );
             if (!isAvailable) {
                 newErrors.username = 'Nome de usuário já está em uso';
             }
         }
-        
+
         // Se alterando senha
         if (showPasswordFields) {
             // Validar senha atual
@@ -306,7 +338,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
             } else if (!CryptoUtils.comparePassword(formData.currentPassword, user.password)) {
                 newErrors.currentPassword = 'Senha atual incorreta';
             }
-            
+
             // Validar nova senha
             if (formData.newPassword) {
                 const passwordValidation = CredentialValidator.validatePassword(formData.newPassword);
@@ -320,54 +352,54 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                     }
                 }
             }
-            
+
             // Validar confirmação de senha
             if (formData.newPassword !== formData.confirmPassword) {
                 newErrors.confirmPassword = 'Senhas não coincidem';
             }
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             return;
         }
-        
+
         setIsLoading(true);
-        
+
         try {
             const updates = {
                 name: formData.name,
                 email: formData.email,
                 username: formData.username
             };
-            
+
             // Se alterando senha
             if (showPasswordFields && formData.newPassword) {
                 const hashedPassword = CryptoUtils.hashPassword(formData.newPassword);
                 updates.password = hashedPassword;
                 updates.lastPasswordChange = new Date().toISOString();
-                
+
                 // Atualizar histórico de senhas
                 const currentHistory = user.passwordHistory || [];
                 updates.passwordHistory = [...currentHistory, hashedPassword].slice(-passwordRules.preventReuse);
             }
-            
+
             // Atualizar usuário
             const updatedUser = UserManager.updateUser(user.id, updates);
-            
+
             if (updatedUser) {
                 // Log da alteração
                 UserManager.logAuditEvent(user.id, 'profile_update', {
                     fields: Object.keys(updates),
                     passwordChanged: showPasswordFields && formData.newPassword
                 });
-                
+
                 setSuccessMessage('Perfil atualizado com sucesso!');
                 setIsEditing(false);
                 setShowPasswordFields(false);
@@ -377,7 +409,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                     newPassword: '',
                     confirmPassword: ''
                 }));
-                
+
                 // Notificar componente pai sobre a alteração
                 if (onCredentialsChanged) {
                     onCredentialsChanged(updatedUser);
@@ -412,30 +444,30 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
         <div className={`profile-container ${darkMode ? 'dark' : ''}`}>
             <div className="profile-header">
                 <h2>Meu Perfil</h2>
-                <button 
+                <button
                     onClick={onLogout}
                     className="logout-btn"
                 >
                     Sair
                 </button>
             </div>
-            
+
             {successMessage && (
                 <div className="success-message">
                     {successMessage}
                 </div>
             )}
-            
+
             {errors.general && (
                 <div className="error-message">
                     {errors.general}
                 </div>
             )}
-            
+
             <div className="profile-content">
                 <div className="profile-info">
                     <h3>Informações Pessoais</h3>
-                    
+
                     {!isEditing ? (
                         <div className="info-display">
                             <div className="info-item">
@@ -458,8 +490,8 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                 <label>Última alteração de senha:</label>
                                 <span>{user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada'}</span>
                             </div>
-                            
-                            <button 
+
+                            <button
                                 onClick={() => setIsEditing(true)}
                                 className="edit-btn"
                             >
@@ -479,7 +511,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                 />
                                 {errors.name && <span className="error-text">{errors.name}</span>}
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>Email:</label>
                                 <input
@@ -491,7 +523,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                 />
                                 {errors.email && <span className="error-text">{errors.email}</span>}
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>Nome de usuário:</label>
                                 <input
@@ -503,7 +535,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                 />
                                 {errors.username && <span className="error-text">{errors.username}</span>}
                             </div>
-                            
+
                             <div className="password-section">
                                 <div className="password-toggle">
                                     <input
@@ -515,7 +547,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                     />
                                     <label htmlFor="changePassword">Alterar senha</label>
                                 </div>
-                                
+
                                 {showPasswordFields && (
                                     <div className="password-fields">
                                         <div className="form-group">
@@ -529,7 +561,7 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                             />
                                             {errors.currentPassword && <span className="error-text">{errors.currentPassword}</span>}
                                         </div>
-                                        
+
                                         <div className="form-group">
                                             <label>Nova senha:</label>
                                             <input
@@ -540,15 +572,15 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                                 disabled={isLoading}
                                             />
                                             {errors.newPassword && <span className="error-text">{errors.newPassword}</span>}
-                                            
+
                                             {formData.newPassword && (
-                                                <PasswordStrengthIndicator 
-                                                    password={formData.newPassword} 
+                                                <PasswordStrengthIndicator
+                                                    password={formData.newPassword}
                                                     darkMode={darkMode}
                                                 />
                                             )}
                                         </div>
-                                        
+
                                         <div className="form-group">
                                             <label>Confirmar nova senha:</label>
                                             <input
@@ -563,18 +595,18 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div className="form-actions">
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={handleCancel}
                                     className="cancel-btn"
                                     disabled={isLoading}
                                 >
                                     Cancelar
                                 </button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="save-btn"
                                     disabled={isLoading}
                                 >
@@ -589,88 +621,138 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
     );
 }
 
-// Componente de Login
+// Componente de Login e Cadastro
 function LoginForm({ onLogin, darkMode }) {
+    const [isRegistering, setIsRegistering] = useState(false);
+
+    // Estados do formulário
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
     const [firstLoginUser, setFirstLoginUser] = useState(null);
-    
+
     // Inicializar usuários quando o componente monta
     useEffect(() => {
         UserManager.initializeUsers();
     }, []);
-    
+
     const handleFirstLoginComplete = (updatedUser) => {
         setShowFirstLoginModal(false);
         setFirstLoginUser(null);
-        
-        // Salvar no localStorage
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
         onLogin(updatedUser);
+    };
+
+    const resetForm = () => {
+        setError('');
+        setUsername('');
+        setPassword('');
+        setName('');
+        setEmail('');
+        setConfirmPassword('');
+    };
+
+    const toggleMode = () => {
+        setIsRegistering(!isRegistering);
+        resetForm();
+    };
+
+    const handleRegister = async () => {
+        // Validação básica
+        if (!name.trim()) { setError('Nome é obrigatório'); return; }
+        if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError('Email inválido'); return; }
+        if (password !== confirmPassword) { setError('As senhas não coincidem'); return; }
+
+        const userValidation = CredentialValidator.validateUsername(username);
+        if (!userValidation.isValid) { setError(userValidation.errors[0]); return; }
+
+        const passwordValidation = CredentialValidator.validatePassword(password);
+        if (!passwordValidation.isValid) { setError(passwordValidation.errors[0]); return; }
+
+        try {
+            // Criar usuário
+            const newUser = UserManager.createUser({
+                name,
+                email,
+                username,
+                password,
+                role: 'user' // Padrão: usuário comum
+            });
+
+            // Login automático após cadastro
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('currentUser', JSON.stringify(newUser));
+            onLogin(newUser);
+        } catch (err) {
+            setError(err.message || 'Erro ao criar conta');
+        }
+    };
+
+    const handleLoginSubmit = async () => {
+        try {
+            const users = UserManager.getUsers();
+            const user = users.find(u => u.username === username);
+
+            if (!user) {
+                setError('Usuário ou senha incorretos'); // Mensagem genérica por segurança
+                UserManager.logAuditEvent(null, 'login_failed', { username, reason: 'user_not_found' });
+                return;
+            }
+
+            if (user.isLocked && user.lockUntil && new Date() < new Date(user.lockUntil)) {
+                const lockTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
+                setError(`Conta bloqueada. Tente novamente em ${lockTime} minutos.`);
+                return;
+            }
+
+            if (!CryptoUtils.comparePassword(password, user.password)) {
+                const updatedUser = UserManager.incrementFailedAttempts(user.id);
+                const remaining = 5 - updatedUser.failedAttempts;
+
+                if (updatedUser.failedAttempts >= 5) {
+                    setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
+                } else {
+                    setError(`Usuário ou senha incorretos. ${remaining} tentativas restantes.`);
+                }
+                return;
+            }
+
+            UserManager.resetFailedAttempts(user.id);
+            UserManager.logAuditEvent(user.id, 'login_success', { timestamp: new Date().toISOString() });
+
+            if (user.firstLogin) {
+                setFirstLoginUser(user);
+                setShowFirstLoginModal(true);
+                return;
+            }
+
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            onLogin(user);
+        } catch (error) {
+            console.error('Erro no login:', error);
+            setError('Erro interno. Tente novamente.');
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
-        
+
         try {
-            const users = UserManager.getUsers();
-            const user = users.find(u => u.username === username);
-            
-            if (!user) {
-                setError('Usuário não encontrado');
-                UserManager.logAuditEvent(null, 'login_failed', { username, reason: 'user_not_found' });
-                return;
+            if (isRegistering) {
+                await handleRegister();
+            } else {
+                await handleLoginSubmit();
             }
-            
-            // Verificar se a conta está bloqueada
-            if (user.isLocked && user.lockUntil && new Date() < new Date(user.lockUntil)) {
-                const lockTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
-                setError(`Conta bloqueada. Tente novamente em ${lockTime} minutos.`);
-                UserManager.logAuditEvent(user.id, 'login_blocked', { lockTime });
-                return;
-            }
-            
-            // Verificar senha
-            if (!CryptoUtils.comparePassword(password, user.password)) {
-                const updatedUser = UserManager.incrementFailedAttempts(user.id);
-                
-                if (updatedUser.failedAttempts >= 5) {
-                    setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
-                    UserManager.logAuditEvent(user.id, 'account_locked', { attempts: updatedUser.failedAttempts });
-                } else {
-                    const remaining = 5 - updatedUser.failedAttempts;
-                    setError(`Senha incorreta. ${remaining} tentativas restantes.`);
-                    UserManager.logAuditEvent(user.id, 'login_failed', { reason: 'wrong_password', attempts: updatedUser.failedAttempts });
-                }
-                return;
-            }
-            
-            // Login bem-sucedido - resetar tentativas falhadas
-            UserManager.resetFailedAttempts(user.id);
-            UserManager.logAuditEvent(user.id, 'login_success', { timestamp: new Date().toISOString() });
-            
-            // Verificar se é primeiro login
-            if (user.firstLogin) {
-                setFirstLoginUser(user);
-                setShowFirstLoginModal(true);
-                return;
-            }
-            
-            // Salvar no localStorage
-            localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            
-            onLogin(user);
-        } catch (error) {
-            console.error('Erro no login:', error);
-            setError('Erro interno. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -681,38 +763,84 @@ function LoginForm({ onLogin, darkMode }) {
             <div className={`max-w-md w-full space-y-8 p-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
                 <div>
                     <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Sistema de Consulta ISS
+                        {isRegistering ? 'Criar Nova Conta' : 'Sistema de Consulta ISS'}
                     </h2>
                     <p className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        Faça login para acessar o sistema
+                        {isRegistering ? 'Preencha os dados abaixo para se cadastrar' : 'Faça login para acessar o sistema'}
                     </p>
                 </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="rounded-md shadow-sm -space-y-px">
+
+                <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                    <div className={`rounded-md shadow-sm ${isRegistering ? 'space-y-4' : '-space-y-px'}`}>
+
+                        {isRegistering && (
+                            <>
+                                <div>
+                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                        placeholder="Seu nome completo"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                        placeholder="seu@email.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                </div>
+                            </>
+                        )}
+
                         <div>
+                            <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
                             <input
                                 type="text"
                                 required
-                                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                                 placeholder="Usuário"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                             />
                         </div>
+
                         <div>
+                            <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
                             <input
                                 type="password"
                                 required
-                                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-b-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                                 placeholder="Senha"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
+
+                        {isRegistering && (
+                            <div>
+                                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+                                <input
+                                    type="password"
+                                    required
+                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                    placeholder="Confirme sua senha"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {error && (
-                        <div className="text-red-600 text-sm text-center">
+                        <div className="text-red-500 text-sm text-center bg-red-100 p-2 rounded border border-red-200">
                             {error}
                         </div>
                     )}
@@ -721,17 +849,27 @@ function LoginForm({ onLogin, darkMode }) {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${isRegistering ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50`}
                         >
-                            {isLoading ? 'Entrando...' : 'Entrar'}
+                            {isLoading ? 'Processando...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
+                        </button>
+                    </div>
+
+                    <div className="text-center mt-4">
+                        <button
+                            type="button"
+                            onClick={toggleMode}
+                            className={`text-sm font-medium hover:underline ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}
+                        >
+                            {isRegistering ? 'Já tem uma conta? Faça login' : 'Não tem conta? Cadastre-se'}
                         </button>
                     </div>
                 </form>
             </div>
-            
+
             {/* Modal de Primeiro Acesso */}
             {showFirstLoginModal && firstLoginUser && (
-                <FirstLoginModal 
+                <FirstLoginModal
                     user={firstLoginUser}
                     onComplete={handleFirstLoginComplete}
                     darkMode={darkMode}
@@ -740,12 +878,11 @@ function LoginForm({ onLogin, darkMode }) {
         </div>
     );
 }
-
 // Componente de Indicador de Força da Senha
 function PasswordStrengthIndicator({ password, darkMode }) {
     const score = CredentialValidator.generatePasswordStrengthScore(password);
     const validation = CredentialValidator.validatePassword(password);
-    
+
     const getStrengthText = (score) => {
         switch (score) {
             case 0:
@@ -757,7 +894,7 @@ function PasswordStrengthIndicator({ password, darkMode }) {
             default: return 'Muito Fraca';
         }
     };
-    
+
     const getStrengthColor = (score) => {
         switch (score) {
             case 0:
@@ -769,25 +906,24 @@ function PasswordStrengthIndicator({ password, darkMode }) {
             default: return 'bg-gray-300';
         }
     };
-    
+
     if (!password) return null;
-    
+
     return (
         <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
                 <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     Força da senha:
                 </span>
-                <span className={`text-xs font-medium ${
-                    score <= 2 ? 'text-red-500' : 
-                    score <= 3 ? 'text-yellow-500' : 
-                    'text-green-500'
-                }`}>
+                <span className={`text-xs font-medium ${score <= 2 ? 'text-red-500' :
+                    score <= 3 ? 'text-yellow-500' :
+                        'text-green-500'
+                    }`}>
                     {getStrengthText(score)}
                 </span>
             </div>
             <div className={`w-full bg-gray-200 rounded-full h-2 ${darkMode ? 'bg-gray-700' : ''}`}>
-                <div 
+                <div
                     className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(score)}`}
                     style={{ width: `${(score / 5) * 100}%` }}
                 ></div>
@@ -816,15 +952,15 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     const validateForm = () => {
         const newErrors = {};
-        
+
         // Validar nome
         if (!formData.name.trim()) {
             newErrors.name = 'Nome é obrigatório';
         }
-        
+
         // Validar username se foi alterado
         if (formData.username !== user.username) {
             const usernameValidation = CredentialValidator.validateUsername(formData.username);
@@ -837,34 +973,34 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                 }
             }
         }
-        
+
         // Validar senha
         const passwordValidation = CredentialValidator.validatePassword(formData.newPassword);
         if (!passwordValidation.isValid) {
             newErrors.newPassword = passwordValidation.errors[0];
         }
-        
+
         // Validar confirmação de senha
         if (formData.newPassword !== formData.confirmPassword) {
             newErrors.confirmPassword = 'As senhas não coincidem';
         }
-        
+
         // Verificar histórico de senhas
         if (formData.newPassword && !UserManager.checkPasswordHistory(user.id, formData.newPassword)) {
             newErrors.newPassword = 'Esta senha foi usada recentemente. Escolha uma diferente';
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-    
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!validateForm()) return;
-        
+
         setIsSubmitting(true);
-        
+
         try {
             // Atualizar usuário
             const updates = {
@@ -876,14 +1012,14 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                 lastPasswordChange: new Date().toISOString(),
                 passwordHistory: [...user.passwordHistory, CryptoUtils.hashPassword(formData.newPassword)]
             };
-            
+
             const updatedUser = UserManager.updateUser(user.id, updates);
-            
+
             UserManager.logAuditEvent(user.id, 'first_login_setup', {
                 usernameChanged: formData.username !== user.username,
                 emailAdded: !!formData.email
             });
-            
+
             onComplete(updatedUser);
         } catch (error) {
             console.error('Erro ao atualizar usuário:', error);
@@ -892,131 +1028,120 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
             setIsSubmitting(false);
         }
     };
-    
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className={`max-w-md w-full mx-4 p-6 rounded-lg shadow-xl ${
-                darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
-            }`}>
+            <div className={`max-w-md w-full mx-4 p-6 rounded-lg shadow-xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+                }`}>
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold mb-2">🔐 Primeiro Acesso</h2>
                     <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                         Por segurança, você deve definir suas credenciais personalizadas.
                     </p>
                 </div>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Nome */}
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                            darkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
                             Nome Completo *
                         </label>
                         <input
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                darkMode 
-                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                            } ${errors.name ? 'border-red-500' : ''}`}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                                } ${errors.name ? 'border-red-500' : ''}`}
                             placeholder="Seu nome completo"
                         />
                         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                     </div>
-                    
+
                     {/* Email */}
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                            darkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
                             Email (opcional)
                         </label>
                         <input
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                darkMode 
-                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                            }`}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                                }`}
                             placeholder="seu@email.com"
                         />
                     </div>
-                    
+
                     {/* Username */}
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                            darkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
                             Nome de Usuário
                         </label>
                         <input
                             type="text"
                             value={formData.username}
                             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                darkMode 
-                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                            } ${errors.username ? 'border-red-500' : ''}`}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                                } ${errors.username ? 'border-red-500' : ''}`}
                             placeholder="Seu nome de usuário"
                         />
                         {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                     </div>
-                    
+
                     {/* Nova Senha */}
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                            darkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
                             Nova Senha *
                         </label>
                         <input
                             type="password"
                             value={formData.newPassword}
                             onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                darkMode 
-                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                            } ${errors.newPassword ? 'border-red-500' : ''}`}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                                } ${errors.newPassword ? 'border-red-500' : ''}`}
                             placeholder="Sua nova senha segura"
                         />
                         <PasswordStrengthIndicator password={formData.newPassword} darkMode={darkMode} />
                         {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
                     </div>
-                    
+
                     {/* Confirmar Senha */}
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                            darkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
                             Confirmar Nova Senha *
                         </label>
                         <input
                             type="password"
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                darkMode 
-                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                            } ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                                } ${errors.confirmPassword ? 'border-red-500' : ''}`}
                             placeholder="Confirme sua nova senha"
                         />
                         {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
                     </div>
-                    
+
                     {errors.submit && (
                         <div className="text-red-500 text-sm text-center">
                             {errors.submit}
                         </div>
                     )}
-                    
+
                     <button
                         type="submit"
                         disabled={isSubmitting}
@@ -1025,12 +1150,334 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
                         {isSubmitting ? 'Salvando...' : 'Definir Credenciais'}
                     </button>
                 </form>
-                
-                <div className={`mt-4 text-xs text-center ${
-                    darkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+
+                <div className={`mt-4 text-xs text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                     Esta configuração é obrigatória para sua segurança.
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// Componente Modal de Cadastro de Usuário
+function RegisterUserModal({ onClose, onUserCreated, darkMode }) {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        username: '',
+        password: '',
+        confirmPassword: '',
+        role: 'user'
+    });
+    const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
+        if (!formData.email.trim()) newErrors.email = 'Email é obrigatório';
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email inválido';
+
+        const userValidation = CredentialValidator.validateUsername(formData.username);
+        if (!userValidation.isValid) newErrors.username = userValidation.errors[0];
+
+        const passwordValidation = CredentialValidator.validatePassword(formData.password);
+        if (!passwordValidation.isValid) newErrors.password = passwordValidation.errors[0];
+
+        if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'As senhas não coincidem';
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        setIsLoading(true);
+        try {
+            // Verificar disponibilidade do usuário antes de tentar criar
+            const users = UserManager.getUsers();
+            if (!CredentialValidator.checkUsernameAvailability(formData.username, null, users)) {
+                setErrors(prev => ({ ...prev, username: 'Nome de usuário já está em uso' }));
+                setIsLoading(false);
+                return;
+            }
+
+            const newUser = UserManager.createUser({
+                name: formData.name,
+                email: formData.email,
+                username: formData.username,
+                password: formData.password,
+                role: formData.role
+            });
+
+            onUserCreated(newUser);
+            onClose();
+        } catch (error) {
+            console.error('Erro ao criar usuário:', error);
+            setErrors(prev => ({ ...prev, general: error.message || 'Erro ao criar usuário' }));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className={`w-full max-w-md rounded-lg shadow-xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
+                    <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Novo Usuário</h3>
+                    <button onClick={onClose} className={`text-gray-500 hover:text-gray-700 ${darkMode ? 'hover:text-gray-300' : ''}`}>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    {/* Campos do Formulário */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
+                            <input
+                                type="text"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${errors.name ? 'border-red-500' : (darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300')}`}
+                            />
+                            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                        </div>
+
+                        <div>
+                            <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                            <input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${errors.email ? 'border-red-500' : (darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300')}`}
+                            />
+                            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
+                                <input
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                    className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${errors.username ? 'border-red-500' : (darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300')}`}
+                                />
+                                {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
+                            </div>
+                            <div>
+                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Perfil</label>
+                                <select
+                                    value={formData.role}
+                                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                    className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300'}`}
+                                >
+                                    <option value="user">Usuário</option>
+                                    <option value="consultor">Consultor</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${errors.password ? 'border-red-500' : (darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300')}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                                >
+                                    {showPassword ? (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    ) : (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.059 10.059 0 013.999-5.325m-2.718-2.718l14.142 14.142" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.88 9.88a3 3 0 104.24 4.24" /></svg>
+                                    )}
+                                </button>
+                            </div>
+                            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                        </div>
+
+                        <div>
+                            <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+                            <input
+                                type="password"
+                                value={formData.confirmPassword}
+                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                className={`mt-1 block w-full rounded-md shadow-sm px-3 py-2 border ${errors.confirmPassword ? 'border-red-500' : (darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300')}`}
+                            />
+                            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                        </div>
+
+                        {errors.general && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                <span className="block sm:inline">{errors.general}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className={`px-4 py-2 rounded-md ${darkMode ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'}`}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    Salvando...
+                                </>
+                            ) : (
+                                'Cadastrar'
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// Componente de Gráfico de Barras
+function BarChart({ data, darkMode, title, color = 'blue', maxBars = 7 }) {
+    const sortedData = [...data].sort((a, b) => b.value - a.value).slice(0, maxBars);
+
+    if (sortedData.length === 0) {
+        return (
+            <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sem dados para exibir</p>
+            </div>
+        );
+    }
+
+    const maxValue = Math.max(...sortedData.map(item => item.value));
+
+    return (
+        <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <h3 className={`font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+            <div className="space-y-3">
+                {sortedData.map((item, index) => (
+                    <div key={index} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{item.label}</span>
+                            <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{item.value}</span>
+                        </div>
+                        <div className={`w-full rounded-full h-2 overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${color === 'purple' ? 'bg-purple-500' : 'bg-blue-500'}`}
+                                style={{ width: `${(item.value / maxValue) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// Componente Gráfico de Pizza
+function PieChart({ data, darkMode, title }) {
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#f43f5e'];
+
+    if (total === 0) {
+        return (
+            <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sem dados para exibir</p>
+            </div>
+        );
+    }
+
+    let currentAngle = 0;
+
+    return (
+        <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <h3 className={`font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                <div className="relative w-40 h-40">
+                    <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
+                        {data.map((item, index) => {
+                            const sliceAngle = (item.value / total) * 360;
+                            const x1 = 50 + 50 * Math.cos(Math.PI * currentAngle / 180);
+                            const y1 = 50 + 50 * Math.sin(Math.PI * currentAngle / 180);
+                            const x2 = 50 + 50 * Math.cos(Math.PI * (currentAngle + sliceAngle) / 180);
+                            const y2 = 50 + 50 * Math.sin(Math.PI * (currentAngle + sliceAngle) / 180);
+
+                            const largeArcFlag = sliceAngle > 180 ? 1 : 0;
+                            const pathData = `M 50 50 L ${x1} ${y1} A 50 50 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+
+                            const path = (
+                                <path
+                                    key={index}
+                                    d={pathData}
+                                    fill={colors[index % colors.length]}
+                                    stroke={darkMode ? '#1f2937' : '#ffffff'}
+                                    strokeWidth="2"
+                                />
+                            );
+
+                            currentAngle += sliceAngle;
+                            return path;
+                        })}
+                        {data.length === 1 && (
+                            <circle cx="50" cy="50" r="50" fill={colors[0]} />
+                        )}
+                    </svg>
+                </div>
+
+                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                    {data.map((item, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: colors[index % colors.length] }}></div>
+                            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} truncate w-24`}>{item.label}</span>
+                            <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                                {item.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Componente Sidebar Simples
+function SimpleSidebar({ darkMode }) {
+    return (
+        <div className={`w-16 flex-shrink-0 ${darkMode ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'} flex flex-col items-center py-4 gap-4`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white font-bold text-lg`}>
+                C
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'} cursor-pointer transition-colors`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'} cursor-pointer transition-colors`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
             </div>
         </div>
     );
@@ -1045,10 +1492,11 @@ function App() {
         const savedUser = localStorage.getItem('currentUser');
         return savedUser ? JSON.parse(savedUser) : null;
     });
-    
+
     // Estado de navegação
     const [currentView, setCurrentView] = useState('main'); // 'main' ou 'profile'
-    
+    const [currentPage, setCurrentPage] = useState('home'); // 'home', 'dashboard', 'profile'
+    const [showDashboard, setShowDashboard] = useState(true); // Toggle dashboard administrativo
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -1065,19 +1513,39 @@ function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
-    
+
     // Estados para estatísticas de uso
     const [statistics, setStatistics] = useState(() => {
         const saved = localStorage.getItem('appStatistics');
-        return saved ? JSON.parse(saved) : {
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Validar estrutura esperada
+                if (typeof parsed === 'object' && parsed !== null) {
+                    // Garantir que userSessions seja objeto
+                    if (Array.isArray(parsed.userSessions)) {
+                        parsed.userSessions = {};
+                    }
+                    // Garantir que searchHistory seja array válido
+                    if (!Array.isArray(parsed.searchHistory)) {
+                        parsed.searchHistory = [];
+                    }
+                    return parsed;
+                }
+            } catch (e) {
+                console.error('Erro ao carregar estatísticas, resetando:', e);
+                localStorage.removeItem('appStatistics');
+            }
+        }
+        return {
             totalAccesses: 0,
             totalSearches: 0,
             universalSearches: 0,
             advancedSearches: 0,
             lastAccess: null,
-            dailyAccesses: [],
+            dailyAccesses: {},
             searchHistory: [],
-            userSessions: []
+            userSessions: {}
         };
     });
 
@@ -1085,37 +1553,33 @@ function App() {
     const updateStatistics = (type, data = {}) => {
         const now = new Date();
         const today = now.toDateString();
-        
+
         setStatistics(prev => {
             const newStats = { ...prev };
-            
-            switch(type) {
+
+            switch (type) {
                 case 'access':
                     newStats.totalAccesses += 1;
                     newStats.lastAccess = now.toISOString();
-                    
-                    // Atualizar acessos diários
-                    const todayAccess = newStats.dailyAccesses.find(d => d.date === today);
-                    if (todayAccess) {
-                        todayAccess.count += 1;
-                    } else {
-                        newStats.dailyAccesses.push({ date: today, count: 1 });
+
+                    // Atualizar acessos diários (Objeto: chave=data, valor=count)
+                    newStats.dailyAccesses[today] = (newStats.dailyAccesses[today] || 0) + 1;
+
+                    // Manter histórico de acessos diários limpo (opcional: remover chaves antigas se necessário)
+                    // Para simplificar e evitar complexidade excessiva, mantemos o objeto crescendo por enquanto
+                    // ou poderíamos converter para entries, ordenar e reconstruir se ficar muito grande.
+
+                    // Registrar sessão do usuário (Objeto: chave=user, valor=count)
+                    if (data.username) {
+                        newStats.userSessions[data.username] = (newStats.userSessions[data.username] || 0) + 1;
                     }
-                    
-                    // Manter apenas últimos 30 dias
-                    newStats.dailyAccesses = newStats.dailyAccesses.slice(-30);
-                    
-                    // Registrar sessão do usuário
-                    newStats.userSessions.push({
-                        user: data.username,
-                        role: data.role,
-                        timestamp: now.toISOString()
-                    });
-                    
-                    // Manter apenas últimas 100 sessões
-                    newStats.userSessions = newStats.userSessions.slice(-100);
+
+
+                    // Manter histórico de acessos diários limpo (opcional: remover chaves antigas se necessário)
+                    // Para simplificar e evitar complexidade excessiva, mantemos o objeto crescendo por enquanto
+                    // ou poderíamos converter para entries, ordenar e reconstruir se ficar muito grande.
                     break;
-                    
+
                 case 'search':
                     newStats.totalSearches += 1;
                     if (data.searchMode === 'universal') {
@@ -1123,7 +1587,7 @@ function App() {
                     } else if (data.searchMode === 'advanced') {
                         newStats.advancedSearches += 1;
                     }
-                    
+
                     // Adicionar ao histórico de pesquisas
                     newStats.searchHistory.push({
                         timestamp: now.toISOString(),
@@ -1132,25 +1596,25 @@ function App() {
                         query: data.query,
                         results: data.results || 0
                     });
-                    
+
                     // Manter apenas últimas 200 pesquisas
                     newStats.searchHistory = newStats.searchHistory.slice(-200);
                     break;
             }
-            
+
             // Salvar no localStorage
             localStorage.setItem('appStatistics', JSON.stringify(newStats));
             return newStats;
         });
     };
-    
+
     // Funções de autenticação
     const handleLogin = (user) => {
         setIsAuthenticated(true);
         setCurrentUser(user);
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('currentUser', JSON.stringify(user));
-        
+
         // Registrar acesso nas estatísticas
         updateStatistics('access', {
             username: user.username,
@@ -1169,7 +1633,7 @@ function App() {
     const handleCredentialsChanged = (updatedUser) => {
         setCurrentUser(updatedUser);
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
+
         // Registrar alteração de credenciais nas estatísticas
         updateStatistics('credentialChange', {
             username: updatedUser.username,
@@ -1187,31 +1651,56 @@ function App() {
     }, [darkMode]);
 
     useEffect(() => {
-        console.log('Carregando dados XML...');
-        fetch('dados.xml')
+        console.log('Carregando dados Markdown...');
+        fetch('dados.md')
             .then(response => {
                 console.log('Resposta recebida:', response.status);
                 return response.text();
             })
-            .then(xmlText => {
-                console.log('XML carregado, tamanho:', xmlText.length);
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-                const rows = xmlDoc.querySelectorAll('TR');
-                console.log('Número de linhas encontradas:', rows.length);
-                
-                const parsedData = Array.from(rows).map(row => {
-                    const cells = row.querySelectorAll('TH, TD');
+            .then(mdText => {
+                console.log('Markdown carregado, tamanho:', mdText.length);
+
+                // Parse do Markdown
+                const lines = mdText.split('\n');
+                const dataRows = lines.filter(line => line.trim().startsWith('|'));
+
+                // Remover cabeçalho e separador (primeiras 2 linhas da tabela)
+                // Assumindo que o arquivo começa com título e depois a tabela
+                // Vamos encontrar onde começa a tabela
+                const startIndex = dataRows.findIndex(row => row.includes('LIST LC'));
+
+                // Pegar apenas as linhas de dados (pular header e separador)
+                const contentRows = dataRows.slice(startIndex + 2);
+
+                console.log('Número de linhas de dados encontradas:', contentRows.length);
+
+                const parsedData = contentRows.map(row => {
+                    // Dividir por pipe e limpar espaços
+                    // Ex: | 01.01 | Desc | ... |
+                    // split('|') gera ['', '01.01', 'Desc', ..., '']
+                    const cols = row.split('|').map(col => col.trim());
+
+                    // Colunas esperadas:
+                    // 1: LIST LC
+                    // 2: Descrição LC
+                    // 3: CNAE
+                    // 4: Descrição CNAE
+                    // 5: Alíquota
+
                     return {
-                        "LIST LC": cells[0]?.textContent?.trim() || '',
-                        "Descrição item da lista da Lei Complementar nº 001/2003 - CTM": cells[1]?.textContent?.trim() || '',
-                        "CNAE": cells[2]?.textContent?.trim() || '',
-                        "Descrição do CNAE": cells[3]?.textContent?.trim() || ''
+                        "LIST LC": cols[1] || '',
+                        "Descrição item da lista da Lei Complementar nº 001/2003 - CTM": cols[2] || '',
+                        "CNAE": cols[3] || '',
+                        "Descrição do CNAE": cols[4] || '',
+                        "Alíquota": cols[5] || ''
                     };
-                });
-                
+                }).filter(item => item["LIST LC"] && item["LIST LC"] !== '---'); // Filtrar linhas inválidas/separadores
+
                 console.log('Dados processados:', parsedData.length, 'itens');
-                console.log('Primeiros 3 itens:', parsedData.slice(0, 3));
+                if (parsedData.length > 0) {
+                    console.log('Primeiro item:', parsedData[0]);
+                }
+
                 setData(parsedData);
                 setFilteredData(parsedData);
             })
@@ -1230,7 +1719,7 @@ function App() {
     const normalizeCode = (code) => {
         if (!code) return '';
         const cleanCode = code.toString().trim();
-        
+
         // Se contém pontos, normaliza cada parte separadamente
         if (cleanCode.includes('.')) {
             return cleanCode.split('.').map(part => {
@@ -1238,7 +1727,7 @@ function App() {
                 return part.replace(/^0+/, '') || '0';
             }).join('.');
         }
-        
+
         // Se é só números, remove zeros à esquerda
         return cleanCode.replace(/^0+/, '') || '0';
     };
@@ -1258,34 +1747,34 @@ function App() {
     // Função de busca assertiva específica para cada tipo de campo
     const assertiveSearch = (field, term, fieldType = 'generic') => {
         if (!field || !term) return false;
-        
+
         const normalizedField = normalizeText(field);
         const normalizedTerm = normalizeText(term);
-        
+
         console.log(`Comparando: "${normalizedField}" com "${normalizedTerm}" (tipo: ${fieldType})`); // Debug
-        
+
         // Se o termo é um código, aplica lógica específica por tipo de campo
         if (isCode(term)) {
             // Para códigos de item da lista (LIST LC) - busca mais restritiva
             if (fieldType === 'listlc') {
                 const normalizedCodeTerm = normalizeCode(normalizedTerm);
                 const fieldCodeMatch = normalizedField.match(/^([\d\.\-\/]+)/);
-                
+
                 if (fieldCodeMatch) {
                     const fieldCode = normalizeCode(fieldCodeMatch[1]);
-                    
+
                     // 1. Busca exata após normalização
                     if (fieldCode === normalizedCodeTerm) {
                         console.log(`Busca exata de LIST LC "${normalizedCodeTerm}" encontrada em "${fieldCode}": true`); // Debug
                         return true;
                     }
-                    
+
                     // 2. Busca parcial apenas se o termo termina com ponto (ex: "7." para buscar "7.01", "7.02", etc.)
                     if (normalizedTerm.endsWith('.') && fieldCode.startsWith(normalizedCodeTerm.slice(0, -1) + '.')) {
                         console.log(`Busca parcial de LIST LC "${normalizedCodeTerm}" encontrada em "${fieldCode}": true`); // Debug
                         return true;
                     }
-                    
+
                     // 3. Se não tem ponto no termo, busca apenas códigos que começam exatamente com o número seguido de ponto
                     if (!normalizedTerm.includes('.')) {
                         const exactPattern = new RegExp(`^${normalizedCodeTerm}\.`);
@@ -1295,32 +1784,32 @@ function App() {
                         }
                     }
                 }
-                
+
                 console.log(`Busca de LIST LC "${normalizedTerm}" em "${normalizedField}": false`); // Debug
                 return false;
             }
-            
+
             // Para códigos CNAE - mantém busca flexível
             if (fieldType === 'cnae') {
                 const cleanTerm = normalizeCnaeCode(normalizedTerm);
                 const cleanField = normalizeCnaeCode(normalizedField);
-                
+
                 // 1. Busca exata após normalização
                 if (cleanField === cleanTerm) {
                     console.log(`Busca exata de CNAE "${cleanTerm}" encontrada em "${cleanField}": true`); // Debug
                     return true;
                 }
-                
+
                 // 2. Busca por início do código (busca parcial)
                 if (cleanField.startsWith(cleanTerm)) {
                     console.log(`Busca parcial de CNAE "${cleanTerm}" encontrada no início de "${cleanField}": true`); // Debug
                     return true;
                 }
-                
+
                 console.log(`Busca de CNAE "${cleanTerm}" em "${cleanField}": false`); // Debug
                 return false;
             }
-            
+
             // Para outros códigos - busca genérica
             const normalizedCodeTerm = normalizeCode(normalizedTerm);
             const fieldCodeMatch = normalizedField.match(/^([\d\.\-\/]+)/);
@@ -1331,7 +1820,7 @@ function App() {
                     return true;
                 }
             }
-            
+
             console.log(`Busca de código "${normalizedTerm}" em "${normalizedField}": false`); // Debug
             return false;
         } else {
@@ -1345,7 +1834,7 @@ function App() {
     const filterData = () => {
         console.log('Iniciando filterData...'); // Debug
         console.log('Dados disponíveis:', data?.length || 0); // Debug
-        
+
         if (!data || data.length === 0) {
             console.log('Nenhum dado disponível'); // Debug
             return [];
@@ -1359,10 +1848,10 @@ function App() {
             if (searchTerm.trim()) {
                 filtered = data.filter(item => {
                     const match = assertiveSearch(item['LIST LC'], searchTerm, 'listlc') ||
-                                 assertiveSearch(item['Descrição item da lista da Lei Complementar nº 001/2003 - CTM'], searchTerm, 'description') ||
-                                 assertiveSearch(item['CNAE'], searchTerm, 'cnae') ||
-                                 assertiveSearch(item['Descrição do CNAE'], searchTerm, 'description');
-                    
+                        assertiveSearch(item['Descrição item da lista da Lei Complementar nº 001/2003 - CTM'], searchTerm, 'description') ||
+                        assertiveSearch(item['CNAE'], searchTerm, 'cnae') ||
+                        assertiveSearch(item['Descrição do CNAE'], searchTerm, 'description');
+
                     if (match) {
                         console.log('Item encontrado:', item['LIST LC']); // Debug
                     }
@@ -1375,7 +1864,7 @@ function App() {
             console.log('Modo Especial'); // Debug
             // Modo Especial: aplica filtros específicos
             filtered = data;
-            
+
             if (itemCode.trim()) {
                 console.log('Filtrando por código do item:', itemCode); // Debug
                 filtered = filtered.filter(item => assertiveSearch(item['LIST LC'], itemCode, 'listlc'));
@@ -1398,29 +1887,11 @@ function App() {
         return filtered;
     };
 
-    const calculateAliquota = (listLC) => {
-        console.log('Calculando alíquota para LIST LC:', listLC);
-        const code = parseInt(listLC.replace(/[^0-9]/g, ''));
-        console.log('Código numérico extraído:', code);
-        
-        if (code >= 1 && code <= 100) {
-            console.log('Alíquota: 5%');
-            return '5%';
-        } else if (code >= 101 && code <= 199) {
-            console.log('Alíquota: 3%');
-            return '3%';
-        } else if (code >= 200 && code <= 299) {
-            console.log('Alíquota: 2%');
-            return '2%';
-        } else {
-            console.log('Alíquota: 5% (padrão)');
-            return '5%';
-        }
-    };
+
 
     const handleSearch = () => {
         setIsLoading(true);
-        
+
         // Preparar dados da consulta para estatísticas
         const queryData = {
             searchTerm: searchTerm.trim(),
@@ -1429,16 +1900,16 @@ function App() {
             cnaeCode: cnaeCode.trim(),
             cnaeDescription: cnaeDescription.trim()
         };
-        
+
         const queryString = Object.values(queryData).filter(v => v).join(' | ');
-        
+
         setTimeout(() => {
             const results = filterData();
             setModalResults(results);
             setNoResults(results.length === 0);
             setIsModalOpen(true);
             setIsLoading(false);
-            
+
             // Registrar pesquisa nas estatísticas
             updateStatistics('search', {
                 searchMode: searchMode,
@@ -1470,643 +1941,680 @@ function App() {
     }
 
     return (
-        <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
-                <header className="text-center mb-12 animate-fadeInDown">
-                    {/* Informações do usuário logado */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div className={`flex items-center gap-3 px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-lg`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentUser?.role === 'admin' ? 'bg-red-500' : 'bg-blue-500'} text-white text-sm font-bold`}>
-                                {currentUser?.role === 'admin' ? 'A' : 'U'}
-                            </div>
-                            <div className="text-left">
-                                <div className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                    {currentUser?.name || 'Usuário'}
-                                </div>
-                                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                    {currentUser?.role === 'admin' ? 'Administrador' : 'Usuário'}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setCurrentView(currentView === 'profile' ? 'main' : 'profile')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} shadow-lg`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                {currentView === 'profile' ? 'Voltar' : 'Perfil'}
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} shadow-lg`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                                Sair
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex justify-center items-center mb-6">
-                        <div className="relative">
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-all duration-300 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}>
-                                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                </svg>
-                            </div>
-                            <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${darkMode ? 'bg-green-500 text-white' : 'bg-green-400 text-white'} animate-pulse`}>
-                                ✓
-                            </div>
-                        </div>
-                    </div>
-                    <h1 className={`text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${darkMode ? 'text-white' : ''}`}>
-                        Consulta Lista/Cnae/Alíquota
-                    </h1>
-                    <p className={`text-xl mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        Consulte itens da Lista de Serviços e suas respectivas alíquotas do ISS
-                    </p>
-                    <div className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium ${darkMode ? 'bg-blue-900 text-blue-200 border border-blue-700' : 'bg-blue-100 text-blue-800 border border-blue-200'} animate-pulse-custom`}>
-                        <div className="status-indicator status-active mr-2"></div>
-                        Sistema Online • {data.length} itens carregados
-                        {currentUser?.role === 'admin' && (
-                            <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">
-                                ADMIN
-                            </span>
-                        )}
-                    </div>
-                </header>
-
-                <div className="flex justify-end items-center mb-6">
-                    <button
-                        onClick={() => setDarkMode(!darkMode)}
-                        className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${darkMode ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'} shadow-lg`}
-                        title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
-                    >
-                        {darkMode ? (
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        ) : (
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                        )}
-                    </button>
-                </div>
-
-                {/* Navegação condicional entre views */}
-                {currentView === 'profile' ? (
-                    <UserProfilePage 
-                        user={currentUser}
-                        onLogout={handleLogout}
-                        onCredentialsChanged={handleCredentialsChanged}
-                        darkMode={darkMode}
-                    />
-                ) : (
-                <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border backdrop-blur-sm p-8 mb-8 animate-fadeInUp`} style={{animationDelay: '0.2s'}}>
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center`}>
-                            Pesquisa Assertiva
-                        </h2>
-                        <button
-                            onClick={clearFilters}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} flex items-center gap-2`}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Limpar Filtros
-                        </button>
-                    </div>
-                    
-                    {/* Toggle de Modo de Pesquisa */}
-                    <div className="flex justify-center mb-8">
-                        <div className={`inline-flex rounded-xl p-1 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                            <button
-                                onClick={() => setSearchMode('universal')}
-                                className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
-                                    searchMode === 'universal'
-                                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                        : darkMode
-                                        ? 'text-gray-300 hover:text-white hover:bg-gray-600'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
-                                }`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                Universal
-                            </button>
-                            {currentUser?.role === 'admin' && (
-                                <button
-                                    onClick={() => setSearchMode('advanced')}
-                                    className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${
-                                        searchMode === 'advanced'
-                                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                            : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
-                                    }`}
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                                    </svg>
-                                Especial
-                            </button>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className={`grid gap-6 mb-6 transition-all duration-500 ${searchMode === 'universal' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2'}`}>
-                        {/* Campo de Pesquisa Universal - Mostrar apenas no modo universal */}
-                        {searchMode === 'universal' && (
-                            <div className="space-y-2">
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Digite qualquer termo para buscar em todos os campos..."
-                                        className={`w-full pl-4 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Campos Especiais - Mostrar apenas no modo especial */}
-                        {searchMode === 'advanced' && (
-                            <>
-                                <div className="space-y-2 animate-fadeInUp">
-                                    <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        Código do Item
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={itemCode}
-                                            onChange={(e) => setItemCode(e.target.value)}
-                                            placeholder="Ex: 01.01, 02.05..."
-                                            className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                        />
-                                        <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                                        </svg>
+        <div className="flex h-screen overflow-hidden">
+            <SimpleSidebar darkMode={darkMode} />
+            <div className="flex-1 overflow-y-auto">
+                <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
+                    <div className="container mx-auto px-4 py-8 max-w-6xl">
+                        <header className="text-center mb-12 animate-fadeInDown">
+                            {/* Informações do usuário logado */}
+                            <div className="flex justify-between items-center mb-6">
+                                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-lg`}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentUser?.role === 'admin' ? 'bg-red-500' : 'bg-blue-500'} text-white text-sm font-bold`}>
+                                        {currentUser?.role === 'admin' ? 'A' : 'U'}
                                     </div>
-                                </div>
-
-                                <div className="space-y-2 animate-fadeInUp" style={{animationDelay: '0.1s'}}>
-                                    <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        Descrição do Serviço
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={serviceDescription}
-                                            onChange={(e) => setServiceDescription(e.target.value)}
-                                            placeholder="Ex: análise, desenvolvimento..."
-                                            className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                        />
-                                        <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-                                    <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        Código CNAE
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={cnaeCode}
-                                            onChange={(e) => setCnaeCode(e.target.value)}
-                                            placeholder="Ex: 6201, 6201-5, 620150, 7020..."
-                                            className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                        />
-                                        <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
-                                    <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        Descrição CNAE
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={cnaeDescription}
-                                            onChange={(e) => setCnaeDescription(e.target.value)}
-                                            placeholder="Ex: desenvolvimento de programas..."
-                                            className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                        />
-                                        <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    <div className="flex justify-center">
-                        <button
-                            onClick={handleSearch}
-                            disabled={isLoading}
-                            className={`px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 ${isLoading ? 'bg-gray-500' : 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-lg hover:shadow-xl'}`}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                                    Pesquisando...
-                                </>
-                            ) : (
-                                <>
-                                    Realizar Consulta
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
-                )}
-
-                {/* Painel Informativo para Usuários Regulares */}
-                {currentUser?.role === 'user' && (
-                    <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-blue-600 bg-blue-900/20' : 'border-blue-300 bg-blue-50'} animate-fadeInUp`}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <h3 className={`text-lg font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
-                                Acesso de Usuário
-                            </h3>
-                        </div>
-                        <div className={`text-sm ${darkMode ? 'text-blue-200' : 'text-blue-700'} space-y-2`}>
-                            <p>• Você pode realizar consultas na base de dados</p>
-                            <p>• Acesso limitado ao modo de pesquisa universal</p>
-                            <p>• Para funcionalidades avançadas, entre em contato com o administrador</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Painel Administrativo - Apenas para Admins */}
-                {currentUser?.role === 'admin' && (
-                    <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <h3 className={`text-lg font-bold ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
-                                Dashboard Administrativo
-                            </h3>
-                        </div>
-                        
-                        {/* Estatísticas Principais */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            {/* Card de Acessos Totais */}
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
-                                </div>
-                                <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
-                            </div>
-                            
-                            {/* Card de Consultas Realizadas */}
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
-                                </div>
-                                <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
-                            </div>
-                            
-                            {/* Card de Usuários Ativos */}
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                    </svg>
-                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
-                                </div>
-                                <p className={`text-2xl font-bold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Registrados</p>
-                            </div>
-                            
-                            {/* Card de Acessos Hoje */}
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
-                                </div>
-                                <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
-                            </div>
-                        </div>
-                        
-                        {/* Seção de Tipos de Consulta */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tipos de Consulta</h4>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Universal:</span>
-                                        <span className={`font-semibold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.universalSearches}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Avançada:</span>
-                                        <span className={`font-semibold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.advancedSearches}</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                                        <div 
-                                            className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300" 
-                                            style={{width: `${statistics.totalSearches > 0 ? (statistics.universalSearches / statistics.totalSearches) * 100 : 0}%`}}
-                                        ></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
-                                <div className="space-y-2 max-h-32 overflow-y-auto">
-                                    {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
-                                        <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                                            <div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</div>
-                                            <div className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} truncate`}>{search.query}</div>
-                                            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{search.results} resultados</div>
+                                    <div className="text-left">
+                                        <div className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                            {currentUser?.name || 'Usuário'}
                                         </div>
-                                    ))}
-                                    {statistics.searchHistory.length === 0 && (
-                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nenhuma consulta realizada ainda</p>
-                                    )}
+                                        <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            {currentUser?.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        {/* Informações do Sistema */}
-                        <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
-                            <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
-                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
-                                </div>
-                                <div>
-                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
-                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
-                                    <p className={`font-semibold text-green-500`}>Online</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Botões de Ação */}
-                        <div className="flex flex-wrap gap-3">
-                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Exportar Estatísticas
-                            </button>
-                            <button 
-                                onClick={() => {
-                                    if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
-                                        localStorage.removeItem('appStatistics');
-                                        setStatistics({
-                                            totalAccesses: 0,
-                                            totalSearches: 0,
-                                            universalSearches: 0,
-                                            advancedSearches: 0,
-                                            lastAccess: null,
-                                            dailyAccesses: [],
-                                            searchHistory: [],
-                                            userSessions: {}
-                                        });
-                                    }
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Limpar Estatísticas
-                            </button>
-                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                                Backup Sistema
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {isLoading && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
-                            <div className="relative mb-4">
-                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
-                                <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
-                            </div>
-                            <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
-                        </div>
-                    </div>
-                )}
-
-                {isModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div 
-                            className="absolute inset-0 backdrop-blur-sm" 
-                            onClick={closeModal}
-                        ></div>
-                        
-                        <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                            <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
-                                <h2 className="text-xl font-semibold flex items-center">
-                                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    Resultados da Consulta
-                                </h2>
-                                <div className="flex gap-3 items-center">
-                                    <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
-                                        <div className="status-indicator status-active"></div>
-                                        {modalResults.length} resultados
-                                    </span>
-                                    <button 
-                                        onClick={closeModal}
-                                        className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setCurrentView(currentView === 'profile' ? 'main' : 'profile')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} shadow-lg`}
                                     >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
+                                        {currentView === 'profile' ? 'Voltar' : 'Perfil'}
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} shadow-lg`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        Sair
                                     </button>
                                 </div>
                             </div>
-                            
-                            {noResults ? (
-                                <div className="text-center py-16 animate-fadeInUp">
-                                    <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                    </svg>
-                                    <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
-                                        Nenhum resultado encontrado
-                                    </h3>
-                                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-                                        Tente ajustar o termo de pesquisa ou usar filtros diferentes.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="animate-fadeInUp">
-                                    <div className="overflow-x-auto custom-scrollbar px-6" style={{maxHeight: '70vh', overflowY: 'auto'}}>
-                                        <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                                            <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
-                                                <tr>
-                                                    <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
-                                                        darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                        Código do Item
-                                                    </th>
-                                                    <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
-                                                        darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                        Descrição do Serviço
-                                                    </th>
-                                                    <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
-                                                        darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                        CNAE
-                                                    </th>
-                                                    <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
-                                                        darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                        Descrição CNAE
-                                                    </th>
-                                                    <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
-                                                        darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                        Alíquota ISS
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
-                                                {modalResults.slice(0, 100).map((item, index) => (
-                                                    <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
-                                                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${
-                                                            darkMode ? 'text-blue-300' : 'text-blue-600'
-                                                        } font-medium`}>
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
-                                                            }`}>
-                                                                {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
-                                                            </span>
-                                                        </td>
-                                                        <td className={`px-4 py-4 text-sm text-center ${
-                                                            darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                        } max-w-xs`}>
-                                                            <div className="line-clamp-3">
-                                                                {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
-                                                            </div>
-                                                        </td>
-                                                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${
-                                                            darkMode ? 'text-green-300' : 'text-green-600'
-                                                        } font-medium`}>
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
-                                                            }`}>
-                                                                {(() => {
-                                                                    const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
-                                                                    if (cnae.length >= 7) {
-                                                                        const paddedCnae = cnae.padStart(7, '0');
-                                                                        return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
-                                                                    }
-                                                                    return item["CNAE"];
-                                                                })()}
-                                                            </span>
-                                                        </td>
-                                                        <td className={`px-4 py-4 text-sm text-center ${
-                                                            darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                        } max-w-xs`}>
-                                                            <div className="line-clamp-3">
-                                                                {item["Descrição do CNAE"]}
-                                                            </div>
-                                                        </td>
-                                                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${
-                                                            darkMode ? 'text-yellow-300' : 'text-yellow-600'
-                                                        }`}>
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${
-                                                                darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
-                                                            }`}>
-                                                                {calculateAliquota(item["LIST LC"])}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+
+                            <div className="flex justify-center items-center mb-6">
+                                <div className="relative">
+                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-all duration-300 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}>
+                                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                                        </svg>
                                     </div>
-                                    
-                                    <div className={`px-6 py-4 border-t ${
-                                        darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
-                                    } rounded-b-lg`}>
-                                        <div className="flex items-center justify-between">
-                                            <div className={`text-sm ${
-                                                darkMode ? 'text-gray-400' : 'text-gray-600'
-                                            }`}>
-                                                <span className="font-medium">
-                                                    Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
-                                                </span>
-                                                {modalResults.length > 100 && (
-                                                    <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                                                        darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                        Primeiros 100 resultados
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className={`text-xs ${
-                                                darkMode ? 'text-gray-500' : 'text-gray-500'
-                                            }`}>
-                                                💡 Refine sua busca para resultados mais específicos
+                                    <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${darkMode ? 'bg-green-500 text-white' : 'bg-green-400 text-white'} animate-pulse`}>
+                                        ✓
+                                    </div>
+                                </div>
+                            </div>
+                            <h1 className={`text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${darkMode ? 'text-white' : ''}`}>
+                                Consulta Lista/Cnae/Alíquota
+                            </h1>
+                            <p className={`text-xl mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                Consulte itens da Lista de Serviços e suas respectivas alíquotas do ISS
+                            </p>
+                            <div className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium ${darkMode ? 'bg-blue-900 text-blue-200 border border-blue-700' : 'bg-blue-100 text-blue-800 border border-blue-200'} animate-pulse-custom`}>
+                                <div className="status-indicator status-active mr-2"></div>
+                                Sistema Online • {data.length} itens carregados
+                                {currentUser?.role === 'admin' && (
+                                    <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">
+                                        ADMIN
+                                    </span>
+                                )}
+                            </div>
+                        </header>
+
+                        <div className="flex justify-end items-center mb-6">
+                            <button
+                                onClick={() => setDarkMode(!darkMode)}
+                                className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${darkMode ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'} shadow-lg`}
+                                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                            >
+                                {darkMode ? (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Navegação condicional entre views */}
+                        {currentView === 'profile' ? (
+                            <UserProfilePage
+                                user={currentUser}
+                                onLogout={handleLogout}
+                                onCredentialsChanged={handleCredentialsChanged}
+                                darkMode={darkMode}
+                            />
+                        ) : (
+                            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border backdrop-blur-sm p-8 mb-8 animate-fadeInUp`} style={{ animationDelay: '0.2s' }}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center`}>
+                                        Pesquisa Assertiva
+                                    </h2>
+                                    <button
+                                        onClick={clearFilters}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} flex items-center gap-2`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Limpar Filtros
+                                    </button>
+                                </div>
+
+                                {/* Toggle de Modo de Pesquisa */}
+                                <div className="flex justify-center mb-8">
+                                    <div className={`inline-flex rounded-xl p-1 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                        <button
+                                            onClick={() => setSearchMode('universal')}
+                                            className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'universal'
+                                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                                : darkMode
+                                                    ? 'text-gray-300 hover:text-white hover:bg-gray-600'
+                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                                                }`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            Universal
+                                        </button>
+                                        {currentUser?.role === 'admin' && (
+                                            <button
+                                                onClick={() => setSearchMode('advanced')}
+                                                className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'advanced'
+                                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                                    : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
+                                                    }`}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                                                </svg>
+                                                Especial
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className={`grid gap-6 mb-6 transition-all duration-500 ${searchMode === 'universal' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2'}`}>
+                                    {/* Campo de Pesquisa Universal - Mostrar apenas no modo universal */}
+                                    {searchMode === 'universal' && (
+                                        <div className="space-y-2">
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    placeholder="Digite qualquer termo para buscar em todos os campos..."
+                                                    className={`w-full pl-4 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                                />
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                                    )}
 
-                <footer className={`text-center mt-8 text-sm mobile-spacing animate-fadeInUp ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} style={{animationDelay: '1.4s'}}>
-                    <div className="flex flex-col items-center space-y-2">
-                        <p className="text-lg font-medium">© 2025 Sistema de Consulta Fiscal</p>
-                        <p className="flex items-center gap-2">
-                            Desenvolvido por 
-                            <span className={`font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
-                                Murilo Miguel
-                            </span>
-                            <span className="text-2xl">🚀</span>
-                        </p>
+                                    {/* Campos Especiais - Mostrar apenas no modo especial */}
+                                    {searchMode === 'advanced' && (
+                                        <>
+                                            <div className="space-y-2 animate-fadeInUp">
+                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                    Código do Item
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={itemCode}
+                                                        onChange={(e) => setItemCode(e.target.value)}
+                                                        placeholder="Ex: 01.01, 02.05..."
+                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                                    />
+                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
+                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                    Descrição do Serviço
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={serviceDescription}
+                                                        onChange={(e) => setServiceDescription(e.target.value)}
+                                                        placeholder="Ex: análise, desenvolvimento..."
+                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                                    />
+                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                    Código CNAE
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={cnaeCode}
+                                                        onChange={(e) => setCnaeCode(e.target.value)}
+                                                        placeholder="Ex: 6201, 6201-5, 620150, 7020..."
+                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                                    />
+                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
+                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                    Descrição CNAE
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={cnaeDescription}
+                                                        onChange={(e) => setCnaeDescription(e.target.value)}
+                                                        placeholder="Ex: desenvolvimento de programas..."
+                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                                    />
+                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-center">
+                                    <button
+                                        onClick={handleSearch}
+                                        disabled={isLoading}
+                                        className={`px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 ${isLoading ? 'bg-gray-500' : 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-lg hover:shadow-xl'}`}
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                                Pesquisando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Realizar Consulta
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Painel Informativo para Usuários Regulares */}
+                        {currentUser?.role === 'user' && (
+                            <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-blue-600 bg-blue-900/20' : 'border-blue-300 bg-blue-50'} animate-fadeInUp`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className={`text-lg font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                                        Acesso de Usuário
+                                    </h3>
+                                </div>
+                                <div className={`text-sm ${darkMode ? 'text-blue-200' : 'text-blue-700'} space-y-2`}>
+                                    <p>• Você pode realizar consultas na base de dados</p>
+                                    <p>• Acesso limitado ao modo de pesquisa universal</p>
+                                    <p>• Para funcionalidades avançadas, entre em contato com o administrador</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Painel Administrativo - Apenas para Admins */}
+                        {currentUser?.role === 'admin' && (
+                            <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-lg font-bold ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
+                                            Dashboard Administrativo
+                                        </h3>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowDashboard(!showDashboard)}
+                                        className={`p-2 rounded-lg transition-all duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                                        title={showDashboard ? 'Recolher Dashboard' : 'Expandir Dashboard'}
+                                    >
+                                        <svg className="w-5 h-5 transition-transform duration-200" style={{ transform: showDashboard ? 'rotate(180deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {showDashboard && (
+                                    <>
+                                        {/* Estatísticas Principais */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                            {/* Card de Acessos Totais */}
+                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                    </svg>
+                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
+                                                </div>
+                                                <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
+                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
+                                            </div>
+
+                                            {/* Card de Consultas Realizadas */}
+                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
+                                                </div>
+                                                <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
+                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
+                                            </div>
+
+                                            {/* Card de Usuários Ativos Detalhado */}
+                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm row-span-2`}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                                    </svg>
+                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
+                                                </div>
+                                                <p className={`text-4xl font-bold mb-4 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
+
+                                                <div className={`mt-2 border-t pt-2 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                                                    <p className={`text-xs font-semibold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>LISTA DE USUÁRIOS</p>
+                                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                                        {Object.keys(statistics.userSessions || {}).map((username, idx) => {
+                                                            // Tentar encontrar o role do usuário (simulação baseada em convenção ou dados salvos)
+                                                            // Como não temos acesso fácil ao array 'users' aqui sem prop drilling, vamos inferir ou usar padrão
+                                                            let role = 'user';
+                                                            let roleLabel = 'Usuário';
+                                                            if (username === 'admin') { role = 'admin'; roleLabel = 'Administrador'; }
+                                                            else if (username === 'consultor') { role = 'consultor'; roleLabel = 'Consultor'; }
+
+                                                            return (
+                                                                <div key={idx} className="flex items-center justify-between text-sm">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                                                                        <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{username}</span>
+                                                                    </div>
+                                                                    <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
+                                                                        role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
+                                                                            (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
+                                                                        }`}>{roleLabel}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Card de Acessos Hoje */}
+                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
+                                                </div>
+                                                <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
+                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Visualização Avançada: Gráficos e Histórico */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                            {/* Gráfico 1: Acessos por Usuário */}
+                                            <BarChart
+                                                title="Acessos por Usuário"
+                                                darkMode={darkMode}
+                                                color="purple"
+                                                data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({
+                                                    label: user,
+                                                    value: count
+                                                }))}
+                                            />
+
+                                            {/* Gráfico 2: Consultas por Usuário */}
+                                            <PieChart
+                                                title="Consultas por Usuário"
+                                                darkMode={darkMode}
+                                                data={(() => {
+                                                    const counts = {};
+                                                    statistics.searchHistory.forEach(s => {
+                                                        counts[s.user] = (counts[s.user] || 0) + 1;
+                                                    });
+                                                    return Object.entries(counts).map(([user, count]) => ({
+                                                        label: user,
+                                                        value: count
+                                                    })).sort((a, b) => b.value - a.value);
+                                                })()}
+                                            />
+
+                                            {/* Histórico Recente - Largura Total */}
+                                            <div className={`p-4 rounded-lg md:col-span-2 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
+                                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                                    {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
+                                                        <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} flex justify-between items-center`}>
+                                                            <div>
+                                                                <span className={`font-bold mr-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</span>
+                                                                <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{search.query}</span>
+                                                            </div>
+                                                            <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>{search.results} res.</span>
+                                                        </div>
+                                                    ))}
+                                                    {statistics.searchHistory.length === 0 && (
+                                                        <p className={`text-sm text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Informações do Sistema */}
+                                        <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
+                                            <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                <div>
+                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
+                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
+                                                </div>
+                                                <div>
+                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
+                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
+                                                    <p className={`font-semibold text-green-500`}>Online</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Botões de Ação */}
+                                        <div className="flex flex-wrap gap-3">
+                                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Exportar Estatísticas
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
+                                                        localStorage.removeItem('appStatistics');
+                                                        setStatistics({
+                                                            totalAccesses: 0,
+                                                            totalSearches: 0,
+                                                            universalSearches: 0,
+                                                            advancedSearches: 0,
+                                                            lastAccess: null,
+                                                            dailyAccesses: [],
+                                                            searchHistory: [],
+                                                            userSessions: {}
+                                                        });
+                                                    }
+                                                }}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Limpar Estatísticas
+                                            </button>
+                                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                Backup Sistema
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {isLoading && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
+                                    <div className="relative mb-4">
+                                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
+                                        <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
+                                    </div>
+                                    <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
+                                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div
+                                    className="absolute inset-0 backdrop-blur-sm"
+                                    onClick={closeModal}
+                                ></div>
+
+                                <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                    <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
+                                        <h2 className="text-xl font-semibold flex items-center">
+                                            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            Resultados da Consulta
+                                        </h2>
+                                        <div className="flex gap-3 items-center">
+                                            <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                                                <div className="status-indicator status-active"></div>
+                                                {modalResults.length} resultados
+                                            </span>
+                                            <button
+                                                onClick={closeModal}
+                                                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
+                                            >
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {noResults ? (
+                                        <div className="text-center py-16 animate-fadeInUp">
+                                            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                                            </svg>
+                                            <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
+                                                Nenhum resultado encontrado
+                                            </h3>
+                                            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+                                                Tente ajustar o termo de pesquisa ou usar filtros diferentes.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="animate-fadeInUp">
+                                            <div className="overflow-x-auto custom-scrollbar px-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                                                <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                                    <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
+                                                        <tr>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Código do Item
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Descrição do Serviço
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                CNAE
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Descrição CNAE
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Alíquota ISS
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
+                                                        {modalResults.slice(0, 100).map((item, index) => (
+                                                            <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-blue-300' : 'text-blue-600'
+                                                                    } font-medium`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                                                                        }`}>
+                                                                        {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                                    } max-w-xs`}>
+                                                                    <div className="line-clamp-3">
+                                                                        {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-green-300' : 'text-green-600'
+                                                                    } font-medium`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
+                                                                        }`}>
+                                                                        {(() => {
+                                                                            const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
+                                                                            if (cnae.length >= 7) {
+                                                                                const paddedCnae = cnae.padStart(7, '0');
+                                                                                return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
+                                                                            }
+                                                                            return item["CNAE"];
+                                                                        })()}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                                    } max-w-xs`}>
+                                                                    <div className="line-clamp-3">
+                                                                        {item["Descrição do CNAE"]}
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${darkMode ? 'text-yellow-300' : 'text-yellow-600'
+                                                                    }`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
+                                                                        }`}>
+                                                                        {item["Alíquota"]}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
+                                                } rounded-b-lg`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'
+                                                        }`}>
+                                                        <span className="font-medium">
+                                                            Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                        {modalResults.length > 100 && (
+                                                            <span className={`ml-2 text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                Primeiros 100 resultados
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'
+                                                        }`}>
+                                                        💡 Refine sua busca para resultados mais específicos
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <footer className={`text-center mt-8 text-sm mobile-spacing animate-fadeInUp ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} style={{ animationDelay: '1.4s' }}>
+                            <div className="flex flex-col items-center space-y-2">
+                                <p className="text-lg font-medium">© 2025 Sistema de Consulta Fiscal</p>
+                                <p className="flex items-center gap-2">
+                                    Desenvolvido por
+                                    <span className={`font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
+                                        Murilo Miguel
+                                    </span>
+                                    <span className="text-2xl">🚀</span>
+                                </p>
+                            </div>
+                        </footer>
                     </div>
-                </footer>
+                </div>
             </div>
         </div>
     );

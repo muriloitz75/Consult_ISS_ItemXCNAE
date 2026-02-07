@@ -1,1 +1,0 @@
-Siga as diretrizes agênticas da pasta bmad-core e cursor.

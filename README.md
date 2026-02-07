@@ -25,7 +25,7 @@ Uma aplicação web moderna e intuitiva para consulta de serviços fiscais e có
 ```
 Consult_ItemXCNAE/
 ├── index.html          # Aplicação principal
-├── dados.json          # Base de dados com 7807+ registros
+├── dados.md            # Base de dados com registros e alíquotas pré-calculadas
 └── README.md           # Documentação
 ```
 
@@ -40,8 +40,8 @@ Consult_ItemXCNAE/
 
 ### Instalação
 1. Clone ou baixe o projeto
-2. Certifique-se que o arquivo `dados.json` está na mesma pasta que `index.html`
-3. Abra o arquivo `index.html` em qualquer navegador moderno
+2. Certifique-se que o arquivo `dados.md` está na mesma pasta que `index.html`
+3. Abra o arquivo `index.html` em qualquer navegador moderno (requer servidor local devido a políticas de CORS, ex: `python -m http.server`)
 
 ### Tipos de Busca
 
@@ -63,17 +63,19 @@ Consult_ItemXCNAE/
 
 ## 📊 Base de Dados
 
-O sistema utiliza uma base com **7.807+ registros** contendo:
+O sistema utiliza uma base com **registros atualizados** contendo:
 - **LIST LC**: Código do item da Lei Complementar nº 001/2003
 - **Descrição do Serviço**: Descrição completa do serviço
 - **CNAE**: Código Nacional de Atividade Econômica
 - **Descrição do CNAE**: Descrição da atividade econômica
+- **Alíquota ISS**: Taxa aplicada conforme regras específicas (Ex: Educação 2%, Saúde 3%, Construção 4%, Padrão 5%)
 
 ## 🎯 Casos de Uso
 
 ### Para Contadores
 - Consulta rápida de códigos de serviço para emissão de notas fiscais
 - Verificação de enquadramento CNAE para clientes
+- Consulta imediata da alíquota de ISS aplicável
 - Exportação de listas para análise em planilhas
 
 ### Para Fiscais
@@ -84,7 +86,7 @@ O sistema utiliza uma base com **7.807+ registros** contendo:
 ### Para Empresários
 - Verificação do CNAE adequado para sua atividade
 - Consulta de serviços permitidos por código
-- Planejamento tributário
+- Planejamento tributário com base nas alíquotas disponíveis
 
 ## 🔧 Funcionalidades Técnicas
 
@@ -112,8 +114,8 @@ O sistema utiliza uma base com **7.807+ registros** contendo:
 ## 🔄 Atualizações
 
 Para atualizar a base de dados:
-1. Substitua o arquivo `dados.json` pela nova versão
-2. Mantenha a mesma estrutura de campos
+1. Substitua o arquivo `dados.md` pela nova versão preservando a estrutura de tabela Markdown
+2. Mantenha a ordem das colunas: | LIST LC | Descrição LC | CNAE | Descrição CNAE | Alíquota |
 3. Recarregue a página no navegador
 
 ## 📞 Suporte
