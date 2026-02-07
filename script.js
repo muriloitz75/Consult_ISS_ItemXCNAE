@@ -165,6 +165,16 @@ class UserManager {
             localStorage.setItem('userProfiles', JSON.stringify(users));
             return users[userIndex];
         }
+
+        return null;
+    }
+
+    static toggleUserBlock(userId) {
+        const users = this.getUsers();
+        const user = users.find(u => u.id === userId);
+        if (user) {
+            return this.updateUser(userId, { isBlockedByAdmin: !user.isBlockedByAdmin });
+        }
         return null;
     }
 
@@ -745,7 +755,9 @@ function LoginForm({ onLogin, darkMode }) {
                 if (updatedUser.failedAttempts >= 5) {
                     setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
                 } else {
-                    if (user.firstLogin) {
+                    if (user.isBlockedByAdmin) {
+                        setError('Conta bloqueada pelo administrador.');
+                    } else if (user.firstLogin) {
                         setError('Sua senha foi resetada. Utilize a senha temporária: Mudar@123');
                     } else {
                         setError(`Usuário ou senha incorretos. ${remaining} tentativas restantes.`);
@@ -1586,6 +1598,30 @@ function App() {
     // Estado para usuários pendentes (apenas admin)
     const [pendingUsers, setPendingUsers] = useState([]);
 
+    // Efeito para verificar bloqueio em tempo real
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const checkUserStatus = () => {
+            const users = UserManager.getUsers();
+            const current = users.find(u => u.id === currentUser.id);
+
+            if (current && current.isBlockedByAdmin) {
+                alert('Sua conta foi bloqueada pelo administrador.');
+                handleLogout();
+            }
+        };
+
+        // Verificar imediatamente
+        checkUserStatus();
+
+        // Verificar a cada 2 segundos (polling leve para resposta rápida)
+        // Como o localStorage é síncrono e local, o custo é muito baixo
+        const interval = setInterval(checkUserStatus, 2000);
+
+        return () => clearInterval(interval);
+    }, [currentUser]);
+
     useEffect(() => {
         if (currentUser?.role === 'admin' && showDashboard) {
             loadPendingUsers();
@@ -2419,11 +2455,22 @@ function App() {
                                                             if (username === 'admin') { role = 'admin'; roleLabel = 'Administrador'; }
                                                             else if (username === 'consultor') { role = 'consultor'; roleLabel = 'Consultor'; }
 
+                                                            // Encontrar objeto completo do usuário para acessar status de bloqueio
+                                                            // Nota: statistics.userSessions é apenas {username: count}, precisamos buscar dados reais
+                                                            // O ideal seria que userSessions tivesse userIds, mas vamos buscar pelo username
+                                                            // Como estamos dentro do render, evitar buscar getUsers() repetidamente se possível, mas
+                                                            // para esta lista pequena (top users) é aceitável.
+                                                            // Uma otimização seria carregar users no load do componente ou dashboard.
+                                                            // Vamos fazer uma busca rápida aqui mesmo.
+                                                            const allUsersRef = UserManager.getUsers();
+                                                            const userObj = allUsersRef.find(u => u.username === username);
+                                                            const isBlocked = userObj?.isBlockedByAdmin || false;
+
                                                             return (
                                                                 <div key={idx} className="flex items-center justify-between text-sm">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-                                                                        <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{username}</span>
+                                                                        <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} ${isBlocked ? 'line-through opacity-50' : ''}`}>{username}</span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
@@ -2431,30 +2478,51 @@ function App() {
                                                                                 (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
                                                                             }`}>{roleLabel}</span>
 
-                                                                        {/* Botão de Reset de Senha (apenas para Admin e não para si mesmo, opcional) */}
-                                                                        {currentUser?.role === 'admin' && ( // Verifica no render principal, mas aqui reforça
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    if (confirm(`Deseja resetar a senha do usuário ${username} para 'Mudar@123'?`)) {
-                                                                                        // Precisamos do ID do usuário. Como userSessions é um objeto {username: count}, não temos o ID direto aqui.
-                                                                                        // Precisamos buscar o usuário pelo username.
-                                                                                        const allUsers = UserManager.getUsers();
-                                                                                        const targetUser = allUsers.find(u => u.username === username);
-                                                                                        if (targetUser) {
-                                                                                            UserManager.resetUserPassword(targetUser.id);
-                                                                                            alert(`Senha de ${username} resetada com sucesso para 'Mudar@123'.`);
-                                                                                        } else {
-                                                                                            alert('Erro ao encontrar usuário.');
+                                                                        {/* Controles de Admin (Reset e Block) */}
+                                                                        {currentUser?.role === 'admin' && role !== 'admin' && ( // Não mostrar para admins (se proteger contra self-block/reset)
+                                                                            <>
+                                                                                {/* Reset Password */}
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        if (confirm(`Deseja resetar a senha do usuário ${username} para 'Mudar@123'?`)) {
+                                                                                            if (userObj) {
+                                                                                                UserManager.resetUserPassword(userObj.id);
+                                                                                                alert(`Senha de ${username} resetada com sucesso para 'Mudar@123'.`);
+                                                                                            } else {
+                                                                                                alert('Erro ao encontrar usuário.');
+                                                                                            }
                                                                                         }
-                                                                                    }
-                                                                                }}
-                                                                                title="Resetar Senha"
-                                                                                className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors`}
-                                                                            >
-                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                                                                </svg>
-                                                                            </button>
+                                                                                    }}
+                                                                                    title="Resetar Senha"
+                                                                                    className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors`}
+                                                                                >
+                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                                                                    </svg>
+                                                                                </button>
+
+                                                                                {/* Block Checkbox */}
+                                                                                <div className="flex items-center" title={isBlocked ? "Desbloquear Usuário" : "Bloquear Usuário"}>
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={isBlocked}
+                                                                                        onChange={() => {
+                                                                                            if (userObj) {
+                                                                                                UserManager.toggleUserBlock(userObj.id);
+                                                                                                // Forçar atualização da interface
+                                                                                                // Clona o objeto statistics para garantir que o React detecte a mudança
+                                                                                                // e re-renderize o componente, fazendo com que UserManager.getUsers()
+                                                                                                // seja chamado novamente no próximo render.
+                                                                                                const newStats = { ...statistics };
+                                                                                                // Adiciona um timestamp para garantir que o estado seja diferente
+                                                                                                newStats._lastUpdate = Date.now();
+                                                                                                setStatistics(newStats);
+                                                                                            }
+                                                                                        }}
+                                                                                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
+                                                                                    />
+                                                                                </div>
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 </div>

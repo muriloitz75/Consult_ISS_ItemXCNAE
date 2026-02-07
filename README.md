@@ -13,6 +13,12 @@ Uma aplicação web moderna e intuitiva para consulta de serviços fiscais e có
 - **Design Responsivo**: Funciona perfeitamente em desktop, tablet e mobile
 - **Animações Suaves**: Transições e efeitos visuais modernos
 
+### 🔐 Gestão de Acesso (Novo)
+- **Aprovação de Cadastros**: Novos usuários requerem aprovação manual do administrador.
+- **Reset de Senha Admin**: Administradores podem resetar senhas de usuários para um padrão temporário.
+- **Bloqueio de Usuários**: Funcionalidade para bloquear/desbloquear acesso de usuários instantaneamente.
+- **Segurança Reforçada**: Feedback imediato de bloqueio e expiração de sessão.
+
 ### 📊 Recursos Avançados
 - **Autocomplete**: Sugestões automáticas durante a digitação
 - **Histórico de Busca**: Armazena as últimas 5 pesquisas realizadas
@@ -132,4 +138,4 @@ Este sistema foi desenvolvido para ser:
 
 **Desenvolvedor**: Murilo Miguel
 
-*© 2025 Sistema de Consulta Fiscal*
+*© 2026 Sistema de Consulta Fiscal*
