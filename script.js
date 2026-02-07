@@ -2113,20 +2113,18 @@ function App() {
                                             </svg>
                                             Universal
                                         </button>
-                                        {currentUser?.role === 'admin' && (
-                                            <button
-                                                onClick={() => setSearchMode('advanced')}
-                                                className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'advanced'
-                                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                                    : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
-                                                    }`}
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                                                </svg>
-                                                Especial
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => setSearchMode('advanced')}
+                                            className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'advanced'
+                                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                                : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
+                                                }`}
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                                            </svg>
+                                            Especial
+                                        </button>
                                     </div>
                                 </div>
 
@@ -2260,8 +2258,7 @@ function App() {
                                 </div>
                                 <div className={`text-sm ${darkMode ? 'text-blue-200' : 'text-blue-700'} space-y-2`}>
                                     <p>• Você pode realizar consultas na base de dados</p>
-                                    <p>• Acesso limitado ao modo de pesquisa universal</p>
-                                    <p>• Para funcionalidades avançadas, entre em contato com o administrador</p>
+                                    <p>• Acesso completo aos modos de pesquisa Universal e Especial</p>
                                 </div>
                             </div>
                         )}
