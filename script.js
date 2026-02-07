@@ -1357,7 +1357,7 @@ function RegisterUserModal({ onClose, onUserCreated, darkMode }) {
     );
 }
 
-// Componente de Gráfico de Barras
+// Componente de Gráfico de Barras Horizontal
 function BarChart({ data, darkMode, title, color = 'blue', maxBars = 7 }) {
     const sortedData = [...data].sort((a, b) => b.value - a.value).slice(0, maxBars);
 
@@ -1388,6 +1388,46 @@ function BarChart({ data, darkMode, title, color = 'blue', maxBars = 7 }) {
                                 style={{ width: `${(item.value / maxValue) * 100}%` }}
                             ></div>
                         </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// Componente de Gráfico de Barras Vertical
+function VerticalBarChart({ data, darkMode, title, color = 'blue', maxBars = 7 }) {
+    const sortedData = [...data].sort((a, b) => b.value - a.value).slice(0, maxBars);
+
+    if (sortedData.length === 0) {
+        return (
+            <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sem dados para exibir</p>
+            </div>
+        );
+    }
+
+    const maxValue = Math.max(...sortedData.map(item => item.value));
+
+    return (
+        <div className={`p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <h3 className={`font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+            <div className="flex items-end justify-between space-x-2 h-40 pt-4">
+                {sortedData.map((item, index) => (
+                    <div key={index} className="flex flex-col items-center flex-1 group relative h-full justify-end">
+                        <div
+                            className={`w-full max-w-[40px] rounded-t-md transition-all duration-500 relative ${color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+                            style={{ height: `${Math.max((item.value / maxValue) * 80, 5)}%` }} // Altura mínima de 5% visual
+                        >
+                            {/* Tooltip flutuante ao hover */}
+                            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-xs font-bold rounded px-2 py-1 pointer-events-none z-10 shadow-lg ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-800 text-white'}`}>
+                                {item.value}
+                            </div>
+                        </div>
+                        <span className={`text-[10px] mt-2 truncate w-full text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} title={item.label}>
+                            {item.label}
+                        </span>
                     </div>
                 ))}
             </div>
@@ -2333,7 +2373,7 @@ function App() {
                                         {/* Visualização Avançada: Gráficos e Histórico */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                             {/* Gráfico 1: Acessos por Usuário */}
-                                            <BarChart
+                                            <VerticalBarChart
                                                 title="Acessos por Usuário"
                                                 darkMode={darkMode}
                                                 color="purple"
