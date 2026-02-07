@@ -178,6 +178,18 @@ class UserManager {
         return null;
     }
 
+    static deleteUser(userId) {
+        let users = this.getUsers();
+        const initialLength = users.length;
+        users = users.filter(u => u.id !== userId);
+
+        if (users.length < initialLength) {
+            localStorage.setItem('userProfiles', JSON.stringify(users));
+            return true;
+        }
+        return false;
+    }
+
     static resetUserPassword(userId, newPassword = 'Mudar@123') {
         const updates = {
             password: CryptoUtils.hashPassword(newPassword),
@@ -732,7 +744,7 @@ function LoginForm({ onLogin, darkMode }) {
             const user = users.find(u => u.username === username);
 
             if (!user) {
-                setError('Usuário ou senha incorretos'); // Mensagem genérica por segurança
+                setError('Usuário Inexistente');
                 UserManager.logAuditEvent(null, 'login_failed', { username, reason: 'user_not_found' });
                 return;
             }
@@ -2464,6 +2476,10 @@ function App() {
                                                             // Vamos fazer uma busca rápida aqui mesmo.
                                                             const allUsersRef = UserManager.getUsers();
                                                             const userObj = allUsersRef.find(u => u.username === username);
+
+                                                            // Se o usuário não existe mais (excluído), não renderizar na lista
+                                                            if (!userObj) return null;
+
                                                             const isBlocked = userObj?.isBlockedByAdmin || false;
 
                                                             return (
@@ -2522,6 +2538,33 @@ function App() {
                                                                                         className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
                                                                                     />
                                                                                 </div>
+
+                                                                                {/* Delete Button */}
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        if (confirm(`Tem certeza que deseja EXCLUIR o usuário ${username}? Esta ação não pode ser desfeita.`)) {
+                                                                                            if (userObj) {
+                                                                                                UserManager.deleteUser(userObj.id);
+                                                                                                // Forçar atualização da interface
+                                                                                                const newStats = { ...statistics };
+                                                                                                newStats._lastUpdate = Date.now();
+                                                                                                // Remove o usuário da contagem visualmente também (opcional, pois statistics.userSessions pode estar desatualizado até o reload)
+                                                                                                // Mas como userSessions é {username: count}, e statistics vem do localStorage 'appStatistics', 
+                                                                                                // a exclusão do usuário em 'userProfiles' NÃO remove suas sessões antigas em 'appStatistics'.
+                                                                                                // Para a lista sumir, precisaríamos atualizar 'appStatistics' também ou filtrar a lista.
+                                                                                                // Como a lista é renderizada via statistics.userSessions, o usuário continuará aparecendo se tiver sessões.
+                                                                                                // O ideal é filtrar a renderização visual com base nos usuários existentes.
+                                                                                                setStatistics(newStats);
+                                                                                            }
+                                                                                        }
+                                                                                    }}
+                                                                                    title="Excluir Usuário"
+                                                                                    className={`p-1 rounded hover:bg-red-200 dark:hover:bg-red-900 text-red-500 dark:text-red-400 transition-colors ml-1`}
+                                                                                >
+                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                    </svg>
+                                                                                </button>
                                                                             </>
                                                                         )}
                                                                     </div>
