@@ -249,7 +249,7 @@ class UserManager {
             role: userData.role || 'user',
             name: userData.name,
             email: userData.email,
-            firstLogin: true, // Forçar troca de senha no primeiro login se desejar, ou pode ser false
+            firstLogin: userData.firstLogin !== undefined ? userData.firstLogin : true, // Padrão true (admin cria), mas pode ser false (auto-cadastro)
             lastPasswordChange: new Date().toISOString(),
             passwordHistory: [CryptoUtils.hashPassword(userData.password)],
             accountLocked: false,
@@ -683,7 +683,8 @@ function LoginForm({ onLogin, darkMode }) {
                 email,
                 username,
                 password,
-                role: 'user' // Padrão: usuário comum
+                role: 'user', // Padrão: usuário comum
+                firstLogin: false // Auto-cadastro já define senha, não precisa trocar
             });
 
             // Login automático após cadastro
