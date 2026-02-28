@@ -125,18 +125,31 @@ const connectDB = async () => {
         `);
     }
 
-    // Criar usuário admin padrão se não existir
+    // Criar usuário admin padrão se não existir / garantir que nunca esteja bloqueado
     const bcrypt = require('bcrypt');
     const adminCheck = await db.query('SELECT * FROM "User" WHERE username = $1', ['admin']);
     if (!adminCheck || adminCheck.length === 0) {
         const adminId = '10000000-0000-0000-0000-000000000000';
         const hashedAdminPass = await bcrypt.hash('Admin@123', 10);
         await db.run(
-            `INSERT INTO "User" (id, username, password, name, role, isAuthorized, firstLogin) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', 1, 0]
+            `INSERT INTO "User" (id, username, password, name, role, isAuthorized, isBlockedByAdmin, accountLocked, failedAttempts, firstLogin)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
         );
-        console.log("Usuário admin padrão criado com sucesso.");
+        console.log("Usuário admin padrão criado com sucesso. Login: admin / Senha: Admin@123");
+    } else {
+        // Se o admin já existe mas está bloqueado (pode acontecer após redeploy), desbloqueia
+        const admin = adminCheck[0];
+        const isBlocked = admin.isBlockedByAdmin === true || admin.isBlockedByAdmin === 1 || admin.isBlockedByAdmin === 't';
+        const isLocked = admin.accountLocked === true || admin.accountLocked === 1 || admin.accountLocked === 't';
+        const notAuthorized = !admin.isAuthorized || admin.isAuthorized === 0 || admin.isAuthorized === 'f';
+        if (isBlocked || isLocked || notAuthorized) {
+            await db.run(
+                `UPDATE "User" SET isBlockedByAdmin = $1, accountLocked = $2, failedAttempts = $3, isAuthorized = $4, lockUntil = NULL WHERE username = $5`,
+                [false, false, 0, true, 'admin']
+            );
+            console.log("Admin desbloqueado automaticamente na inicialização.");
+        }
     }
 };
 
