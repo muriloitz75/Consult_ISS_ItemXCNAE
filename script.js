@@ -3034,7 +3034,7 @@ function App() {
                         )}
 
                         <footer className={`fixed bottom-3 right-4 text-[10px] leading-tight transition-colors duration-500 select-none pointer-events-none ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-                            <p>© 2025 Sistema de Consulta Fiscal · <span className="font-medium">Murilo Miguel</span> 🚀</p>
+                            <p>© 2025 Ecossistema DIAAF · <span className="font-medium">Murilo Miguel</span> 🚀</p>
                         </footer>
                     </div>
                 </div>

@@ -1,36 +1,38 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistema de consulta fiscal para códigos CNAE e LIST LC. Consulte alíquotas de ISS e informações fiscais de forma rápida e eficiente.">
+    <meta name="description"
+        content="Ecossistema DIAAF - Plataforma integrada de consulta fiscal, geração de pareceres e análise de processos.">
     <meta name="keywords" content="CNAE, LIST LC, ISS, consulta fiscal, alíquota, código fiscal, tributação">
     <meta name="author" content="Murilo Miguel">
     <meta name="robots" content="index, follow">
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Sistema de Consulta Fiscal">
+    <meta property="og:title" content="Ecossistema DIAAF">
     <meta property="og:description" content="Consulte códigos CNAE e LIST LC com alíquotas de ISS atualizadas">
-    
+
     <!-- Twitter -->
     <meta property="twitter:card" content="summary">
-    <meta property="twitter:title" content="Sistema de Consulta Fiscal">
+    <meta property="twitter:title" content="Ecossistema DIAAF">
     <meta property="twitter:description" content="Consulte códigos CNAE e LIST LC com alíquotas de ISS atualizadas">
-    
+
     <!-- Performance -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <title>Sistema de Consulta Fiscal - CNAE e LIST LC</title>
+
+    <title>Ecossistema DIAAF</title>
     <!-- Structured Data for SEO -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "Sistema de Consulta Fiscal",
-        "description": "Sistema para consulta de códigos CNAE e LIST LC com alíquotas de ISS",
+        "name": "Ecossistema DIAAF",
+        "description": "Plataforma integrada de serviços fiscais: consulta CNAE/ISS, geração de pareceres e análise de processos",
         "url": "https://seudominio.com.br",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web Browser",
@@ -44,15 +46,21 @@
     <link rel="stylesheet" href="./style.css?v=20260214">
 
 </head>
+
 <body>
-    <div id="root" role="main" aria-label="Aplicação de Consulta Fiscal">
-        <div id="load-fallback" style="font-family: system-ui, sans-serif; max-width: 560px; margin: 2rem auto; padding: 2rem; text-align: center; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 16px;">
-            <h1 style="color: #1e293b; margin-bottom: 1rem;">Sistema de Consulta Fiscal</h1>
+    <div id="root" role="main" aria-label="Ecossistema DIAAF">
+        <div id="load-fallback"
+            style="font-family: system-ui, sans-serif; max-width: 560px; margin: 2rem auto; padding: 2rem; text-align: center; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 16px;">
+            <h1 style="color: #1e293b; margin-bottom: 1rem;">Ecossistema DIAAF</h1>
             <p id="load-status" style="color: #64748b; margin-bottom: 1.5rem;">Carregando...</p>
-            <p id="load-help" style="display:none; color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">No terminal, na pasta do projeto, execute:</p>
-            <code id="load-code" style="display: none; padding: 1rem; background: #1e293b; color: #e2e8f0; border-radius: 8px; margin-bottom: 1rem; text-align: left; overflow-x: auto;">npx --yes serve -l 3000</code>
-            <p id="load-url" style="display:none; color: #475569; font-size: 0.95rem;">Depois abra no navegador: <strong>http://localhost:3000</strong></p>
-            <p id="load-error-msg" style="color: #dc2626; font-size: 0.875rem; margin-top: 1rem; word-break: break-word;"></p>
+            <p id="load-help" style="display:none; color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">No
+                terminal, na pasta do projeto, execute:</p>
+            <code id="load-code"
+                style="display: none; padding: 1rem; background: #1e293b; color: #e2e8f0; border-radius: 8px; margin-bottom: 1rem; text-align: left; overflow-x: auto;">npx --yes serve -l 3000</code>
+            <p id="load-url" style="display:none; color: #475569; font-size: 0.95rem;">Depois abra no navegador:
+                <strong>http://localhost:3000</strong></p>
+            <p id="load-error-msg"
+                style="color: #dc2626; font-size: 0.875rem; margin-top: 1rem; word-break: break-word;"></p>
         </div>
     </div>
 
@@ -68,7 +76,7 @@
                 document.getElementById('load-url').style.display = 'block';
             }
         }
-        window.onerror = function(msg, url, line, col, err) {
+        window.onerror = function (msg, url, line, col, err) {
             window.__LOAD_ERROR__ = msg + (err ? ' ' + err.stack : '');
             var status = document.getElementById('load-status');
             var errEl = document.getElementById('load-error-msg');
@@ -85,7 +93,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script>
-        (function() {
+        (function () {
             if (window.__USE_HTTP_SERVER__ === false) return;
             function showLoadError(msg) {
                 var status = document.getElementById('load-status');
@@ -100,11 +108,11 @@
             function runApp() {
                 var scriptUrl = './script.js?v=20260228';
                 fetch(scriptUrl)
-                    .then(function(r) {
+                    .then(function (r) {
                         if (!r.ok) throw new Error('Arquivo script.js não encontrado (HTTP ' + r.status + '). Verifique se o servidor está rodando na pasta do projeto.');
                         return r.text();
                     })
-                    .then(function(code) {
+                    .then(function (code) {
                         try {
                             var transformed = Babel.transform(code, { presets: ['react'] }).code;
                             var fn = new Function('React', 'ReactDOM', 'return (function(){ ' + transformed + ' })();');
@@ -114,7 +122,7 @@
                             console.error(e);
                         }
                     })
-                    .catch(function(e) {
+                    .catch(function (e) {
                         showLoadError('Falha ao carregar script: ' + (e.message || e));
                         console.error(e);
                     });
@@ -122,7 +130,7 @@
             if (typeof Babel !== 'undefined' && typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
                 runApp();
             } else {
-                window.addEventListener('load', function() {
+                window.addEventListener('load', function () {
                     if (typeof Babel === 'undefined') return showLoadError('Babel não carregou. Verifique sua conexão.');
                     if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') return showLoadError('React não carregou. Verifique sua conexão.');
                     runApp();
@@ -131,7 +139,7 @@
         })();
     </script>
     <script>
-        setTimeout(function() {
+        setTimeout(function () {
             if (window.__APP_LOADED__) return;
             var fallback = document.getElementById('load-fallback');
             var appRoot = document.querySelector('#root > div.flex');
@@ -147,4 +155,5 @@
         }, 5500);
     </script>
 </body>
+
 </html>
