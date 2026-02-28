@@ -1109,3 +1109,249 @@
 /* Animações removidas conforme solicitado */
 
 /* Estilos de ícones de busca removidos */
+
+/* ===== ESTILOS DO MENU LATERAL (SIDEBAR) ===== */
+
+/* Animação de entrada para itens do menu */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Animação de fade para textos expandidos */
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Sidebar container */
+.sidebar-container {
+    position: relative;
+    z-index: 50;
+}
+
+/* Itens do menu com hover suave */
+.sidebar-menu-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar-menu-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+}
+
+.sidebar-menu-item:hover::before,
+.sidebar-menu-item.active::before {
+    transform: scaleY(1);
+}
+
+/* Indicador de item ativo */
+.sidebar-active-indicator {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    border-radius: 2px 0 0 2px;
+    background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+}
+
+/* Tooltip para sidebar colapsada */
+.sidebar-tooltip {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-menu-item:hover .sidebar-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Seção administrativa com destaque */
+.sidebar-admin-section {
+    position: relative;
+}
+
+.sidebar-admin-section::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), transparent);
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-admin-section:hover::before {
+    opacity: 1;
+}
+
+/* Avatar do usuário com animação */
+.sidebar-user-avatar {
+    transition: all 0.3s ease;
+}
+
+.sidebar-user-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Badge de notificação no menu */
+.sidebar-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 2s infinite;
+}
+
+/* Responsividade para mobile */
+@media (max-width: 768px) {
+    .sidebar-container {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar-container.open {
+        transform: translateX(0);
+    }
+    
+    /* Botão de toggle para mobile */
+    .sidebar-toggle-mobile {
+        position: fixed;
+        left: 16px;
+        top: 16px;
+        z-index: 40;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+    
+    .sidebar-toggle-mobile:hover {
+        transform: scale(1.05);
+    }
+}
+
+/* Overlay para mobile quando sidebar aberta */
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 45;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Efeito de ripple nos botões do menu */
+.sidebar-menu-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar-menu-item::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.sidebar-menu-item:active::after {
+    width: 200px;
+    height: 200px;
+}
+
+/* Scrollbar personalizada para sidebar */
+.sidebar-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 2px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+}
+
+/* Dark mode para scrollbar da sidebar */
+.dark .sidebar-container::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5);
+}
+
+.dark .sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(75, 85, 99, 0.7);
+}

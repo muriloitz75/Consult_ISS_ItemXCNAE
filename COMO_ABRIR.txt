@@ -1,0 +1,24 @@
+========================================
+  COMO ABRIR A APLICAÇÃO NO NAVEGADOR
+========================================
+
+1. Abra o terminal (PowerShell ou CMD) nesta pasta do projeto.
+
+2. Execute UM dos comandos abaixo:
+
+   npm start
+
+   ou
+
+   npx serve -l 3000
+
+3. No navegador, acesse:
+
+   http://localhost:3000
+
+IMPORTANTE:
+- NÃO abra o arquivo index.html pelo Explorer (duplo clique).
+- Sempre use o servidor local e o endereço http://localhost:3000.
+
+Se a página não carregar em até 6 segundos, será exibida uma
+mensagem de ajuda com o comando para subir o servidor.

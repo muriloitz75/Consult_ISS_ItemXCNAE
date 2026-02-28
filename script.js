@@ -1,5 +1,31 @@
 const { useState, useEffect } = React;
 
+// Error Boundary para exibir erros de renderização
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, info) {
+        console.error('ErrorBoundary:', error, info);
+    }
+    render() {
+        if (this.state.hasError && this.state.error) {
+            return (
+                <div style={{ fontFamily: 'system-ui', maxWidth: 560, margin: '2rem auto', padding: '2rem', textAlign: 'center', background: '#fef2f2', border: '2px solid #fecaca', borderRadius: 16 }}>
+                    <h1 style={{ color: '#991b1b', marginBottom: '1rem' }}>Erro na aplicação</h1>
+                    <p style={{ color: '#b91c1c', marginBottom: '1rem', wordBreak: 'break-word' }}>{this.state.error.message}</p>
+                    <button onClick={() => this.setState({ hasError: false, error: null })} style={{ padding: '8px 16px', borderRadius: 8, background: '#dc2626', color: 'white', border: 'none', cursor: 'pointer' }}>Tentar novamente</button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 // 🔐 Sistema de Gerenciamento de Credenciais
 
 // Utilitários de Hash (simulação para ambiente cliente)
@@ -109,201 +135,110 @@ class CredentialValidator {
 }
 
 // Gerenciador de Usuários
-class UserManager {
-    static initializeUsers() {
-        const existingUsers = localStorage.getItem('userProfiles');
+// API Service para comunicar com o backend Node.js
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3001/api'
+    : '/api'; // Para quando for deployado junto no Railway
 
-        if (!existingUsers) {
-            // Migração dos usuários existentes
-            const defaultUsers = [
-                { username: 'admin', password: '123456', role: 'admin', name: 'Administrador' },
-                { username: 'user', password: '123', role: 'user', name: 'Usuário' },
-                { username: 'consultor', password: '456', role: 'user', name: 'Consultor' }
-            ];
+class ApiService {
+    static async request(endpoint, options = {}) {
+        const token = localStorage.getItem('authToken');
 
-            const migratedUsers = defaultUsers.map((user, index) => ({
-                id: `user_${index + 1}`,
-                username: user.username,
-                password: CryptoUtils.hashPassword(user.password),
-                role: user.role,
-                name: user.name,
-                email: '',
-                firstLogin: true,
-                lastPasswordChange: new Date().toISOString(),
-                passwordHistory: [CryptoUtils.hashPassword(user.password)],
-                accountLocked: false,
-                failedAttempts: 0,
-                createdAt: new Date().toISOString(),
-                failedAttempts: 0,
-                isAuthorized: true, // Usuários migrados já são autorizados
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }));
-
-            localStorage.setItem('userProfiles', JSON.stringify(migratedUsers));
-            return migratedUsers;
-        }
-
-        return JSON.parse(existingUsers);
-    }
-
-    static getUsers() {
-        return JSON.parse(localStorage.getItem('userProfiles') || '[]');
-    }
-
-    static updateUser(userId, updates) {
-        const users = UserManager.getUsers();
-        const userIndex = users.findIndex(user => user.id === userId);
-
-        if (userIndex !== -1) {
-            users[userIndex] = {
-                ...users[userIndex],
-                ...updates,
-                updatedAt: new Date().toISOString()
-            };
-
-            localStorage.setItem('userProfiles', JSON.stringify(users));
-            return users[userIndex];
-        }
-
-        return null;
-    }
-
-    static toggleUserBlock(userId) {
-        const users = this.getUsers();
-        const user = users.find(u => u.id === userId);
-        if (user) {
-            return this.updateUser(userId, { isBlockedByAdmin: !user.isBlockedByAdmin });
-        }
-        return null;
-    }
-
-    static deleteUser(userId) {
-        let users = this.getUsers();
-        const initialLength = users.length;
-        users = users.filter(u => u.id !== userId);
-
-        if (users.length < initialLength) {
-            localStorage.setItem('userProfiles', JSON.stringify(users));
-            return true;
-        }
-        return false;
-    }
-
-    static resetUserPassword(userId, newPassword = 'Mudar@123') {
-        const updates = {
-            password: CryptoUtils.hashPassword(newPassword),
-            firstLogin: true, // Força a troca de senha no próximo login
-            isAuthorized: true, // Garante que usuário consiga logar
-            lastPasswordChange: null, // Pode ser null para indicar reset
-            passwordHistory: [] // Opcional: limpar histórico para evitar conflitos
-        };
-        return this.updateUser(userId, updates);
-    }
-
-    static checkPasswordHistory(userId, newPassword) {
-        const users = UserManager.getUsers();
-        const user = users.find(u => u.id === userId);
-
-        if (!user) return false;
-
-        const newPasswordHash = CryptoUtils.hashPassword(newPassword);
-        const recentPasswords = user.passwordHistory.slice(-passwordRules.preventReuse);
-
-        return !recentPasswords.includes(newPasswordHash);
-    }
-
-    static logAuditEvent(userId, action, details = {}) {
-        const auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
-
-        const event = {
-            userId,
-            action,
-            timestamp: new Date().toISOString(),
-            ipAddress: 'localhost', // Simulação
-            userAgent: navigator.userAgent,
-            success: details.success !== false,
-            details
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+            ...options.headers
         };
 
-        auditLog.push(event);
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers
+            });
 
-        // Manter apenas os últimos 1000 eventos
-        if (auditLog.length > 1000) {
-            auditLog.splice(0, auditLog.length - 1000);
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro na requisição');
+            }
+
+            return data;
+        } catch (error) {
+            console.error(`API Error (${endpoint}):`, error);
+            throw error;
         }
-
-        localStorage.setItem('auditLog', JSON.stringify(auditLog));
     }
 
-    static incrementFailedAttempts(userId) {
-        const users = this.getUsers();
-        const userIndex = users.findIndex(u => u.id === userId);
+    static async login(username, password) {
+        const response = await this.request('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
 
-        if (userIndex === -1) return null;
-
-        const user = users[userIndex];
-        const newFailedAttempts = (user.failedAttempts || 0) + 1;
-
-        const updates = {
-            failedAttempts: newFailedAttempts
-        };
-
-        // Bloquear conta após 5 tentativas
-        if (newFailedAttempts >= 5) {
-            const lockUntil = new Date();
-            lockUntil.setMinutes(lockUntil.getMinutes() + 30); // 30 minutos
-
-            updates.isLocked = true;
-            updates.lockUntil = lockUntil.toISOString();
-        }
-
-        return this.updateUser(userId, updates);
+        localStorage.setItem('authToken', response.token);
+        localStorage.setItem('currentUser', JSON.stringify(response.user));
+        return response.user;
     }
 
-    static resetFailedAttempts(userId) {
-        return this.updateUser(userId, {
-            failedAttempts: 0,
-            isLocked: false,
-            lockUntil: null
+    static async register(userData) {
+        return this.request('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(userData)
         });
     }
 
-    static createUser(userData) {
-        const users = this.getUsers();
+    static async updateProfile(profileData) {
+        const response = await this.request('/auth/profile', {
+            method: 'PUT',
+            body: JSON.stringify(profileData)
+        });
 
-        // Verificar se usuário já existe
-        if (users.some(u => u.username === userData.username)) {
-            throw new Error('Nome de usuário já existe');
+        localStorage.setItem('currentUser', JSON.stringify(response.user));
+        return response;
+    }
+
+    static logout() {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+    }
+
+    // --- Métodos de Admin ---
+    static async getUsers() {
+        return this.request('/auth/users', {
+            method: 'GET'
+        });
+    }
+
+    static async authorizeUser(userId) {
+        return this.request(`/auth/users/${userId}/authorize`, {
+            method: 'POST'
+        });
+    }
+
+    static async toggleUserBlock(userId) {
+        return this.request(`/auth/users/${userId}/block`, {
+            method: 'POST'
+        });
+    }
+
+    static async resetUserPassword(userId) {
+        return this.request(`/auth/users/${userId}/reset-password`, {
+            method: 'POST'
+        });
+    }
+
+    static async deleteUser(userId) {
+        return this.request(`/auth/users/${userId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    static getCurrentUser() {
+        try {
+            return JSON.parse(localStorage.getItem('currentUser'));
+        } catch (e) {
+            return null;
         }
-
-        const newUser = {
-            id: `user_${Date.now()}`,
-            username: userData.username,
-            password: CryptoUtils.hashPassword(userData.password),
-            role: userData.role || 'user',
-            name: userData.name,
-            email: userData.email,
-            firstLogin: userData.firstLogin !== undefined ? userData.firstLogin : true, // Padrão true (admin cria), mas pode ser false (auto-cadastro)
-            lastPasswordChange: new Date().toISOString(),
-            passwordHistory: [CryptoUtils.hashPassword(userData.password)],
-            accountLocked: false,
-            failedAttempts: 0,
-            createdAt: new Date().toISOString(),
-            passwordHistory: [CryptoUtils.hashPassword(userData.password)],
-            accountLocked: false,
-            failedAttempts: 0,
-            isAuthorized: userData.isAuthorized !== undefined ? userData.isAuthorized : false, // Padrão false para auto-cadastro
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        users.push(newUser);
-        localStorage.setItem('userProfiles', JSON.stringify(users));
-
-        this.logAuditEvent(newUser.id, 'user_created', { username: newUser.username, role: newUser.role });
-
-        return newUser;
     }
 }
 
@@ -353,21 +288,10 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
             newErrors.email = 'Email inválido';
         }
 
-        // Validar username
+        // Validar username básico
         const usernameValidation = CredentialValidator.validateUsername(formData.username);
         if (!usernameValidation.isValid) {
             newErrors.username = usernameValidation.errors[0];
-        } else {
-            // Verificar disponibilidade do username
-            const users = UserManager.getUsers();
-            const isAvailable = CredentialValidator.checkUsernameAvailability(
-                formData.username,
-                user.id,
-                users
-            );
-            if (!isAvailable) {
-                newErrors.username = 'Nome de usuário já está em uso';
-            }
         }
 
         // Se alterando senha
@@ -384,12 +308,6 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
                 const passwordValidation = CredentialValidator.validatePassword(formData.newPassword);
                 if (!passwordValidation.isValid) {
                     newErrors.newPassword = passwordValidation.errors[0];
-                } else {
-                    // Verificar histórico de senhas
-                    const isPasswordReused = !UserManager.checkPasswordHistory(user.id, formData.newPassword);
-                    if (isPasswordReused) {
-                        newErrors.newPassword = `Não é possível reutilizar uma das últimas ${passwordRules.preventReuse} senhas`;
-                    }
                 }
             }
 
@@ -421,24 +339,15 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
 
             // Se alterando senha
             if (showPasswordFields && formData.newPassword) {
-                const hashedPassword = CryptoUtils.hashPassword(formData.newPassword);
-                updates.password = hashedPassword;
-                updates.lastPasswordChange = new Date().toISOString();
-
-                // Atualizar histórico de senhas
-                const currentHistory = user.passwordHistory || [];
-                updates.passwordHistory = [...currentHistory, hashedPassword].slice(-passwordRules.preventReuse);
+                updates.newPassword = formData.newPassword;
+                updates.currentPassword = formData.currentPassword;
             }
 
             // Atualizar usuário
-            const updatedUser = UserManager.updateUser(user.id, updates);
+            const response = await ApiService.updateProfile(updates);
+            const updatedUser = response.user;
 
             if (updatedUser) {
-                // Log da alteração
-                UserManager.logAuditEvent(user.id, 'profile_update', {
-                    fields: Object.keys(updates),
-                    passwordChanged: showPasswordFields && formData.newPassword
-                });
 
                 setSuccessMessage('Perfil atualizado com sucesso!');
                 setIsEditing(false);
@@ -480,176 +389,156 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
         setSuccessMessage('');
     };
 
+    const inputBase = `w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-offset-0 focus:outline-none ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/30' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500/20'}`;
+    const inputError = 'border-red-500 focus:border-red-500 focus:ring-red-500/30';
+
     return (
-        <div className={`profile-container ${darkMode ? 'dark' : ''}`}>
-            <div className="profile-header">
-                <h2>Meu Perfil</h2>
-                <button
-                    onClick={onLogout}
-                    className="logout-btn"
-                >
-                    Sair
-                </button>
+        <div className={`rounded-2xl overflow-hidden animate-fadeInUp ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-2xl border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            {/* Cabeçalho com gradiente e avatar */}
+            <div className={`relative py-10 px-8 ${darkMode ? 'bg-gradient-to-br from-blue-900/80 via-purple-900/60 to-gray-900' : 'bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700'}`}>
+                <div className="absolute inset-0 bg-white opacity-5 pointer-events-none" />
+                <div className="relative flex flex-col sm:flex-row items-center gap-6">
+                    <div className={`w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold shadow-xl ring-4 ${darkMode ? 'ring-white/20 bg-white/10 text-white' : 'ring-white/30 bg-white/20 text-white'}`}>
+                        {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 text-center sm:text-left">
+                        <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-white'}`}>
+                            {user.name || user.username || 'Meu Perfil'}
+                        </h2>
+                        <p className={`text-sm mt-1 ${darkMode ? 'text-blue-200' : 'text-white/90'}`}>
+                            {user.role === 'admin' ? 'Administrador' : 'Usuário'} · @{user.username}
+                        </p>
+                        <button
+                            onClick={onLogout}
+                            className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${darkMode ? 'bg-white/10 hover:bg-red-500/80 text-white border border-white/20' : 'bg-white/20 hover:bg-red-500 text-white border border-white/30'}`}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Sair
+                        </button>
+                    </div>
+                </div>
             </div>
 
+            {/* Mensagens de feedback */}
             {successMessage && (
-                <div className="success-message">
-                    {successMessage}
+                <div className={`mx-6 mt-6 p-4 rounded-xl flex items-center gap-3 ${darkMode ? 'bg-green-900/30 border border-green-700 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'}`}>
+                    <svg className="w-5 h-5 flex-shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">{successMessage}</span>
                 </div>
             )}
-
             {errors.general && (
-                <div className="error-message">
-                    {errors.general}
+                <div className={`mx-6 mt-6 p-4 rounded-xl flex items-center gap-3 ${darkMode ? 'bg-red-900/30 border border-red-700 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'}`}>
+                    <svg className="w-5 h-5 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">{errors.general}</span>
                 </div>
             )}
 
-            <div className="profile-content">
-                <div className="profile-info">
-                    <h3>Informações Pessoais</h3>
+            {/* Conteúdo: informações ou formulário */}
+            <div className="p-8">
+                <div className={`rounded-2xl border-2 ${darkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'} overflow-hidden`}>
+                    <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+                        <h3 className={`text-lg font-semibold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Informações Pessoais
+                        </h3>
+                    </div>
 
                     {!isEditing ? (
-                        <div className="info-display">
-                            <div className="info-item">
-                                <label>Nome:</label>
-                                <span>{user.name || 'Não informado'}</span>
-                            </div>
-                            <div className="info-item">
-                                <label>Email:</label>
-                                <span>{user.email || 'Não informado'}</span>
-                            </div>
-                            <div className="info-item">
-                                <label>Usuário:</label>
-                                <span>{user.username}</span>
-                            </div>
-                            <div className="info-item">
-                                <label>Último acesso:</label>
-                                <span>{user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Primeiro acesso'}</span>
-                            </div>
-                            <div className="info-item">
-                                <label>Última alteração de senha:</label>
-                                <span>{user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada'}</span>
-                            </div>
-
+                        <div className="p-6 space-y-5">
+                            {[
+                                { label: 'Nome', value: user.name || 'Não informado', icon: 'M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+                                { label: 'Email', value: user.email || 'Não informado', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                                { label: 'Usuário', value: user.username, icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+                                { label: 'Último acesso', value: user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Primeiro acesso', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+                                { label: 'Última alteração de senha', value: user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z' }
+                            ].map((item, i) => (
+                                <div key={i} className={`flex items-start gap-4 p-4 rounded-xl transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/80'}`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} /></svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{item.label}</p>
+                                        <p className={`mt-0.5 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.value}</p>
+                                    </div>
+                                </div>
+                            ))}
                             <button
                                 onClick={() => setIsEditing(true)}
-                                className="edit-btn"
+                                className={`w-full sm:w-auto mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all btn-modern ${darkMode ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg'}`}
                             >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
                                 Editar Perfil
                             </button>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="profile-form">
-                            <div className="form-group">
-                                <label>Nome:</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => handleInputChange('name', e.target.value)}
-                                    className={errors.name ? 'error' : ''}
-                                    disabled={isLoading}
-                                />
-                                {errors.name && <span className="error-text">{errors.name}</span>}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
+                                <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} disabled={isLoading}
+                                    className={`${inputBase} ${errors.name ? inputError : ''}`} placeholder="Seu nome completo" />
+                                {errors.name && <p className="mt-1.5 text-sm text-red-500">{errors.name}</p>}
+                            </div>
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                                <input type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled={isLoading}
+                                    className={`${inputBase} ${errors.email ? inputError : ''}`} placeholder="seu@email.com" />
+                                {errors.email && <p className="mt-1.5 text-sm text-red-500">{errors.email}</p>}
+                            </div>
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de usuário</label>
+                                <input type="text" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} disabled={isLoading}
+                                    className={`${inputBase} ${errors.username ? inputError : ''}`} placeholder="usuario" />
+                                {errors.username && <p className="mt-1.5 text-sm text-red-500">{errors.username}</p>}
                             </div>
 
-                            <div className="form-group">
-                                <label>Email:</label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    className={errors.email ? 'error' : ''}
-                                    disabled={isLoading}
-                                />
-                                {errors.email && <span className="error-text">{errors.email}</span>}
-                            </div>
-
-                            <div className="form-group">
-                                <label>Nome de usuário:</label>
-                                <input
-                                    type="text"
-                                    value={formData.username}
-                                    onChange={(e) => handleInputChange('username', e.target.value)}
-                                    className={errors.username ? 'error' : ''}
-                                    disabled={isLoading}
-                                />
-                                {errors.username && <span className="error-text">{errors.username}</span>}
-                            </div>
-
-                            <div className="password-section">
-                                <div className="password-toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="changePassword"
-                                        checked={showPasswordFields}
-                                        onChange={(e) => setShowPasswordFields(e.target.checked)}
-                                        disabled={isLoading}
-                                    />
-                                    <label htmlFor="changePassword">Alterar senha</label>
-                                </div>
-
+                            <div className={`pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" id="changePassword" checked={showPasswordFields} onChange={(e) => setShowPasswordFields(e.target.checked)} disabled={isLoading}
+                                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                    <span className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Alterar senha</span>
+                                </label>
                                 {showPasswordFields && (
-                                    <div className="password-fields">
-                                        <div className="form-group">
-                                            <label>Senha atual:</label>
-                                            <input
-                                                type="password"
-                                                value={formData.currentPassword}
-                                                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-                                                className={errors.currentPassword ? 'error' : ''}
-                                                disabled={isLoading}
-                                            />
-                                            {errors.currentPassword && <span className="error-text">{errors.currentPassword}</span>}
+                                    <div className="mt-5 space-y-5 pl-0">
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha atual</label>
+                                            <input type="password" value={formData.currentPassword} onChange={(e) => handleInputChange('currentPassword', e.target.value)} disabled={isLoading}
+                                                className={`${inputBase} ${errors.currentPassword ? inputError : ''}`} placeholder="••••••••" />
+                                            {errors.currentPassword && <p className="mt-1.5 text-sm text-red-500">{errors.currentPassword}</p>}
                                         </div>
-
-                                        <div className="form-group">
-                                            <label>Nova senha:</label>
-                                            <input
-                                                type="password"
-                                                value={formData.newPassword}
-                                                onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                                                className={errors.newPassword ? 'error' : ''}
-                                                disabled={isLoading}
-                                            />
-                                            {errors.newPassword && <span className="error-text">{errors.newPassword}</span>}
-
-                                            {formData.newPassword && (
-                                                <PasswordStrengthIndicator
-                                                    password={formData.newPassword}
-                                                    darkMode={darkMode}
-                                                />
-                                            )}
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nova senha</label>
+                                            <input type="password" value={formData.newPassword} onChange={(e) => handleInputChange('newPassword', e.target.value)} disabled={isLoading}
+                                                className={`${inputBase} ${errors.newPassword ? inputError : ''}`} placeholder="••••••••" />
+                                            {errors.newPassword && <p className="mt-1.5 text-sm text-red-500">{errors.newPassword}</p>}
+                                            {formData.newPassword && <PasswordStrengthIndicator password={formData.newPassword} darkMode={darkMode} />}
                                         </div>
-
-                                        <div className="form-group">
-                                            <label>Confirmar nova senha:</label>
-                                            <input
-                                                type="password"
-                                                value={formData.confirmPassword}
-                                                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                                                className={errors.confirmPassword ? 'error' : ''}
-                                                disabled={isLoading}
-                                            />
-                                            {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar nova senha</label>
+                                            <input type="password" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} disabled={isLoading}
+                                                className={`${inputBase} ${errors.confirmPassword ? inputError : ''}`} placeholder="••••••••" />
+                                            {errors.confirmPassword && <p className="mt-1.5 text-sm text-red-500">{errors.confirmPassword}</p>}
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="form-actions">
-                                <button
-                                    type="button"
-                                    onClick={handleCancel}
-                                    className="cancel-btn"
-                                    disabled={isLoading}
-                                >
+                            <div className="flex flex-wrap gap-3 pt-4">
+                                <button type="button" onClick={handleCancel} disabled={isLoading}
+                                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}>
                                     Cancelar
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="save-btn"
-                                    disabled={isLoading}
-                                >
+                                <button type="submit" disabled={isLoading}
+                                    className={`px-6 py-3 rounded-xl font-semibold transition-all btn-modern ${darkMode ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 shadow-lg'}`}>
                                     {isLoading ? 'Salvando...' : 'Salvar Alterações'}
                                 </button>
                             </div>
@@ -677,9 +566,13 @@ function LoginForm({ onLogin, darkMode }) {
     const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
     const [firstLoginUser, setFirstLoginUser] = useState(null);
 
-    // Inicializar usuários quando o componente monta
+    // Efeitos
     useEffect(() => {
-        UserManager.initializeUsers();
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('resetAdmin') === '1' || params.get('resetAdmin') === 'sim') {
+            window.history.replaceState({}, '', window.location.pathname);
+            alert('A funcionalidade de reset por URL foi depreciada no novo backend.');
+        }
     }, []);
 
     const handleFirstLoginComplete = (updatedUser) => {
@@ -717,18 +610,15 @@ function LoginForm({ onLogin, darkMode }) {
         if (!passwordValidation.isValid) { setError(passwordValidation.errors[0]); return; }
 
         try {
-            // Criar usuário
-            const newUser = UserManager.createUser({
+            // Criar usuário no Backend
+            await ApiService.register({
                 name,
                 email,
                 username,
-                password,
-                role: 'user', // Padrão: usuário comum
-                firstLogin: false, // Auto-cadastro já define senha
-                isAuthorized: false // Requer aprovação de admin
+                password
             });
 
-            // Não faz login automático, exibe mensagem de sucesso
+            // Não faz login automático após registro real, exibe mensagem
             setError(''); // Limpa erros
             alert('Cadastro realizado com sucesso! Sua conta aguarda aprovação do administrador para ser ativada.');
             resetForm();
@@ -740,46 +630,8 @@ function LoginForm({ onLogin, darkMode }) {
 
     const handleLoginSubmit = async () => {
         try {
-            const users = UserManager.getUsers();
-            const user = users.find(u => u.username === username);
-
-            if (!user) {
-                setError('Usuário Inexistente');
-                UserManager.logAuditEvent(null, 'login_failed', { username, reason: 'user_not_found' });
-                return;
-            }
-
-            if (user.isLocked && user.lockUntil && new Date() < new Date(user.lockUntil)) {
-                const lockTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
-                setError(`Conta bloqueada. Tente novamente em ${lockTime} minutos.`);
-                return;
-            }
-
-            if (user.isAuthorized === false) {
-                setError('Sua conta aguarda autorização do administrador.');
-                return;
-            }
-
-            if (!CryptoUtils.comparePassword(password, user.password)) {
-                const updatedUser = UserManager.incrementFailedAttempts(user.id);
-                const remaining = 5 - updatedUser.failedAttempts;
-
-                if (updatedUser.failedAttempts >= 5) {
-                    setError('Conta bloqueada por 30 minutos devido a muitas tentativas incorretas.');
-                } else {
-                    if (user.isBlockedByAdmin) {
-                        setError('Conta bloqueada pelo administrador.');
-                    } else if (user.firstLogin) {
-                        setError('Sua senha foi resetada. Utilize a senha temporária: Mudar@123');
-                    } else {
-                        setError(`Usuário ou senha incorretos. ${remaining} tentativas restantes.`);
-                    }
-                }
-                return;
-            }
-
-            UserManager.resetFailedAttempts(user.id);
-            UserManager.logAuditEvent(user.id, 'login_success', { timestamp: new Date().toISOString() });
+            const user = await ApiService.login(username, password);
+            setError(''); // Limpa erros em caso de sucesso
 
             if (user.firstLogin) {
                 setFirstLoginUser(user);
@@ -788,11 +640,10 @@ function LoginForm({ onLogin, darkMode }) {
             }
 
             localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('currentUser', JSON.stringify(user));
             onLogin(user);
         } catch (error) {
             console.error('Erro no login:', error);
-            setError('Erro interno. Tente novamente.');
+            setError(error.message || 'Usuário ou senha inválidos.');
         }
     };
 
@@ -1020,12 +871,8 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
             const usernameValidation = CredentialValidator.validateUsername(formData.username);
             if (!usernameValidation.isValid) {
                 newErrors.username = usernameValidation.errors[0];
-            } else {
-                const users = UserManager.getUsers();
-                if (!CredentialValidator.checkUsernameAvailability(formData.username, user.id, users)) {
-                    newErrors.username = 'Este nome de usuário já está em uso';
-                }
             }
+            // Verificação de disponibilidade será feita pelo backend
         }
 
         // Validar senha
@@ -1039,10 +886,7 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
             newErrors.confirmPassword = 'As senhas não coincidem';
         }
 
-        // Verificar histórico de senhas
-        if (formData.newPassword && !UserManager.checkPasswordHistory(user.id, formData.newPassword)) {
-            newErrors.newPassword = 'Esta senha foi usada recentemente. Escolha uma diferente';
-        }
+        // Histórico de senhas validado no servidor
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -1056,27 +900,17 @@ function FirstLoginModal({ user, onComplete, darkMode }) {
         setIsSubmitting(true);
 
         try {
-            // Atualizar usuário
-            // Atualizar usuário (apenas senha e histórico)
-            const updates = {
-                // name, email, username mantidos inalterados
-                password: CryptoUtils.hashPassword(formData.newPassword),
-                firstLogin: false,
-                lastPasswordChange: new Date().toISOString(),
-                passwordHistory: [...user.passwordHistory, CryptoUtils.hashPassword(formData.newPassword)]
+            // Atualizar usuário via API
+            const profileData = {
+                newPassword: formData.newPassword
             };
 
-            const updatedUser = UserManager.updateUser(user.id, updates);
+            const response = await ApiService.updateProfile(profileData);
 
-            UserManager.logAuditEvent(user.id, 'first_login_setup', {
-                usernameChanged: formData.username !== user.username,
-                emailAdded: !!formData.email
-            });
-
-            onComplete(updatedUser);
+            onComplete(response.user || response);
         } catch (error) {
-            console.error('Erro ao atualizar usuário:', error);
-            setErrors({ submit: 'Erro interno. Tente novamente.' });
+            console.error('Erro ao atualizar senha no primeiro login:', error);
+            setErrors({ submit: error.message || 'Erro interno. Tente novamente.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -1253,15 +1087,7 @@ function RegisterUserModal({ onClose, onUserCreated, darkMode }) {
 
         setIsLoading(true);
         try {
-            // Verificar disponibilidade do usuário antes de tentar criar
-            const users = UserManager.getUsers();
-            if (!CredentialValidator.checkUsernameAvailability(formData.username, null, users)) {
-                setErrors(prev => ({ ...prev, username: 'Nome de usuário já está em uso' }));
-                setIsLoading(false);
-                return;
-            }
-
-            const newUser = UserManager.createUser({
+            const response = await ApiService.register({
                 name: formData.name,
                 email: formData.email,
                 username: formData.username,
@@ -1269,7 +1095,7 @@ function RegisterUserModal({ onClose, onUserCreated, darkMode }) {
                 role: formData.role
             });
 
-            onUserCreated(newUser);
+            if (onUserCreated) onUserCreated(response.user || response);
             onClose();
         } catch (error) {
             console.error('Erro ao criar usuário:', error);
@@ -1555,22 +1381,304 @@ function PieChart({ data, darkMode, title }) {
     );
 }
 
-// Componente Sidebar Simples
-function SimpleSidebar({ darkMode }) {
+// Componente da Tabela de Administradores
+function AdminUsersTable({ darkMode, adminUsersListKey, onRefreshNeeded }) {
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const loadUsers = async () => {
+        setIsLoading(true);
+        try {
+            const data = await ApiService.getUsers();
+            setUsers(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Erro ao carregar lista completa de usuários:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadUsers();
+    }, [adminUsersListKey]);
+
+    const handleResetPassword = async (user) => {
+        if (confirm(`Resetar senha de ${user.username} para 'Mudar@123'?`)) {
+            try {
+                await ApiService.resetUserPassword(user.id);
+                alert(`Senha de ${user.username} resetada com sucesso.`);
+                if (onRefreshNeeded) onRefreshNeeded();
+            } catch (err) {
+                alert('Erro ao resetar senha: ' + err.message);
+            }
+        }
+    };
+
+    const handleToggleBlock = async (user) => {
+        try {
+            await ApiService.toggleUserBlock(user.id);
+            if (onRefreshNeeded) onRefreshNeeded();
+            else loadUsers();
+        } catch (err) {
+            alert('Erro ao alterar status de bloqueio: ' + err.message);
+        }
+    };
+
+    const handleDelete = async (user) => {
+        if (confirm(`Excluir usuário ${user.username}? Esta ação não pode ser desfeita.`)) {
+            try {
+                await ApiService.deleteUser(user.id);
+                if (onRefreshNeeded) onRefreshNeeded();
+                else loadUsers();
+            } catch (err) {
+                alert('Erro ao excluir usuário: ' + err.message);
+            }
+        }
+    };
+
+    if (isLoading) {
+        return <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Carregando usuários...</div>;
+    }
+
     return (
-        <div className={`w-16 flex-shrink-0 ${darkMode ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'} flex flex-col items-center py-4 gap-4`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white font-bold text-lg`}>
-                C
-            </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'} cursor-pointer transition-colors`}>
+        <table className="min-w-full">
+            <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                <tr>
+                    <th className={`px-4 py-3 text-left text-xs font-semibold uppercase ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Nome</th>
+                    <th className={`px-4 py-3 text-left text-xs font-semibold uppercase ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Usuário</th>
+                    <th className={`px-4 py-3 text-left text-xs font-semibold uppercase ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Perfil</th>
+                    <th className={`px-4 py-3 text-left text-xs font-semibold uppercase ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Status</th>
+                    <th className={`px-4 py-3 text-right text-xs font-semibold uppercase ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Ações</th>
+                </tr>
+            </thead>
+            <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                {users.map(user => {
+                    // Trata boolean do SQLite ("true" / 1 ou "false" / 0)
+                    const isBlocked = user.isBlockedByAdmin === true || user.isBlockedByAdmin === 1;
+
+                    return (
+                        <tr key={user.id} className={darkMode ? 'bg-gray-800' : 'bg-white'}>
+                            <td className={`px-4 py-3 text-sm flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                                    {(user.name || '?').charAt(0).toUpperCase()}
+                                </div>
+                                {user.name}
+                            </td>
+                            <td className={`px-4 py-3 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{user.username}</td>
+                            <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? (darkMode ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') : (darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-700')}`}>
+                                    {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                </span>
+                            </td>
+                            <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-1 flex items-center gap-1 w-max rounded-full font-medium ${isBlocked ? (darkMode ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600') : (darkMode ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-600')}`}>
+                                    {isBlocked ? 'Bloqueado' : 'Ativo'}
+                                </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm">
+                                {user.role !== 'admin' && (
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={() => handleResetPassword(user)} className={`p-1.5 rounded-lg border flex items-center justify-center ${darkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'}`} title="Resetar senha: 'Mudar@123'">
+                                            🔑
+                                        </button>
+                                        <button onClick={() => handleToggleBlock(user)} className={`p-1.5 rounded-lg border flex items-center justify-center ${darkMode ? 'border-gray-600 hover:bg-gray-700 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'}`} title={isBlocked ? 'Desbloquear usuário' : 'Bloquear usuário'}>
+                                            🔒
+                                        </button>
+                                        <button onClick={() => handleDelete(user)} className={`p-1.5 rounded-lg border flex items-center justify-center ${darkMode ? 'border-red-900 hover:bg-red-900/50 text-red-400' : 'border-red-200 hover:bg-red-100 text-red-600'}`} title="Excluir">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                )}
+                            </td>
+                        </tr>
+                    );
+                })}
+            </tbody>
+        </table>
+    );
+}
+
+// Componente Sidebar Completo com Menu Lateral
+function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout, sidebarMobileOpen, onCloseSidebar }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const handleNavigate = (view) => {
+        setCurrentView(view);
+        onCloseSidebar?.();
+    };
+
+    const menuItems = [
+        {
+            id: 'profile',
+            label: 'Meu Perfil',
+            icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-            </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'} cursor-pointer transition-colors`}>
+            ),
+            view: 'profile'
+        }
+    ];
+
+    // Itens administrativos (apenas para admin)
+    const adminItems = [
+        {
+            id: 'admin-dashboard',
+            label: 'Dashboard',
+            icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
+            ),
+            view: 'admin-dashboard'
+        },
+        {
+            id: 'admin-users',
+            label: 'Usuários',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+            ),
+            view: 'admin-users'
+        }
+    ];
+
+    const isActive = (id) => {
+        return currentView === id;
+    };
+
+    return (
+        <div
+            className={`sidebar-container flex-shrink-0 transition-all duration-300 ease-in-out ${isExpanded ? 'w-64' : 'w-20'} 
+                ${darkMode ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'} 
+                flex flex-col h-full shadow-lg ${sidebarMobileOpen ? 'open' : ''}`}
+            onMouseEnter={() => setIsExpanded(true)}
+            onMouseLeave={() => setIsExpanded(false)}
+        >
+            {/* Logo/Header */}
+            <div className={`p-4 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                        ${darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-blue-500 to-purple-600'} 
+                        text-white font-bold text-xl shadow-lg`}>
+                        C
+                    </div>
+                    {isExpanded && (
+                        <div className="overflow-hidden animate-fadeInLeft">
+                            <h1 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Consulta ISS
+                            </h1>
+                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Sistema Fiscal
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Menu de Navegação */}
+            <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
+                <div className="px-3 space-y-1">
+                    {/* Separador Principal */}
+                    {isExpanded && (
+                        <p className={`px-3 text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            Menu Principal
+                        </p>
+                    )}
+
+                    {/* Itens do Menu Principal */}
+                    {menuItems.map((item) => (
+                        <button
+                            key={item.id}
+                            onClick={() => handleNavigate(item.view)}
+                            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+                                ${isActive(item.id)
+                                    ? `${darkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'} shadow-sm`
+                                    : `${darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
+                                }`}
+                            title={!isExpanded ? item.label : ''}
+                        >
+                            <div className={`flex-shrink-0 ${isActive(item.id) ? 'scale-110' : 'group-hover:scale-110'} transition-transform`}>
+                                {item.icon}
+                            </div>
+                            {isExpanded && (
+                                <span className="font-medium truncate animate-fadeInLeft">{item.label}</span>
+                            )}
+                            {isActive(item.id) && isExpanded && (
+                                <div className={`ml-auto w-2 h-2 rounded-full ${darkMode ? 'bg-blue-400' : 'bg-blue-600'} animate-pulse`}></div>
+                            )}
+                        </button>
+                    ))}
+
+                    {/* Seção Administrativa (apenas para admin) */}
+                    {currentUser?.role === 'admin' && (
+                        <>
+                            {isExpanded && (
+                                <p className={`px-3 text-xs font-semibold uppercase tracking-wider mt-6 mb-2 ${darkMode ? 'text-red-400' : 'text-red-500'}`}>
+                                    Administração
+                                </p>
+                            )}
+
+                            {/* Separador visual */}
+                            <div className={`my-2 border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}></div>
+
+                            {adminItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleNavigate(item.view)}
+                                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+                                        ${isActive(item.id)
+                                            ? `${darkMode ? 'bg-red-600/20 text-red-400' : 'bg-red-50 text-red-600'} shadow-sm`
+                                            : `${darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-red-400' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`
+                                        }`}
+                                    title={!isExpanded ? item.label : ''}
+                                >
+                                    <div className={`flex-shrink-0 ${isActive(item.id) ? 'scale-110' : 'group-hover:scale-110'} transition-transform`}>
+                                        {item.icon}
+                                    </div>
+                                    {isExpanded && (
+                                        <span className="font-medium truncate animate-fadeInLeft">{item.label}</span>
+                                    )}
+                                    {isActive(item.id) && isExpanded && (
+                                        <div className={`ml-auto w-2 h-2 rounded-full ${darkMode ? 'bg-red-400' : 'bg-red-600'} animate-pulse`}></div>
+                                    )}
+                                </button>
+                            ))}
+                        </>
+                    )}
+                </div>
+            </nav>
+
+            {/* Informações do Usuário no Rodapé */}
+            <div className={`p-4 border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+                <div className={`flex items-center gap-3 p-2 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                        ${currentUser?.role === 'admin' ? 'bg-red-500' : 'bg-blue-500'} text-white font-bold shadow-md`}>
+                        {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    {isExpanded && (
+                        <div className="overflow-hidden flex-1 min-w-0">
+                            <p className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {currentUser?.name || 'Usuário'}
+                            </p>
+                            <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {currentUser?.role === 'admin' ? 'Administrador' : 'Usuário'}
+                            </p>
+                        </div>
+                    )}
+                    {isExpanded && (
+                        <button
+                            onClick={onLogout}
+                            className={`p-2 rounded-lg transition-all duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-400 hover:text-red-400' : 'hover:bg-gray-200 text-gray-500 hover:text-red-500'}`}
+                            title="Sair"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -1586,10 +1694,11 @@ function App() {
         return savedUser ? JSON.parse(savedUser) : null;
     });
 
-    // Estado de navegação
-    const [currentView, setCurrentView] = useState('main'); // 'main' ou 'profile'
-    const [currentPage, setCurrentPage] = useState('home'); // 'home', 'dashboard', 'profile'
-    const [showDashboard, setShowDashboard] = useState(true); // Toggle dashboard administrativo
+    // Estado de navegação - Views: 'home' | 'search' | 'profile' | 'admin-dashboard' | 'admin-users'
+    const [currentView, setCurrentView] = useState('home');
+    // Sidebar mobile: abre/fecha no celular
+    const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -1609,47 +1718,36 @@ function App() {
 
     // Estado para usuários pendentes (apenas admin)
     const [pendingUsers, setPendingUsers] = useState([]);
+    // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
+    const [adminUsersListKey, setAdminUsersListKey] = useState(0);
 
-    // Efeito para verificar bloqueio em tempo real
+    // Carregar usuários pendentes quando for admin
     useEffect(() => {
-        if (!currentUser) return;
-
-        const checkUserStatus = () => {
-            const users = UserManager.getUsers();
-            const current = users.find(u => u.id === currentUser.id);
-
-            if (current && current.isBlockedByAdmin) {
-                alert('Sua conta foi bloqueada pelo administrador.');
-                handleLogout();
-            }
-        };
-
-        // Verificar imediatamente
-        checkUserStatus();
-
-        // Verificar a cada 2 segundos (polling leve para resposta rápida)
-        // Como o localStorage é síncrono e local, o custo é muito baixo
-        const interval = setInterval(checkUserStatus, 2000);
-
-        return () => clearInterval(interval);
-    }, [currentUser]);
-
-    useEffect(() => {
-        if (currentUser?.role === 'admin' && showDashboard) {
+        if (currentUser?.role === 'admin') {
             loadPendingUsers();
         }
-    }, [currentUser, showDashboard]);
+    }, [currentUser]);
 
-    const loadPendingUsers = () => {
-        const allUsers = UserManager.getUsers();
-        const pending = allUsers.filter(u => u.isAuthorized === false);
-        setPendingUsers(pending);
+    const loadPendingUsers = async () => {
+        try {
+            const users = await ApiService.getUsers();
+            // SQLite boolean returns 1 or 0 for isAuthorized, or false/true
+            const pending = users.filter(u => u.isAuthorized === false || u.isAuthorized === 0);
+            setPendingUsers(pending);
+        } catch (error) {
+            console.error("Erro ao carregar usuários pendentes:", error);
+        }
     };
 
-    const handleAuthorizeUser = (userId) => {
+    const handleAuthorizeUser = async (userId) => {
         if (confirm('Deseja autorizar este usuário?')) {
-            UserManager.updateUser(userId, { isAuthorized: true });
-            loadPendingUsers();
+            try {
+                await ApiService.authorizeUser(userId);
+                loadPendingUsers();
+                setAdminUsersListKey(k => k + 1); // Recarrega a tabela de admin também
+            } catch (error) {
+                alert('Erro ao autorizar usuário: ' + error.message);
+            }
         }
     };
 
@@ -1764,7 +1862,7 @@ function App() {
     const handleLogout = () => {
         setIsAuthenticated(false);
         setCurrentUser(null);
-        setCurrentView('main');
+        setCurrentView('home');
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('currentUser');
     };
@@ -2081,104 +2179,212 @@ function App() {
 
     return (
         <div className="flex h-screen overflow-hidden">
-            <SimpleSidebar darkMode={darkMode} />
+            <Sidebar
+                darkMode={darkMode}
+                currentView={currentView}
+                setCurrentView={setCurrentView}
+                currentUser={currentUser}
+                onLogout={handleLogout}
+                sidebarMobileOpen={sidebarMobileOpen}
+                onCloseSidebar={() => setSidebarMobileOpen(false)}
+            />
+            {/* Overlay do menu lateral no mobile */}
+            {sidebarMobileOpen && (
+                <div
+                    className="sidebar-overlay active md:hidden"
+                    onClick={() => setSidebarMobileOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
             <div className="flex-1 overflow-y-auto">
                 <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
                     <div className="container mx-auto px-4 py-8 max-w-6xl">
-                        <header className="text-center mb-12 animate-fadeInDown">
-                            {/* Informações do usuário logado */}
-                            <div className="flex justify-between items-center mb-6">
-                                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-lg`}>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentUser?.role === 'admin' ? 'bg-red-500' : 'bg-blue-500'} text-white text-sm font-bold`}>
-                                        {currentUser?.role === 'admin' ? 'A' : 'U'}
-                                    </div>
-                                    <div className="text-left">
-                                        <div className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                            {currentUser?.name || 'Usuário'}
-                                        </div>
-                                        <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                            {currentUser?.role === 'admin' ? 'Administrador' : 'Usuário'}
-                                        </div>
-                                    </div>
+                        <header className="mb-8">
+                            {/* Top Bar: Menu hamburger + Dark Mode + Ícone */}
+                            <div className="flex justify-between items-center bg-white/30 backdrop-blur-md rounded-3xl p-4 shadow-sm border border-white/20 dark:border-gray-700/30 dark:bg-gray-800/30 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSidebarMobileOpen(true)}
+                                        className={`sidebar-toggle-mobile md:hidden flex items-center justify-center p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-700 border border-gray-200'}`}
+                                        aria-label="Abrir menu"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                        </svg>
+                                    </button>
+
+                                    {/* Botão Voltar (fora da Home) ou Saudação (na Home) */}
+                                    {currentView !== 'home' ? (
+                                        <button
+                                            onClick={() => setCurrentView('home')}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 hover:-translate-x-0.5 ${darkMode
+                                                ? 'bg-gray-700/60 text-gray-200 hover:bg-gray-700 border border-gray-600'
+                                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                                                } shadow-sm`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                            </svg>
+                                            <span className="hidden sm:inline">Início</span>
+                                        </button>
+                                    ) : (
+                                        currentUser && (
+                                            <div className="hidden sm:block ml-1">
+                                                <h2 className={`font-semibold text-lg tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                                    Olá, {currentUser.name?.split(' ')[0] || currentUser.username} 👋
+                                                </h2>
+                                                <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                    Bem-vindo ao portal
+                                                </p>
+                                            </div>
+                                        )
+                                    )}
                                 </div>
+
                                 <div className="flex items-center gap-3">
+                                    {/* Botão de Dark Mode integrado */}
                                     <button
-                                        onClick={() => setCurrentView(currentView === 'profile' ? 'main' : 'profile')}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} shadow-lg`}
+                                        onClick={() => setDarkMode(!darkMode)}
+                                        className={`p-2.5 rounded-full transition-all duration-300 ${darkMode ? 'bg-gray-700/80 text-yellow-400 hover:bg-gray-600' : 'bg-white text-gray-600 hover:bg-gray-100'} shadow-sm flex items-center justify-center border ${darkMode ? 'border-gray-600' : 'border-gray-100'}`}
+                                        title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
                                     >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        {currentView === 'profile' ? 'Voltar' : 'Perfil'}
+                                        {darkMode ? (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                            </svg>
+                                        )}
                                     </button>
-                                    <button
-                                        onClick={handleLogout}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} shadow-lg`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                        </svg>
-                                        Sair
-                                    </button>
+
+                                    <div className="relative ml-2">
+                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md transform transition-transform hover:scale-105 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+                                            <span className="text-white font-bold text-sm tracking-widest">
+                                                {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
+                                            </span>
+                                        </div>
+                                        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800 ${darkMode ? 'bg-green-500' : 'bg-green-400'}`}>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex justify-center items-center mb-6">
-                                <div className="relative">
-                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-all duration-300 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}>
-                                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                        </svg>
-                                    </div>
-                                    <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${darkMode ? 'bg-green-500 text-white' : 'bg-green-400 text-white'} animate-pulse`}>
-                                        ✓
+                            {/* Cabeçalho de Consulta Exclusivo da página Buscar */}
+                            {currentView === 'search' && (
+                                <div className="text-center animate-fadeInDown mt-10 mb-2">
+                                    <h1 className={`text-4xl md:text-5xl font-extrabold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent`}>
+                                        Consulta Lista/Cnae/Alíquota
+                                    </h1>
+                                    <p className={`text-lg md:text-xl mb-6 font-light ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                        Consulte itens da Lista de Serviços e suas respectivas alíquotas do ISS
+                                    </p>
+                                    <div className={`inline-flex items-center px-5 py-2.5 rounded-full text-sm font-medium shadow-sm transition-colors ${darkMode ? 'bg-gray-800/80 text-blue-300 border border-gray-700' : 'bg-white/80 text-blue-700 border border-blue-100'} backdrop-blur-sm`}>
+                                        <div className="status-indicator status-active mr-2"></div>
+                                        Sistema Online • {data.length} itens
+                                        {currentUser?.role === 'admin' && (
+                                            <span className="ml-3 px-2 py-0.5 bg-red-500/90 text-white text-[10px] uppercase font-bold tracking-wider rounded-md">
+                                                Admin
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                            <h1 className={`text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${darkMode ? 'text-white' : ''}`}>
-                                Consulta Lista/Cnae/Alíquota
-                            </h1>
-                            <p className={`text-xl mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                Consulte itens da Lista de Serviços e suas respectivas alíquotas do ISS
-                            </p>
-                            <div className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium ${darkMode ? 'bg-blue-900 text-blue-200 border border-blue-700' : 'bg-blue-100 text-blue-800 border border-blue-200'} animate-pulse-custom`}>
-                                <div className="status-indicator status-active mr-2"></div>
-                                Sistema Online • {data.length} itens carregados
-                                {currentUser?.role === 'admin' && (
-                                    <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">
-                                        ADMIN
-                                    </span>
-                                )}
-                            </div>
+                            )}
                         </header>
 
-                        <div className="flex justify-end items-center mb-6">
-                            <button
-                                onClick={() => setDarkMode(!darkMode)}
-                                className={`p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${darkMode ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'} shadow-lg`}
-                                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
-                            >
-                                {darkMode ? (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-
                         {/* Navegação condicional entre views */}
-                        {currentView === 'profile' ? (
+                        {currentView === 'profile' && (
                             <UserProfilePage
                                 user={currentUser}
                                 onLogout={handleLogout}
                                 onCredentialsChanged={handleCredentialsChanged}
                                 darkMode={darkMode}
                             />
-                        ) : (
+                        )}
+
+                        {currentView === 'home' && (
+                            <div className="animate-fadeInUp space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-2">
+                                    {/* Banner Principal - Consulta ISS */}
+                                    <button
+                                        onClick={() => setCurrentView('search')}
+                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-blue-900/50 to-purple-900/50 border-blue-500/30 hover:border-blue-500' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400'} group relative overflow-hidden`}
+                                    >
+                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-blue-600'}`}></div>
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white text-blue-600 shadow-md'}`}>
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consulta ISS / CNAE</h3>
+                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            Pesquise alíquotas e códigos de serviço rapidamente
+                                        </p>
+                                    </button>
+
+                                    {/* Banner - Gerador de Pareceres */}
+                                    <a
+                                        href="https://script.google.com/macros/s/AKfycbzL4QGjBggc_7QeV-RPrE25n6bYDkgUOQ36v1dmjyMJN_34YgYYsTuyg-SVe3tBA903Lg/exec"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-emerald-900/50 to-teal-900/50 border-emerald-500/30 hover:border-emerald-500' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:border-emerald-400'} group relative overflow-hidden`}
+                                    >
+                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-emerald-600'}`}></div>
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white text-emerald-600 shadow-md'}`}>
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerador de Pareceres</h3>
+                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            Gere pareceres fiscais automaticamente
+                                        </p>
+                                    </a>
+
+                                    {/* Banner - Incidência do ISS */}
+                                    <a
+                                        href="https://script.google.com/macros/s/AKfycbwFWD5zweoKS-WccLZJkH4KCVQSKcLR-guuITNhmOYg/dev"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-orange-900/50 to-amber-900/50 border-orange-500/30 hover:border-orange-500' : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400'} group relative overflow-hidden`}
+                                    >
+                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-orange-600'}`}></div>
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-white text-orange-600 shadow-md'}`}>
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>Incidência do ISS</h3>
+                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            LC 116/2003 – Art. 3º
+                                        </p>
+                                    </a>
+
+                                    {/* Banner - Análise de Processos */}
+                                    <a
+                                        href="https://reportterra-diaaf.up.railway.app/login"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-violet-900/50 to-indigo-900/50 border-violet-500/30 hover:border-violet-500' : 'bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-400'} group relative overflow-hidden`}
+                                    >
+                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-violet-600'}`}></div>
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-violet-500/20 text-violet-400' : 'bg-white text-violet-600 shadow-md'}`}>
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>Análise de Processos</h3>
+                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            Visualize e analise processos fiscais
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentView === 'search' && (
                             <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border backdrop-blur-sm p-8 mb-8 animate-fadeInUp`} style={{ animationDelay: '0.2s' }}>
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center`}>
@@ -2342,8 +2548,48 @@ function App() {
                             </div>
                         )}
 
-                        {/* Painel Informativo para Usuários Regulares */}
-                        {currentUser?.role === 'user' && (
+                        {/* View Admin: Gestão de Usuários */}
+                        {currentUser?.role === 'admin' && currentView === 'admin-users' && (
+                            <div className={`mb-8 p-6 rounded-xl border-2 ${darkMode ? 'border-red-600 bg-gray-800' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
+                                <h2 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-red-400' : 'text-red-700'} flex items-center gap-2`}>
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                    </svg>
+                                    Gestão de Usuários
+                                </h2>
+                                {pendingUsers.length > 0 && (
+                                    <div className={`mb-6 p-4 rounded-lg border-2 border-yellow-400 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'}`}>
+                                        <h3 className={`font-bold mb-3 ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações pendentes ({pendingUsers.length})</h3>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            {pendingUsers.map(user => (
+                                                <div key={user.id} className={`p-3 rounded-lg flex justify-between items-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                                    <div>
+                                                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
+                                                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.username}</p>
+                                                    </div>
+                                                    <button onClick={() => handleAuthorizeUser(user.id)} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium">
+                                                        Autorizar
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className={`rounded-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'} overflow-hidden`}>
+                                    <AdminUsersTable
+                                        darkMode={darkMode}
+                                        adminUsersListKey={adminUsersListKey}
+                                        onRefreshNeeded={() => {
+                                            loadPendingUsers();
+                                            setAdminUsersListKey(k => k + 1);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Painel Informativo para Usuários Regulares - apenas em Início ou Consulta */}
+                        {(currentView === 'home' || currentView === 'search') && currentUser?.role === 'user' && (
                             <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-blue-600 bg-blue-900/20' : 'border-blue-300 bg-blue-50'} animate-fadeInUp`}>
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
@@ -2362,8 +2608,8 @@ function App() {
                             </div>
                         )}
 
-                        {/* Painel Administrativo - Apenas para Admins */}
-                        {currentUser?.role === 'admin' && (
+                        {/* Painel Administrativo - Apenas para Admins - Visível apenas na view admin-dashboard */}
+                        {currentUser?.role === 'admin' && currentView === 'admin-dashboard' && (
                             <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-3">
@@ -2376,326 +2622,227 @@ function App() {
                                             Dashboard Administrativo
                                         </h3>
                                     </div>
-                                    <button
-                                        onClick={() => setShowDashboard(!showDashboard)}
-                                        className={`p-2 rounded-lg transition-all duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
-                                        title={showDashboard ? 'Recolher Dashboard' : 'Expandir Dashboard'}
-                                    >
-                                        <svg className="w-5 h-5 transition-transform duration-200" style={{ transform: showDashboard ? 'rotate(180deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
+                                </div>
+                                {/* Estatísticas Principais */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    {/* Card de Solicitações Pendentes (Novo) */}
+                                    {pendingUsers.length > 0 && (
+                                        <div className={`p-4 rounded-lg md:col-span-4 border-2 border-yellow-400 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'} shadow-sm animate-pulse-custom`}>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                    <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {pendingUsers.map(user => (
+                                                    <div key={user.id} className={`p-3 rounded-lg flex flex-col justify-between ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                                                        <div className="mb-2">
+                                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
+                                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
+                                                            <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Usuário: {user.username}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleAuthorizeUser(user.id)}
+                                                            className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-bold uppercase tracking-wider transition-colors"
+                                                        >
+                                                            Autorizar
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Card de Acessos Totais */}
+                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
+                                        </div>
+                                        <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
+                                    </div>
+
+                                    {/* Card de Consultas Realizadas */}
+                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
+                                        </div>
+                                        <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
+                                    </div>
+
+                                    {/* Card de Usuários Ativos Detalhado */}
+                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm row-span-2`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                            </svg>
+                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
+                                        </div>
+                                        <p className={`text-4xl font-bold mb-4 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
+
+                                        <div className={`mt-2 border-t pt-2 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                                            <p className={`text-xs font-semibold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>LISTA DE USUÁRIOS</p>
+                                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                                {Object.keys(statistics.userSessions || {}).map((username, idx) => {
+                                                    // Tentar encontrar o role do usuário (simulação baseada em convenção ou dados salvos)
+                                                    // Como não temos acesso fácil ao array 'users' aqui sem prop drilling, vamos inferir ou usar padrão
+                                                    let role = 'user';
+                                                    let roleLabel = 'Usuário';
+                                                    if (username === 'admin') { role = 'admin'; roleLabel = 'Administrador'; }
+                                                    else if (username === 'consultor') { role = 'consultor'; roleLabel = 'Consultor'; }
+
+                                                    // Como não temos acesso fácil ao array de users listados e iteramos por `statistics.userSessions`, 
+                                                    // simplificou-se a UI removendo os actions de adm localizados aqui e deixando-os na aba
+                                                    // Gestão de Usuários (AdminUsersTable) que agora faz as chamadas pro BD.
+
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-gray-100 dark:border-gray-700">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                                                                <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{username}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
+                                                                    role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
+                                                                        (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
+                                                                    }`}>{roleLabel}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Card de Acessos Hoje */}
+                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
+                                        </div>
+                                        <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
+                                    </div>
                                 </div>
 
-                                {showDashboard && (
-                                    <>
-                                        {/* Estatísticas Principais */}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                            {/* Card de Solicitações Pendentes (Novo) */}
-                                            {pendingUsers.length > 0 && (
-                                                <div className={`p-4 rounded-lg md:col-span-4 border-2 border-yellow-400 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'} shadow-sm animate-pulse-custom`}>
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                            </svg>
-                                                            <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
-                                                        </div>
+                                {/* Visualização Avançada: Gráficos e Histórico */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    {/* Gráfico 1: Acessos por Usuário */}
+                                    <VerticalBarChart
+                                        title="Acessos por Usuário"
+                                        darkMode={darkMode}
+                                        color="purple"
+                                        data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({
+                                            label: user,
+                                            value: count
+                                        }))}
+                                    />
+
+                                    {/* Gráfico 2: Consultas por Usuário */}
+                                    <PieChart
+                                        title="Consultas por Usuário"
+                                        darkMode={darkMode}
+                                        data={(() => {
+                                            const counts = {};
+                                            statistics.searchHistory.forEach(s => {
+                                                counts[s.user] = (counts[s.user] || 0) + 1;
+                                            });
+                                            return Object.entries(counts).map(([user, count]) => ({
+                                                label: user,
+                                                value: count
+                                            })).sort((a, b) => b.value - a.value);
+                                        })()}
+                                    />
+
+                                    {/* Histórico Recente - Largura Total */}
+                                    <div className={`p-4 rounded-lg md:col-span-2 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
+                                        <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                            {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
+                                                <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} flex justify-between items-center`}>
+                                                    <div>
+                                                        <span className={`font-bold mr-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</span>
+                                                        <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{search.query}</span>
                                                     </div>
-                                                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                                        {pendingUsers.map(user => (
-                                                            <div key={user.id} className={`p-3 rounded-lg flex flex-col justify-between ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-                                                                <div className="mb-2">
-                                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
-                                                                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
-                                                                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Usuário: {user.username}</p>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handleAuthorizeUser(user.id)}
-                                                                    className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-bold uppercase tracking-wider transition-colors"
-                                                                >
-                                                                    Autorizar
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>{search.results} res.</span>
                                                 </div>
+                                            ))}
+                                            {statistics.searchHistory.length === 0 && (
+                                                <p className={`text-sm text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
                                             )}
-
-                                            {/* Card de Acessos Totais */}
-                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                    </svg>
-                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
-                                                </div>
-                                                <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
-                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
-                                            </div>
-
-                                            {/* Card de Consultas Realizadas */}
-                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                    </svg>
-                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
-                                                </div>
-                                                <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
-                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
-                                            </div>
-
-                                            {/* Card de Usuários Ativos Detalhado */}
-                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm row-span-2`}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                                    </svg>
-                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
-                                                </div>
-                                                <p className={`text-4xl font-bold mb-4 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
-
-                                                <div className={`mt-2 border-t pt-2 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                                                    <p className={`text-xs font-semibold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>LISTA DE USUÁRIOS</p>
-                                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                                                        {Object.keys(statistics.userSessions || {}).map((username, idx) => {
-                                                            // Tentar encontrar o role do usuário (simulação baseada em convenção ou dados salvos)
-                                                            // Como não temos acesso fácil ao array 'users' aqui sem prop drilling, vamos inferir ou usar padrão
-                                                            let role = 'user';
-                                                            let roleLabel = 'Usuário';
-                                                            if (username === 'admin') { role = 'admin'; roleLabel = 'Administrador'; }
-                                                            else if (username === 'consultor') { role = 'consultor'; roleLabel = 'Consultor'; }
-
-                                                            // Encontrar objeto completo do usuário para acessar status de bloqueio
-                                                            // Nota: statistics.userSessions é apenas {username: count}, precisamos buscar dados reais
-                                                            // O ideal seria que userSessions tivesse userIds, mas vamos buscar pelo username
-                                                            // Como estamos dentro do render, evitar buscar getUsers() repetidamente se possível, mas
-                                                            // para esta lista pequena (top users) é aceitável.
-                                                            // Uma otimização seria carregar users no load do componente ou dashboard.
-                                                            // Vamos fazer uma busca rápida aqui mesmo.
-                                                            const allUsersRef = UserManager.getUsers();
-                                                            const userObj = allUsersRef.find(u => u.username === username);
-
-                                                            // Se o usuário não existe mais (excluído), não renderizar na lista
-                                                            if (!userObj) return null;
-
-                                                            const isBlocked = userObj?.isBlockedByAdmin || false;
-
-                                                            return (
-                                                                <div key={idx} className="flex items-center justify-between text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-                                                                        <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} ${isBlocked ? 'line-through opacity-50' : ''}`}>{username}</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
-                                                                            role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                                                                                (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
-                                                                            }`}>{roleLabel}</span>
-
-                                                                        {/* Controles de Admin (Reset e Block) */}
-                                                                        {currentUser?.role === 'admin' && role !== 'admin' && ( // Não mostrar para admins (se proteger contra self-block/reset)
-                                                                            <>
-                                                                                {/* Reset Password */}
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        if (confirm(`Deseja resetar a senha do usuário ${username} para 'Mudar@123'?`)) {
-                                                                                            if (userObj) {
-                                                                                                UserManager.resetUserPassword(userObj.id);
-                                                                                                alert(`Senha de ${username} resetada com sucesso para 'Mudar@123'.`);
-                                                                                            } else {
-                                                                                                alert('Erro ao encontrar usuário.');
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                    title="Resetar Senha"
-                                                                                    className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors`}
-                                                                                >
-                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                                                                    </svg>
-                                                                                </button>
-
-                                                                                {/* Block Checkbox */}
-                                                                                <div className="flex items-center" title={isBlocked ? "Desbloquear Usuário" : "Bloquear Usuário"}>
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        checked={isBlocked}
-                                                                                        onChange={() => {
-                                                                                            if (userObj) {
-                                                                                                UserManager.toggleUserBlock(userObj.id);
-                                                                                                // Forçar atualização da interface
-                                                                                                // Clona o objeto statistics para garantir que o React detecte a mudança
-                                                                                                // e re-renderize o componente, fazendo com que UserManager.getUsers()
-                                                                                                // seja chamado novamente no próximo render.
-                                                                                                const newStats = { ...statistics };
-                                                                                                // Adiciona um timestamp para garantir que o estado seja diferente
-                                                                                                newStats._lastUpdate = Date.now();
-                                                                                                setStatistics(newStats);
-                                                                                            }
-                                                                                        }}
-                                                                                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
-                                                                                    />
-                                                                                </div>
-
-                                                                                {/* Delete Button */}
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        if (confirm(`Tem certeza que deseja EXCLUIR o usuário ${username}? Esta ação não pode ser desfeita.`)) {
-                                                                                            if (userObj) {
-                                                                                                UserManager.deleteUser(userObj.id);
-                                                                                                // Forçar atualização da interface
-                                                                                                const newStats = { ...statistics };
-                                                                                                newStats._lastUpdate = Date.now();
-                                                                                                // Remove o usuário da contagem visualmente também (opcional, pois statistics.userSessions pode estar desatualizado até o reload)
-                                                                                                // Mas como userSessions é {username: count}, e statistics vem do localStorage 'appStatistics', 
-                                                                                                // a exclusão do usuário em 'userProfiles' NÃO remove suas sessões antigas em 'appStatistics'.
-                                                                                                // Para a lista sumir, precisaríamos atualizar 'appStatistics' também ou filtrar a lista.
-                                                                                                // Como a lista é renderizada via statistics.userSessions, o usuário continuará aparecendo se tiver sessões.
-                                                                                                // O ideal é filtrar a renderização visual com base nos usuários existentes.
-                                                                                                setStatistics(newStats);
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                    title="Excluir Usuário"
-                                                                                    className={`p-1 rounded hover:bg-red-200 dark:hover:bg-red-900 text-red-500 dark:text-red-400 transition-colors ml-1`}
-                                                                                >
-                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                                    </svg>
-                                                                                </button>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Card de Acessos Hoje */}
-                                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
-                                                </div>
-                                                <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
-                                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
-                                            </div>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        {/* Visualização Avançada: Gráficos e Histórico */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                            {/* Gráfico 1: Acessos por Usuário */}
-                                            <VerticalBarChart
-                                                title="Acessos por Usuário"
-                                                darkMode={darkMode}
-                                                color="purple"
-                                                data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({
-                                                    label: user,
-                                                    value: count
-                                                }))}
-                                            />
-
-                                            {/* Gráfico 2: Consultas por Usuário */}
-                                            <PieChart
-                                                title="Consultas por Usuário"
-                                                darkMode={darkMode}
-                                                data={(() => {
-                                                    const counts = {};
-                                                    statistics.searchHistory.forEach(s => {
-                                                        counts[s.user] = (counts[s.user] || 0) + 1;
-                                                    });
-                                                    return Object.entries(counts).map(([user, count]) => ({
-                                                        label: user,
-                                                        value: count
-                                                    })).sort((a, b) => b.value - a.value);
-                                                })()}
-                                            />
-
-                                            {/* Histórico Recente - Largura Total */}
-                                            <div className={`p-4 rounded-lg md:col-span-2 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                                <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
-                                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                                    {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
-                                                        <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} flex justify-between items-center`}>
-                                                            <div>
-                                                                <span className={`font-bold mr-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</span>
-                                                                <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{search.query}</span>
-                                                            </div>
-                                                            <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>{search.results} res.</span>
-                                                        </div>
-                                                    ))}
-                                                    {statistics.searchHistory.length === 0 && (
-                                                        <p className={`text-sm text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
-                                                    )}
-                                                </div>
-                                            </div>
+                                {/* Informações do Sistema */}
+                                <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
+                                    <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                        <div>
+                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
+                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
                                         </div>
-
-                                        {/* Informações do Sistema */}
-                                        <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
-                                            <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                <div>
-                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
-                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
-                                                </div>
-                                                <div>
-                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
-                                                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
-                                                    <p className={`font-semibold text-green-500`}>Online</p>
-                                                </div>
-                                            </div>
+                                        <div>
+                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
+                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
                                         </div>
-
-                                        {/* Botões de Ação */}
-                                        <div className="flex flex-wrap gap-3">
-                                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                Exportar Estatísticas
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
-                                                        localStorage.removeItem('appStatistics');
-                                                        setStatistics({
-                                                            totalAccesses: 0,
-                                                            totalSearches: 0,
-                                                            universalSearches: 0,
-                                                            advancedSearches: 0,
-                                                            lastAccess: null,
-                                                            dailyAccesses: [],
-                                                            searchHistory: [],
-                                                            userSessions: {}
-                                                        });
-                                                    }
-                                                }}
-                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Limpar Estatísticas
-                                            </button>
-                                            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                                Backup Sistema
-                                            </button>
+                                        <div>
+                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
+                                            <p className={`font-semibold text-green-500`}>Online</p>
                                         </div>
-                                    </>
-                                )}
+                                    </div>
+                                </div>
+
+                                {/* Botões de Ação */}
+                                <div className="flex flex-wrap gap-3">
+                                    <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Exportar Estatísticas
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
+                                                localStorage.removeItem('appStatistics');
+                                                setStatistics({
+                                                    totalAccesses: 0,
+                                                    totalSearches: 0,
+                                                    universalSearches: 0,
+                                                    advancedSearches: 0,
+                                                    lastAccess: null,
+                                                    dailyAccesses: [],
+                                                    searchHistory: [],
+                                                    userSessions: {}
+                                                });
+                                            }
+                                        }}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Limpar Estatísticas
+                                    </button>
+                                    <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Backup Sistema
+                                    </button>
+                                </div>
                             </div>
                         )}
 
@@ -2859,17 +3006,8 @@ function App() {
                             </div>
                         )}
 
-                        <footer className={`text-center mt-8 text-sm mobile-spacing animate-fadeInUp ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} style={{ animationDelay: '1.4s' }}>
-                            <div className="flex flex-col items-center space-y-2">
-                                <p className="text-lg font-medium">© 2025 Sistema de Consulta Fiscal</p>
-                                <p className="flex items-center gap-2">
-                                    Desenvolvido por
-                                    <span className={`font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
-                                        Murilo Miguel
-                                    </span>
-                                    <span className="text-2xl">🚀</span>
-                                </p>
-                            </div>
+                        <footer className={`fixed bottom-3 right-4 text-[10px] leading-tight transition-colors duration-500 select-none pointer-events-none ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                            <p>© 2025 Sistema de Consulta Fiscal · <span className="font-medium">Murilo Miguel</span> 🚀</p>
                         </footer>
                     </div>
                 </div>
@@ -2878,13 +3016,26 @@ function App() {
     );
 }
 
-console.log('Iniciando renderização do React...');
-const rootElement = document.getElementById('root');
-console.log('Root element:', rootElement);
-if (rootElement) {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(<App />);
-    console.log('React renderizado com sucesso!');
-} else {
-    console.error('Elemento root não encontrado!');
-}
+(function mountApp() {
+    if (window.__USE_HTTP_SERVER__ === false) return;
+    var rootElement = document.getElementById('root');
+    if (!rootElement) return;
+    var fallback = document.getElementById('load-fallback');
+    try {
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+            throw new Error('React ou ReactDOM não carregaram. Verifique sua conexão com a internet.');
+        }
+        window.__APP_LOADED__ = true;
+        var root = ReactDOM.createRoot(rootElement);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
+        if (fallback) fallback.style.display = 'none';
+    } catch (err) {
+        window.__APP_LOAD_FAILED__ = true;
+        if (fallback) {
+            fallback.style.display = 'block';
+            var msgEl = document.getElementById('load-error-msg');
+            if (msgEl) msgEl.textContent = (err && (err.message || err.toString())) || 'Erro ao carregar a aplicação.';
+        }
+        console.error('Erro ao renderizar:', err);
+    }
+})();

@@ -1,0 +1,41 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  username           String     @unique
+  password           String
+  role               String     @default("user") // "admin" ou "user"
+  name               String
+  email              String?
+  firstLogin         Boolean    @default(true)
+  lastPasswordChange DateTime   @default(now())
+  passwordHistory    String[]   // Armazena hashes de senhas antigas para evitar reuso
+  accountLocked      Boolean    @default(false)
+  failedAttempts     Int        @default(0)
+  isAuthorized       Boolean    @default(false) // Usuário precisa ser autorizado por admin
+  isBlockedByAdmin   Boolean    @default(false)
+  lockUntil          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  auditLogs          AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  timestamp DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  details   Json?
+}
