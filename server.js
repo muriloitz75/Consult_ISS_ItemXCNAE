@@ -202,9 +202,9 @@ app.post('/api/auth/register', async (req, res) => {
         const jsonHistory = JSON.stringify([hashedPassword]);
 
         await db.run(
-            `INSERT INTO User (id, username, password, name, email, role, isAuthorized, passwordHistory) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [userId, username, hashedPassword, name, email || null, 'user', 0, jsonHistory]
+            `INSERT INTO "User" (id, username, password, name, email, role, isAuthorized, passwordHistory, firstLogin)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [userId, username, hashedPassword, name, email || null, 'user', 0, jsonHistory, false]
         );
 
         console.log("Usuario inserido. Inserindo log...");
