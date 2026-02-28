@@ -2567,9 +2567,36 @@ function App() {
                                                         <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
                                                         <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.username}</p>
                                                     </div>
-                                                    <button onClick={() => handleAuthorizeUser(user.id)} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium">
-                                                        Autorizar
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleAuthorizeUser(user.id)}
+                                                            className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                            Autorizar
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (confirm(`Rejeitar e excluir o cadastro de "${user.name}" (${user.username})?`)) {
+                                                                    try {
+                                                                        await ApiService.deleteUser(user.id);
+                                                                        await loadPendingUsers();
+                                                                        setAdminUsersListKey(k => k + 1);
+                                                                    } catch (err) {
+                                                                        alert('Erro ao rejeitar solicitação: ' + err.message);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                            Rejeitar
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
