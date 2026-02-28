@@ -394,7 +394,7 @@ const requireAdmin = (req, res, next) => {
 // 1. Listar todos os usuários (Apenas Admin)
 app.get('/api/auth/users', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const users = await db.query('SELECT id, username, name, email, role, isAuthorized, isBlockedByAdmin, accountLocked, lastLogin, createdAt FROM User');
+        const users = await db.query('SELECT id, username, name, email, role, isAuthorized, isBlockedByAdmin, accountLocked, createdAt FROM "User"');
         res.json(users);
     } catch (error) {
         console.error("Erro ao listar usuários:", error);
