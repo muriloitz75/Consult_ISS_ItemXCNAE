@@ -1,4 +1,4 @@
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 // Error Boundary para exibir erros de renderização
 class ErrorBoundary extends React.Component {
@@ -248,6 +248,13 @@ class ApiService {
         });
     }
 
+    static async reorderBanners(orderedBanners) {
+        return this.request(`/admin/banners/reorder`, {
+            method: 'PUT',
+            body: JSON.stringify({ orderedBanners })
+        });
+    }
+
     static getCurrentUser() {
         try {
             return JSON.parse(localStorage.getItem('currentUser'));
@@ -408,29 +415,47 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
     const inputError = 'border-red-500 focus:border-red-500 focus:ring-red-500/30';
 
     return (
-        <div className={`rounded-2xl overflow-hidden animate-fadeInUp ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-2xl border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            {/* Cabeçalho com gradiente e avatar */}
-            <div className={`relative py-10 px-8 ${darkMode ? 'bg-gradient-to-br from-blue-900/80 via-purple-900/60 to-gray-900' : 'bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700'}`}>
-                <div className="absolute inset-0 bg-white opacity-5 pointer-events-none" />
-                <div className="relative flex flex-col sm:flex-row items-center gap-6">
-                    <div className={`w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold shadow-xl ring-4 ${darkMode ? 'ring-white/20 bg-white/10 text-white' : 'ring-white/30 bg-white/20 text-white'}`}>
-                        {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+        <div className={`rounded-3xl overflow-hidden animate-fadeInUp shadow-2xl ${darkMode ? 'bg-gray-800 border-gray-700/50' : 'bg-white border-gray-100'} border`}>
+            {/* Cabeçalho Premium com glassmorphism e glow */}
+            <div className={`relative py-12 px-8 overflow-hidden ${darkMode ? 'bg-gradient-to-r from-gray-900 via-blue-900/40 to-gray-900' : 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700'}`}>
+                <div className="absolute inset-0 bg-white opacity-5 mix-blend-overlay pointer-events-none"></div>
+                {/* Glow effects */}
+                <div className="absolute top-0 left-1/4 w-64 h-64 bg-blue-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse"></div>
+                <div className="absolute top-0 right-1/4 w-64 h-64 bg-purple-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+                <div className="relative flex flex-col md:flex-row items-center gap-8 z-10 max-w-5xl mx-auto">
+                    <div className="relative group">
+                        <div className={`absolute -inset-0.5 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500 ${darkMode ? 'bg-gradient-to-r from-blue-400 to-purple-500' : 'bg-gradient-to-r from-white/50 to-white/30'}`}></div>
+                        <div className={`relative w-28 h-28 rounded-full flex items-center justify-center text-5xl font-extrabold shadow-2xl ring-4 ${darkMode ? 'ring-gray-800 bg-gray-900 text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-400' : 'ring-white/40 bg-white/20 backdrop-blur-md text-white'}`}>
+                            {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                        </div>
                     </div>
-                    <div className="flex-1 text-center sm:text-left">
-                        <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-white'}`}>
+
+                    <div className="flex-1 text-center md:text-left">
+                        <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm ${darkMode ? 'text-white' : 'text-white'}`}>
                             {user.name || user.username || 'Meu Perfil'}
                         </h2>
-                        <p className={`text-sm mt-1 ${darkMode ? 'text-blue-200' : 'text-white/90'}`}>
-                            {user.role === 'admin' ? 'Administrador' : 'Usuário'} · @{user.username}
-                        </p>
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
+                            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border ${user.role === 'admin' ? (darkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-400/30 text-amber-50 border-amber-300/50') : (darkMode ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-400/30 text-blue-50 border-blue-300/50')}`}>
+                                {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                            </span>
+                            <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-blue-100'}`}>
+                                @{user.username}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
                         <button
                             onClick={onLogout}
-                            className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${darkMode ? 'bg-white/10 hover:bg-red-500/80 text-white border border-white/20' : 'bg-white/20 hover:bg-red-500 text-white border border-white/30'}`}
+                            className={`group relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 overflow-hidden shadow-lg backdrop-blur-md border ${darkMode ? 'bg-gray-800/50 hover:bg-red-500/20 text-gray-300 hover:text-red-400 border-gray-700 hover:border-red-500/30' : 'bg-white/10 hover:bg-white text-white hover:text-red-600 border-white/30 hover:border-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            Sair
+                            <span className="relative z-10 flex items-center gap-2">
+                                <svg className={`w-5 h-5 transition-transform group-hover:-translate-x-1`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Desconectar
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -455,111 +480,178 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
             )}
 
             {/* Conteúdo: informações ou formulário */}
-            <div className="p-8">
-                <div className={`rounded-2xl border-2 ${darkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'} overflow-hidden`}>
-                    <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
-                        <h3 className={`text-lg font-semibold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            Informações Pessoais
-                        </h3>
-                    </div>
-
-                    {!isEditing ? (
-                        <div className="p-6 space-y-5">
-                            {[
-                                { label: 'Nome', value: user.name || 'Não informado', icon: 'M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-                                { label: 'Email', value: user.email || 'Não informado', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                                { label: 'Usuário', value: user.username, icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-                                { label: 'Último acesso', value: user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Primeiro acesso', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                                { label: 'Última alteração de senha', value: user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z' }
-                            ].map((item, i) => (
-                                <div key={i} className={`flex items-start gap-4 p-4 rounded-xl transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/80'}`}>
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} /></svg>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{item.label}</p>
-                                        <p className={`mt-0.5 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.value}</p>
-                                    </div>
+            <div className={`p-8 ${darkMode ? 'bg-gray-800/50' : 'bg-gray-50/50'}`}>
+                {!isEditing ? (
+                    <div className="animate-fadeIn">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <h3 className={`text-xl font-bold flex items-center gap-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                <div className={`p-2 rounded-lg ${darkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
                                 </div>
-                            ))}
+                                Dados da Conta
+                            </h3>
                             <button
                                 onClick={() => setIsEditing(true)}
-                                className={`w-full sm:w-auto mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all btn-modern ${darkMode ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg'}`}
+                                className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-300 transform hover:-translate-y-0.5 shadow-md hover:shadow-lg ${darkMode ? 'bg-blue-600 hover:bg-blue-500 text-white border-none' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none'}`}
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Editar Perfil
                             </button>
                         </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            <div>
-                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
-                                <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} disabled={isLoading}
-                                    className={`${inputBase} ${errors.name ? inputError : ''}`} placeholder="Seu nome completo" />
-                                {errors.name && <p className="mt-1.5 text-sm text-red-500">{errors.name}</p>}
-                            </div>
-                            <div>
-                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
-                                <input type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled={isLoading}
-                                    className={`${inputBase} ${errors.email ? inputError : ''}`} placeholder="seu@email.com" />
-                                {errors.email && <p className="mt-1.5 text-sm text-red-500">{errors.email}</p>}
-                            </div>
-                            <div>
-                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de usuário</label>
-                                <input type="text" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} disabled={isLoading}
-                                    className={`${inputBase} ${errors.username ? inputError : ''}`} placeholder="usuario" />
-                                {errors.username && <p className="mt-1.5 text-sm text-red-500">{errors.username}</p>}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {[
+                                { label: 'Nome Completo', value: user.name || 'Não informado', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', color: 'blue' },
+                                { label: 'Endereço de Email', value: user.email || 'Não informado', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', color: 'purple' },
+                                { label: 'Nome de Usuário', value: '@' + user.username, icon: 'M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'indigo' },
+                                { label: 'Último Acesso', value: user.lastLogin ? new Date(user.lastLogin).toLocaleString('pt-BR') : 'Primeiro acesso', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'emerald' },
+                                { label: 'Modificação de Senha', value: user.lastPasswordChange ? new Date(user.lastPasswordChange).toLocaleString('pt-BR') : 'Nunca alterada', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z', color: 'amber' }
+                            ].map((item, i) => {
+                                const colors = {
+                                    blue: darkMode ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-600 border-blue-100',
+                                    purple: darkMode ? 'bg-purple-900/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-600 border-purple-100',
+                                    indigo: darkMode ? 'bg-indigo-900/30 text-indigo-400 border-indigo-800/50' : 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                                    emerald: darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                                    amber: darkMode ? 'bg-amber-900/30 text-amber-400 border-amber-800/50' : 'bg-amber-50 text-amber-600 border-amber-100',
+                                };
+                                const iconClass = colors[item.color];
+
+                                return (
+                                    <div key={i} className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${darkMode ? 'bg-gray-800/60 border-gray-700/50 hover:border-gray-600 hover:bg-gray-800/90' : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-md'}`}>
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 border ${iconClass}`}>
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} /></svg>
+                                        </div>
+                                        <p className={`text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{item.label}</p>
+                                        <p className={`font-semibold text-lg truncate ${darkMode ? 'text-gray-200' : 'text-gray-800'}`} title={item.value}>{item.value}</p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="animate-fadeIn">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className={`text-xl font-bold flex items-center gap-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                <div className={`p-2 rounded-lg ${darkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </div>
+                                Editar Informações
+                            </h3>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            {/* Secao de dados basicos */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <svg className={`h-5 w-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        </div>
+                                        <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} disabled={isLoading}
+                                            className={`pl-11 ${inputBase} ${errors.name ? inputError : ''}`} placeholder="Seu nome completo" />
+                                    </div>
+                                    {errors.name && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.name}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Endereço de Email</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <svg className={`h-5 w-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        </div>
+                                        <input type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled={isLoading}
+                                            className={`pl-11 ${inputBase} ${errors.email ? inputError : ''}`} placeholder="seu@email.com" />
+                                    </div>
+                                    {errors.email && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.email}</p>}
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <svg className={`h-5 w-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <input type="text" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} disabled={isLoading}
+                                            className={`pl-11 ${inputBase} ${errors.username ? inputError : ''}`} placeholder="usuario" />
+                                    </div>
+                                    {errors.username && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.username}</p>}
+                                </div>
                             </div>
 
-                            <div className={`pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" id="changePassword" checked={showPasswordFields} onChange={(e) => setShowPasswordFields(e.target.checked)} disabled={isLoading}
-                                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                    <span className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Alterar senha</span>
-                                </label>
+                            {/* Secao de Seguranca Destacada */}
+                            <div className={`p-6 md:p-8 rounded-2xl border transition-all ${darkMode ? 'bg-gray-800/80 border-gray-700/80 hover:border-indigo-500/50' : 'bg-gray-50/80 border-gray-200 hover:border-indigo-300'} mt-8 relative overflow-hidden group`}>
+                                <div className={`absolute top-0 left-0 w-1.5 h-full ${darkMode ? 'bg-indigo-500/80 group-hover:bg-indigo-400' : 'bg-indigo-500 group-hover:bg-indigo-600'} transition-colors`}></div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-3 rounded-xl ${darkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-white shadow-sm border border-indigo-100 text-indigo-600'}`}>
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                        </div>
+                                        <div>
+                                            <h4 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Segurança da Conta</h4>
+                                            <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Gerencie sua senha de acesso</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={showPasswordFields} onChange={(e) => setShowPasswordFields(e.target.checked)} disabled={isLoading} />
+                                        <div className={`w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${darkMode ? 'peer-checked:bg-indigo-500' : 'peer-checked:bg-indigo-600'}`}></div>
+                                        <span className={`ml-3 text-sm font-semibold ${darkMode ? (showPasswordFields ? 'text-indigo-400' : 'text-gray-500') : (showPasswordFields ? 'text-indigo-600' : 'text-gray-500')}`}>{showPasswordFields ? 'Visível' : 'Oculto'}</span>
+                                    </label>
+                                </div>
+
                                 {showPasswordFields && (
-                                    <div className="mt-5 space-y-5 pl-0">
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha atual</label>
+                                    <div className={`mt-8 pt-8 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeInDown`}>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha Atual</label>
                                             <input type="password" value={formData.currentPassword} onChange={(e) => handleInputChange('currentPassword', e.target.value)} disabled={isLoading}
-                                                className={`${inputBase} ${errors.currentPassword ? inputError : ''}`} placeholder="••••••••" />
-                                            {errors.currentPassword && <p className="mt-1.5 text-sm text-red-500">{errors.currentPassword}</p>}
+                                                className={`${inputBase} ${errors.currentPassword ? inputError : ''}`} placeholder="Requisitada para confirmar sua identidade" />
+                                            {errors.currentPassword && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.currentPassword}</p>}
                                         </div>
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nova senha</label>
+                                        <div className="space-y-2">
+                                            <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nova Senha</label>
                                             <input type="password" value={formData.newPassword} onChange={(e) => handleInputChange('newPassword', e.target.value)} disabled={isLoading}
-                                                className={`${inputBase} ${errors.newPassword ? inputError : ''}`} placeholder="••••••••" />
-                                            {errors.newPassword && <p className="mt-1.5 text-sm text-red-500">{errors.newPassword}</p>}
-                                            {formData.newPassword && <PasswordStrengthIndicator password={formData.newPassword} darkMode={darkMode} />}
+                                                className={`${inputBase} ${errors.newPassword ? inputError : ''}`} placeholder="Mínimo 8 caracteres" />
+                                            {errors.newPassword && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.newPassword}</p>}
+                                            {formData.newPassword && <div className="mt-2"><PasswordStrengthIndicator password={formData.newPassword} darkMode={darkMode} /></div>}
                                         </div>
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar nova senha</label>
+                                        <div className="space-y-2">
+                                            <label className={`block text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Nova Senha</label>
                                             <input type="password" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} disabled={isLoading}
-                                                className={`${inputBase} ${errors.confirmPassword ? inputError : ''}`} placeholder="••••••••" />
-                                            {errors.confirmPassword && <p className="mt-1.5 text-sm text-red-500">{errors.confirmPassword}</p>}
+                                                className={`${inputBase} ${errors.confirmPassword ? inputError : ''}`} placeholder="Repita a nova senha" />
+                                            {errors.confirmPassword && <p className="text-sm font-medium text-red-500 animate-fadeIn">{errors.confirmPassword}</p>}
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex flex-wrap gap-3 pt-4">
+                            <div className={`flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 mt-6 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                                 <button type="button" onClick={handleCancel} disabled={isLoading}
-                                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}>
+                                    className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold transition-all ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}>
                                     Cancelar
                                 </button>
                                 <button type="submit" disabled={isLoading}
-                                    className={`px-6 py-3 rounded-xl font-semibold transition-all btn-modern ${darkMode ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 shadow-lg'}`}>
-                                    {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                                    className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-bold transition-all transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl ${darkMode ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-90' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-90'}`}>
+                                    {isLoading ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            Salvar Alterações
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1759,7 +1851,8 @@ const BANNER_STATIC = {
     'nfse-nacional': {
         label: 'NFS-e Nacional',
         description: 'Emissor Nacional de Nota Fiscal de Serviço',
-        icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 12-11.622 0-1.042-.133-2.052-.382-3.016z',
+        imageIcon: 'image/nfs-e.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
         href: 'https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/acesso-aos-sistemas',
         light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400',
         dark: 'from-cyan-900/50 to-sky-900/50 border-cyan-500/30 hover:border-cyan-500',
@@ -1771,12 +1864,48 @@ const BANNER_STATIC = {
         label: 'Diário Oficial',
         description: 'Publicações do Diário Oficial de Imperatriz',
         imageIcon: 'image/brasao.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
         href: 'https://diariooficial.imperatriz.ma.gov.br/publicacoes',
         light: 'from-slate-50 to-gray-50 border-slate-200 hover:border-slate-400',
         dark: 'from-slate-900/50 to-gray-900/50 border-slate-500/30 hover:border-slate-500',
         iconLight: 'bg-white text-slate-600 shadow-md',
         iconDark: 'bg-slate-500/20 text-slate-400',
         hoverBg: { light: 'bg-slate-600', dark: 'bg-white' }
+    },
+    'dte': {
+        label: 'Prefeitura Moderna',
+        description: 'O seu portal centralizado para serviços e tributos municipais',
+        imageIcon: 'image/bauhaus.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/index.php?',
+        light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-400',
+        dark: 'from-rose-900/50 to-pink-900/50 border-rose-500/30 hover:border-rose-500',
+        iconLight: 'bg-white text-rose-600 shadow-md',
+        iconDark: 'bg-rose-500/20 text-rose-400',
+        hoverBg: { light: 'bg-rose-600', dark: 'bg-white' }
+    },
+    'arrecadacao': {
+        label: 'Transparência',
+        description: 'Acompanhe as contas públicas do município',
+        imageIcon: 'image/brasao.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
+        href: 'http://scpi3.adtrcloud.com.br:8079/transparencia/',
+        light: 'from-fuchsia-50 to-pink-50 border-fuchsia-200 hover:border-fuchsia-400',
+        dark: 'from-fuchsia-900/50 to-pink-900/50 border-fuchsia-500/30 hover:border-fuchsia-500',
+        iconLight: 'bg-white text-fuchsia-600 shadow-md',
+        iconDark: 'bg-fuchsia-500/20 text-fuchsia-400',
+        hoverBg: { light: 'bg-fuchsia-600', dark: 'bg-white' }
+    },
+    'receita': {
+        label: 'Arrecadação',
+        description: 'Painel gerencial de indicadores tributários',
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        href: 'https://lookerstudio.google.com/u/0/reporting/c62bd011-53f8-4195-8770-cd7e617aa0ac/page/RT8lD',
+        light: 'from-green-50 to-lime-50 border-green-200 hover:border-green-400',
+        dark: 'from-green-900/50 to-lime-900/50 border-green-500/30 hover:border-green-500',
+        iconLight: 'bg-white text-green-600 shadow-md',
+        iconDark: 'bg-green-500/20 text-green-400',
+        hoverBg: { light: 'bg-green-600', dark: 'bg-white' }
     }
 };
 
@@ -1785,6 +1914,11 @@ function AdminBannersPanel({ darkMode }) {
     const [loading, setLoading] = useState(true);
     const [savingId, setSavingId] = useState(null);
     const [toast, setToast] = useState(null);
+    const [isReordering, setIsReordering] = useState(false);
+
+    // Refs for Drag and Drop
+    const dragItem = useRef();
+    const dragOverItem = useRef();
 
     useEffect(() => {
         loadBanners();
@@ -1817,33 +1951,57 @@ function AdminBannersPanel({ darkMode }) {
         }
     };
 
-    const colorMap = {
-        'iss-cnae': { card: darkMode ? 'from-blue-900/30 to-purple-900/30 border-blue-700' : 'from-blue-50 to-purple-50 border-blue-200', dot: 'bg-blue-500' },
-        'pareceres': { card: darkMode ? 'from-emerald-900/30 to-teal-900/30 border-emerald-700' : 'from-emerald-50 to-teal-50 border-emerald-200', dot: 'bg-emerald-500' },
-        'incidencia': { card: darkMode ? 'from-orange-900/30 to-amber-900/30 border-orange-700' : 'from-orange-50 to-amber-50 border-orange-200', dot: 'bg-orange-500' },
-        'processos': { card: darkMode ? 'from-violet-900/30 to-indigo-900/30 border-violet-700' : 'from-violet-50 to-indigo-50 border-violet-200', dot: 'bg-violet-500' },
+    const handleSort = async () => {
+        if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+            setIsReordering(true);
+            const _banners = [...banners];
+            // Remove the dragged item
+            const draggedItemContent = _banners.splice(dragItem.current, 1)[0];
+            // Insert it at the new position
+            _banners.splice(dragOverItem.current, 0, draggedItemContent);
+
+            // Re-assign orderIndex locally to ensure the new order is correct payload
+            const orderedPayload = _banners.map((b, index) => ({ id: b.id, orderIndex: index }));
+
+            setBanners(_banners);
+
+            try {
+                await ApiService.reorderBanners(orderedPayload);
+                setToast({ type: 'success', msg: 'Ordem dos banners atualizada!' });
+            } catch (e) {
+                setToast({ type: 'error', msg: 'Erro ao salvar a nova ordem.' });
+                loadBanners(); // Reload original order on fail
+            } finally {
+                setIsReordering(false);
+                setTimeout(() => setToast(null), 3000);
+            }
+        }
+
+        // Reset refs
+        dragItem.current = null;
+        dragOverItem.current = null;
     };
 
     return (
         <div className="animate-fadeInUp">
-            {/* Header */}
-            <div className={`mb-6 p-6 rounded-xl border-2 ${darkMode ? 'border-red-700 bg-gray-800/60' : 'border-red-200 bg-red-50'}`}>
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            {/* Header Clean */}
+            <div className={`mb-6 p-5 rounded-2xl ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Controle de Banners</h2>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Ative ou desative os banners visíveis na tela inicial dos usuários.</p>
+                        <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerenciador de Banners</h2>
+                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Controle dinamicamente quais recursos aparecem na tela inicial.</p>
                     </div>
                 </div>
             </div>
 
             {/* Toast */}
             {toast && (
-                <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 animate-fadeInDown ${toast.type === 'success'
+                <div className={`mb-6 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 animate-fadeInDown ${toast.type === 'success'
                     ? (darkMode ? 'bg-green-900/40 text-green-300 border border-green-700' : 'bg-green-50 text-green-800 border border-green-200')
                     : (darkMode ? 'bg-red-900/40 text-red-300 border border-red-700' : 'bg-red-50 text-red-800 border border-red-200')
                     }`}>
@@ -1853,63 +2011,58 @@ function AdminBannersPanel({ darkMode }) {
 
             {loading ? (
                 <div className="flex justify-center items-center py-16">
-                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"></div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    {banners.map(banner => {
-                        const colors = colorMap[banner.key] || { card: darkMode ? 'from-gray-800 to-gray-700 border-gray-600' : 'from-gray-50 to-gray-100 border-gray-200', dot: 'bg-gray-400' };
+                <div className="flex flex-col gap-4">
+                    {banners.map((banner, index) => {
+                        const s = BANNER_STATIC[banner.key];
+                        if (!s) return null;
                         const isSaving = savingId === banner.id;
+
                         return (
                             <div
                                 key={banner.id}
-                                className={`relative p-5 rounded-2xl border-2 bg-gradient-to-br transition-all duration-300 ${banner.enabled ? colors.card : (darkMode ? 'from-gray-800 to-gray-800 border-gray-700 opacity-60' : 'from-gray-100 to-gray-100 border-gray-300 opacity-70')
-                                    }`}
+                                draggable
+                                onDragStart={(e) => { dragItem.current = index; e.currentTarget.classList.add('opacity-50', 'scale-95'); }}
+                                onDragEnter={(e) => dragOverItem.current = index}
+                                onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleSort(); }}
+                                onDragOver={(e) => e.preventDefault()}
+                                className={`flex items-center p-4 rounded-xl transition-all duration-200 border cursor-move ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'} ${!banner.enabled ? 'opacity-70 grayscale-[20%]' : ''}`}
                             >
-                                {/* Badge de status */}
-                                <div className="absolute top-3 right-3">
-                                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${banner.enabled
-                                        ? (darkMode ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-green-100 text-green-700 border border-green-200')
-                                        : (darkMode ? 'bg-gray-700 text-gray-400 border border-gray-600' : 'bg-gray-200 text-gray-500 border border-gray-300')
-                                        }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${banner.enabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                                        {banner.enabled ? 'Ativo' : 'Inativo'}
-                                    </span>
+                                <div className={`flex items-center justify-center px-2 mr-2 text-gray-400 cursor-grab active:cursor-grabbing`}>
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+                                </div>
+                                <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center mr-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden shadow-inner pointer-events-none`}>
+                                    {s.imageIcon ? (
+                                        <img src={s.imageIcon} alt="" className={s.imageClass || "w-full h-full object-contain p-1.5"} />
+                                    ) : (
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon || 'M4 5h16'} />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <h3 className={`font-semibold text-base truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${banner.enabled ? (darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700') : (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500')}`}>
+                                            {banner.enabled ? 'On' : 'Off'}
+                                        </span>
+                                    </div>
+                                    {s.description && <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{s.description}</p>}
                                 </div>
 
-                                <div className="flex items-start gap-4 mb-4 pr-16">
-                                    <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${colors.dot} text-white overflow-hidden`}>
-                                        {BANNER_STATIC[banner.key]?.imageIcon ? (
-                                            <img src={BANNER_STATIC[banner.key].imageIcon} alt="" className="w-full h-full object-contain p-1" />
-                                        ) : (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={BANNER_STATIC[banner.key]?.icon || 'M4 5h16'} />
-                                            </svg>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h3 className={`font-bold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>{banner.label}</h3>
-                                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{BANNER_STATIC[banner.key]?.description || ''}</p>
-                                    </div>
-                                </div>
-
-                                {/* Toggle */}
                                 <button
                                     onClick={() => handleToggle(banner)}
                                     disabled={isSaving}
-                                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${isSaving ? 'opacity-60 cursor-not-allowed ' : ''
-                                        }${banner.enabled
-                                            ? (darkMode ? 'bg-red-800/50 hover:bg-red-700/60 text-red-300 border border-red-700' : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200')
-                                            : (darkMode ? 'bg-green-900/40 hover:bg-green-800/60 text-green-300 border border-green-700' : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200')
-                                        }`}
+                                    title={banner.enabled ? "Desativar banner" : "Ativar banner"}
+                                    className={`relative flex-shrink-0 inline-flex h-7 w-12 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${darkMode ? 'focus:ring-offset-gray-900' : ''} ${banner.enabled ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')} ${isSaving ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                 >
-                                    {isSaving ? (
-                                        <><div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div> Salvando...</>
-                                    ) : banner.enabled ? (
-                                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> Desativar Banner</>
-                                    ) : (
-                                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> Ativar Banner</>
-                                    )}
+                                    <span
+                                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${banner.enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                                    >
+                                        {isSaving && <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>}
+                                    </span>
                                 </button>
                             </div>
                         );
@@ -1958,8 +2111,43 @@ function App() {
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
 
+    const handleSortBanners = async () => {
+        if (!currentUser || currentUser.role !== 'admin') return;
+
+        if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+            setIsReorderingBanners(true);
+            const _banners = [...bannerConfig];
+
+            // Adjust dragged array locally
+            const draggedItemContent = _banners.splice(dragItem.current, 1)[0];
+            _banners.splice(dragOverItem.current, 0, draggedItemContent);
+
+            const orderedPayload = _banners.map((b, index) => ({ id: b.id, orderIndex: index }));
+
+            setBannerConfig(_banners);
+
+            try {
+                await ApiService.reorderBanners(orderedPayload);
+            } catch (e) {
+                console.error("Falha ao salvar a reordenação.", e);
+            } finally {
+                setIsReorderingBanners(false);
+            }
+        }
+
+        // Reset refs
+        dragItem.current = null;
+        dragOverItem.current = null;
+    };
+
     // Estado de configuração de banners
     const [bannerConfig, setBannerConfig] = useState([]);
+
+    // Drag and Drop Banners refs
+    const dragItem = useRef();
+    const dragOverItem = useRef();
+    const [isReorderingBanners, setIsReorderingBanners] = useState(false);
+    const [isDraggingBanners, setIsDraggingBanners] = useState(false); // New state for global CSS
 
     // Carregar/recarregar config de banners ao montar e sempre que voltar para Home
     useEffect(() => {
@@ -2435,6 +2623,16 @@ function App() {
 
     return (
         <div className="flex h-screen overflow-hidden">
+            {/* Hack CSS Global Dinâmico para Cursor Grabbing - Exibido Apenas Durante o Arraste dos Banners */}
+            {isDraggingBanners && (
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    * {
+                        cursor: grabbing !important;
+                        user-select: none !important;
+                    }
+                `}} />
+            )}
             <Sidebar
                 darkMode={darkMode}
                 currentView={currentView}
@@ -2479,8 +2677,8 @@ function App() {
                                                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                                                 } shadow-sm`}
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                             </svg>
                                             <span className="hidden sm:inline">Início</span>
                                         </button>
@@ -2569,7 +2767,7 @@ function App() {
                                     }`}>
                                     {bannerConfig
                                         .filter(b => currentUser?.role === 'admin' || b.enabled)
-                                        .map(banner => {
+                                        .map((banner, index) => {
                                             const s = BANNER_STATIC[banner.key];
                                             if (!s) return null;
                                             const isAdmin = currentUser?.role === 'admin';
@@ -2579,7 +2777,7 @@ function App() {
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
-                                                }`;
+                                                } ${isAdmin ? 'cursor-pointer active:cursor-grabbing' : ''}`;
 
                                             const content = (
                                                 <>
@@ -2589,19 +2787,40 @@ function App() {
                                                             Inativo
                                                         </div>
                                                     )}
-                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden`}>
+                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden pointer-events-none`}>
                                                         {s.imageIcon ? (
-                                                            <img src={s.imageIcon} alt="" className="w-full h-full object-contain p-1.5" />
+                                                            <img src={s.imageIcon} alt="" className={s.imageClass || "w-full h-full object-contain p-1.5"} />
                                                         ) : (
                                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
                                                             </svg>
                                                         )}
                                                     </div>
-                                                    <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>{banner.label}</h3>
-                                                    <p className={`text-sm text-center leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                    <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
+                                                    <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                    {isAdmin && (
+                                                        <div className="absolute bottom-3 right-3 text-gray-400 opacity-0 group-hover:opacity-[0.8] transition-opacity cursor-grab active:cursor-grabbing pb-1 pr-1 pointer-events-none">
+                                                            <svg className="w-6 h-6 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+                                                        </div>
+                                                    )}
                                                 </>
                                             );
+
+                                            const dragProps = isAdmin ? {
+                                                draggable: true,
+                                                onDragStart: (e) => {
+                                                    dragItem.current = index;
+                                                    e.currentTarget.classList.add('opacity-50', 'scale-95');
+                                                    setIsDraggingBanners(true); // Ativa injeção CSS global
+                                                },
+                                                onDragEnter: (e) => { dragOverItem.current = index; },
+                                                onDragEnd: (e) => {
+                                                    e.currentTarget.classList.remove('opacity-50', 'scale-95');
+                                                    setIsDraggingBanners(false); // Desativa injeção CSS global
+                                                    handleSortBanners();
+                                                },
+                                                onDragOver: (e) => e.preventDefault()
+                                            } : {};
 
                                             if (s.isInternal) {
                                                 return (
@@ -2610,6 +2829,7 @@ function App() {
                                                         onClick={() => !isDisabledForUser && setCurrentView('search')}
                                                         disabled={isDisabledForUser}
                                                         className={cardClass}
+                                                        {...dragProps}
                                                     >
                                                         {content}
                                                     </button>
@@ -2623,6 +2843,7 @@ function App() {
                                                     rel="noopener noreferrer"
                                                     className={cardClass}
                                                     onClick={isDisabledForUser ? (e) => e.preventDefault() : undefined}
+                                                    {...dragProps}
                                                 >
                                                     {content}
                                                 </a>
@@ -3015,171 +3236,171 @@ function App() {
                             </div>
                         )}
 
-            {isLoading && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
-                        <div className="relative mb-4">
-                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
-                            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
-                        </div>
-                        <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
-                    </div>
-                </div>
-            )}
-
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div
-                        className="absolute inset-0 backdrop-blur-sm"
-                        onClick={closeModal}
-                    ></div>
-
-                    <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
-                            <h2 className="text-xl font-semibold flex items-center">
-                                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                Resultados da Consulta
-                            </h2>
-                            <div className="flex gap-3 items-center">
-                                <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
-                                    <div className="status-indicator status-active"></div>
-                                    {modalResults.length} resultados
-                                </span>
-                                <button
-                                    onClick={closeModal}
-                                    className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        {noResults ? (
-                            <div className="text-center py-16 animate-fadeInUp">
-                                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                </svg>
-                                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
-                                    Nenhum resultado encontrado
-                                </h3>
-                                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-                                    Tente ajustar o termo de pesquisa ou usar filtros diferentes.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="animate-fadeInUp">
-                                <div className="overflow-x-auto custom-scrollbar px-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                                    <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                                        <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
-                                            <tr>
-                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                    Código do Item
-                                                </th>
-                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                    Descrição do Serviço
-                                                </th>
-                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                    CNAE
-                                                </th>
-                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                    Descrição CNAE
-                                                </th>
-                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                    } border-b`}>
-                                                    Alíquota ISS
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
-                                            {modalResults.slice(0, 100).map((item, index) => (
-                                                <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
-                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-blue-300' : 'text-blue-600'
-                                                        } font-medium`}>
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
-                                                            }`}>
-                                                            {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
-                                                        </span>
-                                                    </td>
-                                                    <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                        } max-w-xs`}>
-                                                        <div className="line-clamp-3">
-                                                            {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-green-300' : 'text-green-600'
-                                                        } font-medium`}>
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
-                                                            }`}>
-                                                            {(() => {
-                                                                const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
-                                                                if (cnae.length >= 7) {
-                                                                    const paddedCnae = cnae.padStart(7, '0');
-                                                                    return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
-                                                                }
-                                                                return item["CNAE"];
-                                                            })()}
-                                                        </span>
-                                                    </td>
-                                                    <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                        } max-w-xs`}>
-                                                        <div className="line-clamp-3">
-                                                            {item["Descrição do CNAE"]}
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${darkMode ? 'text-yellow-300' : 'text-yellow-600'
-                                                        }`}>
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
-                                                            }`}>
-                                                            {item["Alíquota"]}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
-                                    } rounded-b-lg`}>
-                                    <div className="flex items-center justify-between">
-                                        <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'
-                                            }`}>
-                                            <span className="font-medium">
-                                                Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
-                                            </span>
-                                            {modalResults.length > 100 && (
-                                                <span className={`ml-2 text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    Primeiros 100 resultados
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'
-                                            }`}>
-                                            💡 Refine sua busca para resultados mais específicos
-                                        </div>
+                        {isLoading && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
+                                    <div className="relative mb-4">
+                                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
+                                        <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
                                     </div>
+                                    <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
+                                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
 
-            <footer className={`fixed bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
-                <p>© 2025 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
-            </footer>
-        </div>
-        </div >
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div
+                                    className="absolute inset-0 backdrop-blur-sm"
+                                    onClick={closeModal}
+                                ></div>
+
+                                <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                    <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
+                                        <h2 className="text-xl font-semibold flex items-center">
+                                            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            Resultados da Consulta
+                                        </h2>
+                                        <div className="flex gap-3 items-center">
+                                            <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                                                <div className="status-indicator status-active"></div>
+                                                {modalResults.length} resultados
+                                            </span>
+                                            <button
+                                                onClick={closeModal}
+                                                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
+                                            >
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {noResults ? (
+                                        <div className="text-center py-16 animate-fadeInUp">
+                                            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                                            </svg>
+                                            <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
+                                                Nenhum resultado encontrado
+                                            </h3>
+                                            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+                                                Tente ajustar o termo de pesquisa ou usar filtros diferentes.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="animate-fadeInUp">
+                                            <div className="overflow-x-auto custom-scrollbar px-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                                                <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                                    <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
+                                                        <tr>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Código do Item
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Descrição do Serviço
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                CNAE
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Descrição CNAE
+                                                            </th>
+                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                                } border-b`}>
+                                                                Alíquota ISS
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
+                                                        {modalResults.slice(0, 100).map((item, index) => (
+                                                            <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-blue-300' : 'text-blue-600'
+                                                                    } font-medium`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                                                                        }`}>
+                                                                        {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                                    } max-w-xs`}>
+                                                                    <div className="line-clamp-3">
+                                                                        {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-green-300' : 'text-green-600'
+                                                                    } font-medium`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
+                                                                        }`}>
+                                                                        {(() => {
+                                                                            const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
+                                                                            if (cnae.length >= 7) {
+                                                                                const paddedCnae = cnae.padStart(7, '0');
+                                                                                return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
+                                                                            }
+                                                                            return item["CNAE"];
+                                                                        })()}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                                    } max-w-xs`}>
+                                                                    <div className="line-clamp-3">
+                                                                        {item["Descrição do CNAE"]}
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${darkMode ? 'text-yellow-300' : 'text-yellow-600'
+                                                                    }`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
+                                                                        }`}>
+                                                                        {item["Alíquota"]}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
+                                                } rounded-b-lg`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'
+                                                        }`}>
+                                                        <span className="font-medium">
+                                                            Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                        {modalResults.length > 100 && (
+                                                            <span className={`ml-2 text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                Primeiros 100 resultados
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'
+                                                        }`}>
+                                                        💡 Refine sua busca para resultados mais específicos
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <footer className={`fixed bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
+                            <p>© 2025 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
+                        </footer>
+                    </div>
+                </div >
             </div >
         </div >
     );

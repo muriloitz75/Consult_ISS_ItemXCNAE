@@ -78,11 +78,18 @@ const connectDB = async () => {
             { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
             { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS' },
             { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
+            { id: 'banner-nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+            { id: 'banner-diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+            { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
+            { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+            { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
         ];
-        for (const b of defaultBanners) {
+        for (let i = 0; i < defaultBanners.length; i++) {
+            const b = defaultBanners[i];
+            // Utilizando UPSERT real do Postgres para inicializar as ordens na primeira carga
             await pool.query(
-                `INSERT INTO "BannerConfig" (id, key, label, enabled) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING`,
-                [b.id, b.key, b.label, true]
+                `INSERT INTO "BannerConfig" (id, key, label, enabled, "orderIndex") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO NOTHING`,
+                [b.id, b.key, b.label, true, i]
             );
         }
     } else {
@@ -152,6 +159,7 @@ const connectDB = async () => {
                 key TEXT UNIQUE NOT NULL,
                 label TEXT NOT NULL,
                 enabled INTEGER DEFAULT 1,
+                orderIndex INTEGER DEFAULT 0,
                 updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -164,11 +172,15 @@ const connectDB = async () => {
             { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
             { id: 'banner-nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
             { id: 'banner-diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+            { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
+            { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+            { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
         ];
-        for (const b of defaultBanners) {
+        for (let i = 0; i < defaultBanners.length; i++) {
+            const b = defaultBanners[i];
             await db.run(
-                `INSERT OR IGNORE INTO BannerConfig (id, key, label, enabled) VALUES ($1, $2, $3, $4)`,
-                [b.id, b.key, b.label, 1]
+                `INSERT OR IGNORE INTO BannerConfig (id, key, label, enabled, orderIndex) VALUES ($1, $2, $3, $4, $5)`,
+                [b.id, b.key, b.label, 1, i]
             );
         }
     }
@@ -545,7 +557,7 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
 // Listar banners com status (sem auth - frontend usa para todos)
 app.get('/api/banners', async (req, res) => {
     try {
-        const banners = await db.query('SELECT id, key, label, enabled FROM "BannerConfig" ORDER BY id');
+        const banners = await db.query('SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
         // Normalizar enabled para boolean
         const normalized = banners.map(b => ({
             ...b,
@@ -555,6 +567,37 @@ app.get('/api/banners', async (req, res) => {
     } catch (error) {
         console.error('Erro ao listar banners:', error);
         res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// ================= ROTA DE REORDENAÇÃO MÚLTIPLA =================
+app.put('/api/admin/banners/reorder', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { orderedBanners } = req.body; // Expects: [{ id: '123', orderIndex: 0 }, { id: '456', orderIndex: 1 }]
+
+        if (!Array.isArray(orderedBanners)) {
+            return res.status(400).json({ error: 'Payload inválido. Esperado um array de banners.' });
+        }
+
+        // We update one by one as a simplified approach for SQLite and Postgres compatibility
+        for (const item of orderedBanners) {
+            if (item.id !== undefined && item.orderIndex !== undefined) {
+                await db.run(
+                    'UPDATE "BannerConfig" SET "orderIndex" = $1, "updatedAt" = $2 WHERE id = $3',
+                    [item.orderIndex, new Date().toISOString(), item.id]
+                );
+            }
+        }
+
+        await db.run(
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            [uuidv4(), req.user.id, 'admin_reorder_banners', JSON.stringify({ count: orderedBanners.length })]
+        );
+
+        res.json({ message: 'Banners reordenados com sucesso.', success: true });
+    } catch (error) {
+        console.error('Erro ao reordenar banners:', error);
+        res.status(500).json({ error: 'Erro interno no servidor ao tentar reordenar' });
     }
 });
 
