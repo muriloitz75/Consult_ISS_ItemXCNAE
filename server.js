@@ -68,9 +68,17 @@ const connectDB = async () => {
                 key TEXT UNIQUE NOT NULL,
                 label TEXT NOT NULL,
                 enabled BOOLEAN DEFAULT true,
+                "orderIndex" INTEGER DEFAULT 0,
                 updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        // Migration para bancos já existentes
+        try {
+            await pool.query(`ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0;`);
+        } catch (e) {
+            console.log("Migration orderIndex info:", e.message);
+        }
 
         // Seed dos banners padrão (PostgreSQL)
         const defaultBanners = [
@@ -163,6 +171,12 @@ const connectDB = async () => {
                 updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        try {
+            await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
+        } catch (e) {
+            // Se já existir a coluna (ou dependendo da versão SQLite), pode dar erro ignorável na migração
+        }
 
         // Seed dos banners padrão (SQLite)
         const defaultBanners = [
