@@ -233,6 +233,21 @@ class ApiService {
         });
     }
 
+    // --- Métodos de Banners ---
+    static async getBanners() {
+        // Chama sem auth para funcionar tanto pra admin quanto pra usuário
+        const response = await fetch(`${API_BASE_URL}/banners`);
+        if (!response.ok) throw new Error('Erro ao carregar banners');
+        return response.json();
+    }
+
+    static async toggleBanner(id, enabled) {
+        return this.request(`/admin/banners/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ enabled })
+        });
+    }
+
     static getCurrentUser() {
         try {
             return JSON.parse(localStorage.getItem('currentUser'));
@@ -1541,6 +1556,16 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
                 </svg>
             ),
             view: 'admin-users'
+        },
+        {
+            id: 'admin-banners',
+            label: 'Banners',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+            ),
+            view: 'admin-banners'
         }
     ];
 
@@ -1560,17 +1585,17 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
             <div className={`p-4 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
                 <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
-                        ${darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-blue-500 to-purple-600'} 
-                        text-white font-bold text-xl shadow-lg`}>
-                        C
+                        ${darkMode ? 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white shadow-md'} 
+                        overflow-hidden p-1.5 border ${darkMode ? 'border-blue-500' : 'border-gray-100'}`}>
+                        <img src="image/ecossistema-digital.png" alt="DIAAF Logo" className="w-full h-full object-contain" />
                     </div>
                     {isExpanded && (
                         <div className="overflow-hidden animate-fadeInLeft">
-                            <h1 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                Consulta ISS
+                            <h1 className={`font-bold text-lg leading-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Ecossistema DIAAF
                             </h1>
-                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Sistema Fiscal
+                            <p className={`text-[10px] uppercase tracking-tighter font-semibold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                Auditoria e Assuntos Fiscais
                             </p>
                         </div>
                     )}
@@ -1684,6 +1709,218 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
     );
 }
 
+// ==================== PAINEL DE CONTROLE DE BANNERS ====================
+// Config estática dos banners (UI, cores, links)
+const BANNER_STATIC = {
+    'iss-cnae': {
+        label: 'Consulta ISS / CNAE',
+        description: 'Pesquise alíquotas e códigos de serviço rapidamente',
+        icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+        light: 'from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400',
+        dark: 'from-blue-900/50 to-purple-900/50 border-blue-500/30 hover:border-blue-500',
+        iconLight: 'bg-white text-blue-600 shadow-md',
+        iconDark: 'bg-blue-500/20 text-blue-400',
+        hoverBg: { light: 'bg-blue-600', dark: 'bg-white' },
+        isInternal: true
+    },
+    'pareceres': {
+        label: 'Gerador de Pareceres',
+        description: 'Gere pareceres fiscais automaticamente',
+        icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        href: 'https://script.google.com/macros/s/AKfycbzL4QGjBggc_7QeV-RPrE25n6bYDkgUOQ36v1dmjyMJN_34YgYYsTuyg-SVe3tBA903Lg/exec',
+        light: 'from-emerald-50 to-teal-50 border-emerald-200 hover:border-emerald-400',
+        dark: 'from-emerald-900/50 to-teal-900/50 border-emerald-500/30 hover:border-emerald-500',
+        iconLight: 'bg-white text-emerald-600 shadow-md',
+        iconDark: 'bg-emerald-500/20 text-emerald-400',
+        hoverBg: { light: 'bg-emerald-600', dark: 'bg-white' }
+    },
+    'incidencia': {
+        label: 'Incidência do ISS',
+        description: 'LC 116/2003 – Art. 3º',
+        icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+        href: 'https://script.google.com/macros/s/AKfycbwFWD5zweoKS-WccLZJkH4KCVQSKcLR-guuITNhmOYg/dev',
+        light: 'from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400',
+        dark: 'from-orange-900/50 to-amber-900/50 border-orange-500/30 hover:border-orange-500',
+        iconLight: 'bg-white text-orange-600 shadow-md',
+        iconDark: 'bg-orange-500/20 text-orange-400',
+        hoverBg: { light: 'bg-orange-600', dark: 'bg-white' }
+    },
+    'processos': {
+        label: 'Análise de Processos',
+        description: 'Visualize e analise processos fiscais',
+        icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        href: 'https://reportterra-diaaf.up.railway.app/login',
+        light: 'from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-400',
+        dark: 'from-violet-900/50 to-indigo-900/50 border-violet-500/30 hover:border-violet-500',
+        iconLight: 'bg-white text-violet-600 shadow-md',
+        iconDark: 'bg-violet-500/20 text-violet-400',
+        hoverBg: { light: 'bg-violet-600', dark: 'bg-white' }
+    },
+    'nfse-nacional': {
+        label: 'NFS-e Nacional',
+        description: 'Emissor Nacional de Nota Fiscal de Serviço',
+        icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 12-11.622 0-1.042-.133-2.052-.382-3.016z',
+        href: 'https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/acesso-aos-sistemas',
+        light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400',
+        dark: 'from-cyan-900/50 to-sky-900/50 border-cyan-500/30 hover:border-cyan-500',
+        iconLight: 'bg-white text-cyan-600 shadow-md',
+        iconDark: 'bg-cyan-500/20 text-cyan-400',
+        hoverBg: { light: 'bg-cyan-600', dark: 'bg-white' }
+    },
+    'diario-oficial': {
+        label: 'Diário Oficial',
+        description: 'Publicações do Diário Oficial de Imperatriz',
+        imageIcon: 'image/brasao.png',
+        href: 'https://diariooficial.imperatriz.ma.gov.br/publicacoes',
+        light: 'from-slate-50 to-gray-50 border-slate-200 hover:border-slate-400',
+        dark: 'from-slate-900/50 to-gray-900/50 border-slate-500/30 hover:border-slate-500',
+        iconLight: 'bg-white text-slate-600 shadow-md',
+        iconDark: 'bg-slate-500/20 text-slate-400',
+        hoverBg: { light: 'bg-slate-600', dark: 'bg-white' }
+    }
+};
+
+function AdminBannersPanel({ darkMode }) {
+    const [banners, setBanners] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [savingId, setSavingId] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        loadBanners();
+    }, []);
+
+    const loadBanners = async () => {
+        setLoading(true);
+        try {
+            const data = await ApiService.getBanners();
+            setBanners(data);
+        } catch (e) {
+            setToast({ type: 'error', msg: 'Erro ao carregar banners.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggle = async (banner) => {
+        setSavingId(banner.id);
+        const newEnabled = !banner.enabled;
+        try {
+            await ApiService.toggleBanner(banner.id, newEnabled);
+            setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: newEnabled } : b));
+            setToast({ type: 'success', msg: `Banner "${banner.label}" ${newEnabled ? 'ativado' : 'desativado'} com sucesso.` });
+        } catch (e) {
+            setToast({ type: 'error', msg: 'Erro ao atualizar banner.' });
+        } finally {
+            setSavingId(null);
+            setTimeout(() => setToast(null), 3000);
+        }
+    };
+
+    const colorMap = {
+        'iss-cnae': { card: darkMode ? 'from-blue-900/30 to-purple-900/30 border-blue-700' : 'from-blue-50 to-purple-50 border-blue-200', dot: 'bg-blue-500' },
+        'pareceres': { card: darkMode ? 'from-emerald-900/30 to-teal-900/30 border-emerald-700' : 'from-emerald-50 to-teal-50 border-emerald-200', dot: 'bg-emerald-500' },
+        'incidencia': { card: darkMode ? 'from-orange-900/30 to-amber-900/30 border-orange-700' : 'from-orange-50 to-amber-50 border-orange-200', dot: 'bg-orange-500' },
+        'processos': { card: darkMode ? 'from-violet-900/30 to-indigo-900/30 border-violet-700' : 'from-violet-50 to-indigo-50 border-violet-200', dot: 'bg-violet-500' },
+    };
+
+    return (
+        <div className="animate-fadeInUp">
+            {/* Header */}
+            <div className={`mb-6 p-6 rounded-xl border-2 ${darkMode ? 'border-red-700 bg-gray-800/60' : 'border-red-200 bg-red-50'}`}>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Controle de Banners</h2>
+                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Ative ou desative os banners visíveis na tela inicial dos usuários.</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Toast */}
+            {toast && (
+                <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 animate-fadeInDown ${toast.type === 'success'
+                    ? (darkMode ? 'bg-green-900/40 text-green-300 border border-green-700' : 'bg-green-50 text-green-800 border border-green-200')
+                    : (darkMode ? 'bg-red-900/40 text-red-300 border border-red-700' : 'bg-red-50 text-red-800 border border-red-200')
+                    }`}>
+                    {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+                </div>
+            )}
+
+            {loading ? (
+                <div className="flex justify-center items-center py-16">
+                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {banners.map(banner => {
+                        const colors = colorMap[banner.key] || { card: darkMode ? 'from-gray-800 to-gray-700 border-gray-600' : 'from-gray-50 to-gray-100 border-gray-200', dot: 'bg-gray-400' };
+                        const isSaving = savingId === banner.id;
+                        return (
+                            <div
+                                key={banner.id}
+                                className={`relative p-5 rounded-2xl border-2 bg-gradient-to-br transition-all duration-300 ${banner.enabled ? colors.card : (darkMode ? 'from-gray-800 to-gray-800 border-gray-700 opacity-60' : 'from-gray-100 to-gray-100 border-gray-300 opacity-70')
+                                    }`}
+                            >
+                                {/* Badge de status */}
+                                <div className="absolute top-3 right-3">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${banner.enabled
+                                        ? (darkMode ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-green-100 text-green-700 border border-green-200')
+                                        : (darkMode ? 'bg-gray-700 text-gray-400 border border-gray-600' : 'bg-gray-200 text-gray-500 border border-gray-300')
+                                        }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${banner.enabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                        {banner.enabled ? 'Ativo' : 'Inativo'}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-start gap-4 mb-4 pr-16">
+                                    <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${colors.dot} text-white overflow-hidden`}>
+                                        {BANNER_STATIC[banner.key]?.imageIcon ? (
+                                            <img src={BANNER_STATIC[banner.key].imageIcon} alt="" className="w-full h-full object-contain p-1" />
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={BANNER_STATIC[banner.key]?.icon || 'M4 5h16'} />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className={`font-bold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>{banner.label}</h3>
+                                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{BANNER_STATIC[banner.key]?.description || ''}</p>
+                                    </div>
+                                </div>
+
+                                {/* Toggle */}
+                                <button
+                                    onClick={() => handleToggle(banner)}
+                                    disabled={isSaving}
+                                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${isSaving ? 'opacity-60 cursor-not-allowed ' : ''
+                                        }${banner.enabled
+                                            ? (darkMode ? 'bg-red-800/50 hover:bg-red-700/60 text-red-300 border border-red-700' : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200')
+                                            : (darkMode ? 'bg-green-900/40 hover:bg-green-800/60 text-green-300 border border-green-700' : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200')
+                                        }`}
+                                >
+                                    {isSaving ? (
+                                        <><div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div> Salvando...</>
+                                    ) : banner.enabled ? (
+                                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> Desativar Banner</>
+                                    ) : (
+                                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> Ativar Banner</>
+                                    )}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+// ========================================================================
+
 function App() {
     // Estados de autenticação
     const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -1721,7 +1958,26 @@ function App() {
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
 
-    // Carregar usuários pendentes quando for admin
+    // Estado de configuração de banners
+    const [bannerConfig, setBannerConfig] = useState([]);
+
+    // Carregar/recarregar config de banners ao montar e sempre que voltar para Home
+    useEffect(() => {
+        const loadBanners = () => {
+            ApiService.getBanners()
+                .then(data => setBannerConfig(data))
+                .catch(() => {
+                    setBannerConfig([
+                        { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE', enabled: true },
+                        { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres', enabled: true },
+                        { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS', enabled: true },
+                        { id: 'banner-processos', key: 'processos', label: 'Análise de Processos', enabled: true },
+                    ]);
+                });
+        };
+        loadBanners();
+    }, [currentView]);
+
     useEffect(() => {
         if (currentUser?.role === 'admin') {
             loadPendingUsers();
@@ -2306,80 +2562,73 @@ function App() {
 
                         {currentView === 'home' && (
                             <div className="animate-fadeInUp space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-2">
-                                    {/* Banner Principal - Consulta ISS */}
-                                    <button
-                                        onClick={() => setCurrentView('search')}
-                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-blue-900/50 to-purple-900/50 border-blue-500/30 hover:border-blue-500' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400'} group relative overflow-hidden`}
-                                    >
-                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-blue-600'}`}></div>
-                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white text-blue-600 shadow-md'}`}>
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consulta ISS / CNAE</h3>
-                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            Pesquise alíquotas e códigos de serviço rapidamente
-                                        </p>
-                                    </button>
+                                <div className={`grid gap-6 mt-2 ${bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
+                                    bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                                        bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 3 ? 'grid-cols-1 md:grid-cols-3' :
+                                            'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                                    }`}>
+                                    {bannerConfig
+                                        .filter(b => currentUser?.role === 'admin' || b.enabled)
+                                        .map(banner => {
+                                            const s = BANNER_STATIC[banner.key];
+                                            if (!s) return null;
+                                            const isAdmin = currentUser?.role === 'admin';
+                                            const isDisabledForUser = !banner.enabled && !isAdmin;
 
-                                    {/* Banner - Gerador de Pareceres */}
-                                    <a
-                                        href="https://script.google.com/macros/s/AKfycbzL4QGjBggc_7QeV-RPrE25n6bYDkgUOQ36v1dmjyMJN_34YgYYsTuyg-SVe3tBA903Lg/exec"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-emerald-900/50 to-teal-900/50 border-emerald-500/30 hover:border-emerald-500' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:border-emerald-400'} group relative overflow-hidden`}
-                                    >
-                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-emerald-600'}`}></div>
-                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white text-emerald-600 shadow-md'}`}>
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerador de Pareceres</h3>
-                                        <p className={`text-sm text-center leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            Gere pareceres fiscais automaticamente
-                                        </p>
-                                    </a>
+                                            const cardClass = `flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
+                                                ? `bg-gradient-to-br ${s.dark}`
+                                                : `bg-gradient-to-br ${s.light}`
+                                                } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
+                                                }`;
 
-                                    {/* Banner - Incidência do ISS */}
-                                    <a
-                                        href="https://script.google.com/macros/s/AKfycbwFWD5zweoKS-WccLZJkH4KCVQSKcLR-guuITNhmOYg/dev"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-orange-900/50 to-amber-900/50 border-orange-500/30 hover:border-orange-500' : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400'} group relative overflow-hidden`}
-                                    >
-                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-orange-600'}`}></div>
-                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-white text-orange-600 shadow-md'}`}>
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>Incidência do ISS</h3>
-                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            LC 116/2003 – Art. 3º
-                                        </p>
-                                    </a>
+                                            const content = (
+                                                <>
+                                                    <div className={`absolute inset-0 opacity-0 ${'group-hover:opacity-10'} transition-opacity duration-300 ${darkMode ? s.hoverBg?.dark || 'bg-white' : s.hoverBg?.light || 'bg-blue-600'}`}></div>
+                                                    {!banner.enabled && isAdmin && (
+                                                        <div className="absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-500/80 text-white">
+                                                            Inativo
+                                                        </div>
+                                                    )}
+                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden`}>
+                                                        {s.imageIcon ? (
+                                                            <img src={s.imageIcon} alt="" className="w-full h-full object-contain p-1.5" />
+                                                        ) : (
+                                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>{banner.label}</h3>
+                                                    <p className={`text-sm text-center leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                </>
+                                            );
 
-                                    {/* Banner - Análise de Processos */}
-                                    <a
-                                        href="https://reportterra-diaaf.up.railway.app/login"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode ? 'bg-gradient-to-br from-violet-900/50 to-indigo-900/50 border-violet-500/30 hover:border-violet-500' : 'bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-400'} group relative overflow-hidden`}
-                                    >
-                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? 'bg-white' : 'bg-violet-600'}`}></div>
-                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-violet-500/20 text-violet-400' : 'bg-white text-violet-600 shadow-md'}`}>
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-900'}`}>Análise de Processos</h3>
-                                        <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            Visualize e analise processos fiscais
-                                        </p>
-                                    </a>
+                                            if (s.isInternal) {
+                                                return (
+                                                    <button
+                                                        key={banner.id}
+                                                        onClick={() => !isDisabledForUser && setCurrentView('search')}
+                                                        disabled={isDisabledForUser}
+                                                        className={cardClass}
+                                                    >
+                                                        {content}
+                                                    </button>
+                                                );
+                                            }
+                                            return (
+                                                <a
+                                                    key={banner.id}
+                                                    href={isDisabledForUser ? undefined : s.href}
+                                                    target={isDisabledForUser ? undefined : '_blank'}
+                                                    rel="noopener noreferrer"
+                                                    className={cardClass}
+                                                    onClick={isDisabledForUser ? (e) => e.preventDefault() : undefined}
+                                                >
+                                                    {content}
+                                                </a>
+                                            );
+                                        })
+                                    }
                                 </div>
                             </div>
                         )}
@@ -2615,431 +2864,324 @@ function App() {
                             </div>
                         )}
 
-                        {/* Painel Informativo para Usuários Regulares - apenas em Início ou Consulta */}
-                        {(currentView === 'home' || currentView === 'search') && currentUser?.role === 'user' && (
-                            <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-blue-600 bg-blue-900/20' : 'border-blue-300 bg-blue-50'} animate-fadeInUp`}>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className={`text-lg font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
-                                        Acesso de Usuário
-                                    </h3>
-                                </div>
-                                <div className={`text-sm ${darkMode ? 'text-blue-200' : 'text-blue-700'} space-y-2`}>
-                                    <p>• Você pode realizar consultas na base de dados</p>
-                                    <p>• Acesso completo aos modos de pesquisa Universal e Especial</p>
-                                </div>
-                            </div>
+                        {/* View Admin: Controle de Banners */}
+                        {currentUser?.role === 'admin' && currentView === 'admin-banners' && (
+                            <AdminBannersPanel darkMode={darkMode} />
                         )}
+
 
                         {/* Painel Administrativo - Apenas para Admins - Visível apenas na view admin-dashboard */}
                         {currentUser?.role === 'admin' && currentView === 'admin-dashboard' && (
-                            <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${darkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'} animate-fadeInUp`}>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
-                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                            </svg>
+                            <div className="animate-fadeInUp space-y-6">
+                                {/* Cabeçalho Premium */}
+                                <div className={`p-6 rounded-2xl ${darkMode ? 'bg-gradient-to-r from-blue-900/40 via-purple-900/30 to-indigo-900/40 border border-blue-800/40' : 'bg-gradient-to-r from-blue-50 via-purple-50 to-indigo-50 border border-blue-100'} backdrop-blur-sm`}>
+                                    <div className="flex items-center justify-between flex-wrap gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${darkMode ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-blue-600 to-purple-700'}`}>
+                                                <svg className="w-7 h-7 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h2 className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Dashboard</h2>
+                                                <p className={`text-sm font-medium ${darkMode ? 'text-blue-300/80' : 'text-blue-600/80'}`}>Painel Administrativo • {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                            </div>
                                         </div>
-                                        <h3 className={`text-lg font-bold ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
-                                            Dashboard Administrativo
-                                        </h3>
+                                        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${darkMode ? 'bg-green-900/40 text-green-400 border border-green-700/50' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                            Sistema Online
+                                        </div>
                                     </div>
                                 </div>
-                                {/* Estatísticas Principais */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                    {/* Card de Solicitações Pendentes (Novo) */}
-                                    {pendingUsers.length > 0 && (
-                                        <div className={`p-4 rounded-lg md:col-span-4 border-2 border-yellow-400 ${darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'} shadow-sm animate-pulse-custom`}>
-                                            <div className="flex justify-between items-center mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                    </svg>
-                                                    <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
-                                                </div>
+                                {/* Solicitações Pendentes */}
+                                {pendingUsers.length > 0 && (
+                                    <div className={`p-5 rounded-2xl border-2 ${darkMode ? 'border-yellow-500/40 bg-yellow-900/10 backdrop-blur-sm' : 'border-yellow-300 bg-yellow-50'}`}>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 rounded-xl bg-yellow-500 flex items-center justify-center shadow-lg">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
                                             </div>
-                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                                {pendingUsers.map(user => (
-                                                    <div key={user.id} className={`p-3 rounded-lg flex flex-col justify-between ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-                                                        <div className="mb-2">
-                                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
-                                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
-                                                            <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Usuário: {user.username}</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleAuthorizeUser(user.id)}
-                                                            className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-bold uppercase tracking-wider transition-colors"
-                                                        >
-                                                            Autorizar
-                                                        </button>
+                                            <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
+                                        </div>
+                                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                            {pendingUsers.map(user => (
+                                                <div key={user.id} className={`p-3 rounded-xl flex flex-col justify-between ${darkMode ? 'bg-gray-800/80 border border-gray-700' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                                    <div className="mb-2">
+                                                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
+                                                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Card de Acessos Totais */}
-                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                            </svg>
-                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos Totais</span>
-                                        </div>
-                                        <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{statistics.totalAccesses}</p>
-                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Desde o início</p>
-                                    </div>
-
-                                    {/* Card de Consultas Realizadas */}
-                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                            </svg>
-                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas</span>
-                                        </div>
-                                        <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{statistics.totalSearches}</p>
-                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total realizadas</p>
-                                    </div>
-
-                                    {/* Card de Usuários Ativos Detalhado */}
-                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm row-span-2`}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                            </svg>
-                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Usuários Únicos</span>
-                                        </div>
-                                        <p className={`text-4xl font-bold mb-4 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{statistics.userSessions ? Object.keys(statistics.userSessions).length : 0}</p>
-
-                                        <div className={`mt-2 border-t pt-2 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                                            <p className={`text-xs font-semibold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>LISTA DE USUÁRIOS</p>
-                                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                                                {Object.keys(statistics.userSessions || {}).map((username, idx) => {
-                                                    // Tentar encontrar o role do usuário (simulação baseada em convenção ou dados salvos)
-                                                    // Como não temos acesso fácil ao array 'users' aqui sem prop drilling, vamos inferir ou usar padrão
-                                                    let role = 'user';
-                                                    let roleLabel = 'Usuário';
-                                                    if (username === 'admin') { role = 'admin'; roleLabel = 'Administrador'; }
-                                                    else if (username === 'consultor') { role = 'consultor'; roleLabel = 'Consultor'; }
-
-                                                    // Como não temos acesso fácil ao array de users listados e iteramos por `statistics.userSessions`, 
-                                                    // simplificou-se a UI removendo os actions de adm localizados aqui e deixando-os na aba
-                                                    // Gestão de Usuários (AdminUsersTable) que agora faz as chamadas pro BD.
-
-                                                    return (
-                                                        <div key={idx} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-gray-100 dark:border-gray-700">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-2 h-2 rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'consultor' ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-                                                                <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{username}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-xs px-2 py-0.5 rounded ${role === 'admin' ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') :
-                                                                    role === 'consultor' ? (darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                                                                        (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600')
-                                                                    }`}>{roleLabel}</span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Card de Acessos Hoje */}
-                                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Hoje</span>
-                                        </div>
-                                        <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{statistics.dailyAccesses[new Date().toDateString()] || 0}</p>
-                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Acessos hoje</p>
-                                    </div>
-                                </div>
-
-                                {/* Visualização Avançada: Gráficos e Histórico */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    {/* Gráfico 1: Acessos por Usuário */}
-                                    <VerticalBarChart
-                                        title="Acessos por Usuário"
-                                        darkMode={darkMode}
-                                        color="purple"
-                                        data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({
-                                            label: user,
-                                            value: count
-                                        }))}
-                                    />
-
-                                    {/* Gráfico 2: Consultas por Usuário */}
-                                    <PieChart
-                                        title="Consultas por Usuário"
-                                        darkMode={darkMode}
-                                        data={(() => {
-                                            const counts = {};
-                                            statistics.searchHistory.forEach(s => {
-                                                counts[s.user] = (counts[s.user] || 0) + 1;
-                                            });
-                                            return Object.entries(counts).map(([user, count]) => ({
-                                                label: user,
-                                                value: count
-                                            })).sort((a, b) => b.value - a.value);
-                                        })()}
-                                    />
-
-                                    {/* Histórico Recente - Largura Total */}
-                                    <div className={`p-4 rounded-lg md:col-span-2 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
-                                        <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
-                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                            {statistics.searchHistory.slice(-5).reverse().map((search, index) => (
-                                                <div key={index} className={`text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} flex justify-between items-center`}>
-                                                    <div>
-                                                        <span className={`font-bold mr-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</span>
-                                                        <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{search.query}</span>
-                                                    </div>
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>{search.results} res.</span>
+                                                    <button onClick={() => handleAuthorizeUser(user.id)} className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">Autorizar</button>
                                                 </div>
                                             ))}
-                                            {statistics.searchHistory.length === 0 && (
-                                                <p className={`text-sm text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
-                                            )}
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Informações do Sistema */}
-                                <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm mb-4`}>
-                                    <h4 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Informações do Sistema</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total de Itens na Base:</span>
-                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
-                                        </div>
-                                        <div>
-                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Último Acesso:</span>
-                                            <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status do Sistema:</span>
-                                            <p className={`font-semibold text-green-500`}>Online</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Botões de Ação */}
-                                <div className="flex flex-wrap gap-3">
-                                    <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} flex items-center gap-2`}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Exportar Estatísticas
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
-                                                localStorage.removeItem('appStatistics');
-                                                setStatistics({
-                                                    totalAccesses: 0,
-                                                    totalSearches: 0,
-                                                    universalSearches: 0,
-                                                    advancedSearches: 0,
-                                                    lastAccess: null,
-                                                    dailyAccesses: [],
-                                                    searchHistory: [],
-                                                    userSessions: {}
-                                                });
-                                            }
-                                        }}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'} flex items-center gap-2`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                        Limpar Estatísticas
-                                    </button>
-                                    <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'} flex items-center gap-2`}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        Backup Sistema
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {isLoading && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                                <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
-                                    <div className="relative mb-4">
-                                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
-                                        <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
-                                    </div>
-                                    <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
-                                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {isModalOpen && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                                <div
-                                    className="absolute inset-0 backdrop-blur-sm"
-                                    onClick={closeModal}
-                                ></div>
-
-                                <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                                    <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
-                                        <h2 className="text-xl font-semibold flex items-center">
-                                            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                            </svg>
-                                            Resultados da Consulta
-                                        </h2>
-                                        <div className="flex gap-3 items-center">
-                                            <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
-                                                <div className="status-indicator status-active"></div>
-                                                {modalResults.length} resultados
-                                            </span>
-                                            <button
-                                                onClick={closeModal}
-                                                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
-                                            >
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {noResults ? (
-                                        <div className="text-center py-16 animate-fadeInUp">
-                                            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                            </svg>
-                                            <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
-                                                Nenhum resultado encontrado
-                                            </h3>
-                                            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-                                                Tente ajustar o termo de pesquisa ou usar filtros diferentes.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="animate-fadeInUp">
-                                            <div className="overflow-x-auto custom-scrollbar px-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                                                <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                                                    <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
-                                                        <tr>
-                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                                } border-b`}>
-                                                                Código do Item
-                                                            </th>
-                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                                } border-b`}>
-                                                                Descrição do Serviço
-                                                            </th>
-                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                                } border-b`}>
-                                                                CNAE
-                                                            </th>
-                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                                } border-b`}>
-                                                                Descrição CNAE
-                                                            </th>
-                                                            <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
-                                                                } border-b`}>
-                                                                Alíquota ISS
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
-                                                        {modalResults.slice(0, 100).map((item, index) => (
-                                                            <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
-                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-blue-300' : 'text-blue-600'
-                                                                    } font-medium`}>
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
-                                                                        }`}>
-                                                                        {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                                    } max-w-xs`}>
-                                                                    <div className="line-clamp-3">
-                                                                        {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
-                                                                    </div>
-                                                                </td>
-                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-green-300' : 'text-green-600'
-                                                                    } font-medium`}>
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
-                                                                        }`}>
-                                                                        {(() => {
-                                                                            const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
-                                                                            if (cnae.length >= 7) {
-                                                                                const paddedCnae = cnae.padStart(7, '0');
-                                                                                return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
-                                                                            }
-                                                                            return item["CNAE"];
-                                                                        })()}
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
-                                                                    } max-w-xs`}>
-                                                                    <div className="line-clamp-3">
-                                                                        {item["Descrição do CNAE"]}
-                                                                    </div>
-                                                                </td>
-                                                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${darkMode ? 'text-yellow-300' : 'text-yellow-600'
-                                                                    }`}>
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
-                                                                        }`}>
-                                                                        {item["Alíquota"]}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
-                                                } rounded-b-lg`}>
-                                                <div className="flex items-center justify-between">
-                                                    <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'
-                                                        }`}>
-                                                        <span className="font-medium">
-                                                            Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
-                                                        </span>
-                                                        {modalResults.length > 100 && (
-                                                            <span className={`ml-2 text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
-                                                                }`}>
-                                                                Primeiros 100 resultados
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'
-                                                        }`}>
-                                                        💡 Refine sua busca para resultados mais específicos
-                                                    </div>
+                                {/* KPI Cards Premium */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[
+                                        { label: 'Acessos Totais', value: statistics.totalAccesses, sub: 'Desde o início', grad: darkMode ? 'from-blue-900/60 to-blue-800/40' : 'from-blue-500 to-blue-600', iBg: darkMode ? 'bg-blue-500/20' : 'bg-white/20', d: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+                                        { label: 'Consultas', value: statistics.totalSearches, sub: 'Total realizadas', grad: darkMode ? 'from-emerald-900/60 to-emerald-800/40' : 'from-emerald-500 to-emerald-600', iBg: darkMode ? 'bg-emerald-500/20' : 'bg-white/20', d: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
+                                        { label: 'Hoje', value: statistics.dailyAccesses[new Date().toDateString()] || 0, sub: 'Acessos hoje', grad: darkMode ? 'from-orange-900/60 to-orange-800/40' : 'from-orange-500 to-orange-600', iBg: darkMode ? 'bg-orange-500/20' : 'bg-white/20', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+                                        { label: 'Usuários', value: statistics.userSessions ? Object.keys(statistics.userSessions).length : 0, sub: 'Únicos registrados', grad: darkMode ? 'from-purple-900/60 to-purple-800/40' : 'from-purple-500 to-purple-600', iBg: darkMode ? 'bg-purple-500/20' : 'bg-white/20', d: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' }
+                                    ].map((k, i) => (
+                                        <div key={i} className={`p-5 rounded-2xl bg-gradient-to-br ${k.grad} ${darkMode ? 'border border-white/5' : 'text-white'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`} style={{ animationDelay: `${i * 0.1}s` }}>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-white/90'}`}>{k.label}</span>
+                                                <div className={`w-10 h-10 rounded-xl ${k.iBg} flex items-center justify-center`}>
+                                                    <svg className={`w-5 h-5 ${darkMode ? 'text-white/80' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={k.d} />
+                                                    </svg>
                                                 </div>
                                             </div>
+                                            <p className="text-3xl font-black mb-1 text-white">{k.value}</p>
+                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-white/70'}`}>{k.sub}</p>
                                         </div>
-                                    )}
+                                    ))}
+                                </div>
+
+                                {/* Gráficos */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className={`rounded-2xl overflow-hidden ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                        <VerticalBarChart title="Acessos por Usuário" darkMode={darkMode} color="purple" data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({ label: user, value: count }))} />
+                                    </div>
+                                    <div className={`rounded-2xl overflow-hidden ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                        <PieChart title="Consultas por Usuário" darkMode={darkMode} data={(() => { const c = {}; statistics.searchHistory.forEach(s => { c[s.user] = (c[s.user] || 0) + 1; }); return Object.entries(c).map(([u, v]) => ({ label: u, value: v })).sort((a, b) => b.value - a.value); })()} />
+                                    </div>
+                                </div>
+
+                                {/* Timeline de Consultas */}
+                                <div className={`p-5 rounded-2xl ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <h4 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
+                                    </div>
+                                    <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
+                                        {statistics.searchHistory.slice(-6).reverse().map((search, index) => (
+                                            <div key={index} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white' : 'bg-gradient-to-br from-blue-500 to-purple-600 text-white'}`}>
+                                                    {search.user?.substring(0, 2).toUpperCase() || '??'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</p>
+                                                    <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{search.query}</p>
+                                                </div>
+                                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>{search.results} res.</span>
+                                            </div>
+                                        ))}
+                                        {statistics.searchHistory.length === 0 && (
+                                            <p className={`text-sm text-center py-6 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Info do Sistema + Ações */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className={`p-4 rounded-2xl flex items-center gap-3 ${darkMode ? 'bg-gray-800/60 border border-gray-700/50' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-sky-500/20 text-sky-400' : 'bg-sky-100 text-sky-600'}`}>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Itens na Base</p>
+                                            <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl flex items-center gap-3 ${darkMode ? 'bg-gray-800/60 border border-gray-700/50' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Último Acesso</p>
+                                            <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/30' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200'}`}>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            Exportar
+                                        </button>
+                                        <button
+                                            onClick={() => { if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) { localStorage.removeItem('appStatistics'); setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {} }); } }}
+                                            className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${darkMode ? 'bg-red-600/80 hover:bg-red-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            Limpar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        <footer className={`fixed bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
-                            <p>© 2025 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
-                        </footer>
+            {isLoading && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-2xl shadow-2xl flex flex-col items-center`}>
+                        <div className="relative mb-4">
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
+                            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-400"></div>
+                        </div>
+                        <p className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Processando consulta...</p>
+                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Aguarde um momento</p>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div
+                        className="absolute inset-0 backdrop-blur-sm"
+                        onClick={closeModal}
+                    ></div>
+
+                    <div className={`relative w-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
+                            <h2 className="text-xl font-semibold flex items-center">
+                                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                Resultados da Consulta
+                            </h2>
+                            <div className="flex gap-3 items-center">
+                                <span className="text-sm bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                                    <div className="status-indicator status-active"></div>
+                                    {modalResults.length} resultados
+                                </span>
+                                <button
+                                    onClick={closeModal}
+                                    className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-200"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {noResults ? (
+                            <div className="text-center py-16 animate-fadeInUp">
+                                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4 animate-pulse-custom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                                </svg>
+                                <h3 className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'} mb-2`}>
+                                    Nenhum resultado encontrado
+                                </h3>
+                                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+                                    Tente ajustar o termo de pesquisa ou usar filtros diferentes.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="animate-fadeInUp">
+                                <div className="overflow-x-auto custom-scrollbar px-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                                    <table className={`min-w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                                        <thead className={`sticky top-0 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} z-10`}>
+                                            <tr>
+                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                    } border-b`}>
+                                                    Código do Item
+                                                </th>
+                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                    } border-b`}>
+                                                    Descrição do Serviço
+                                                </th>
+                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                    } border-b`}>
+                                                    CNAE
+                                                </th>
+                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                    } border-b`}>
+                                                    Descrição CNAE
+                                                </th>
+                                                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-500 border-gray-200'
+                                                    } border-b`}>
+                                                    Alíquota ISS
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
+                                            {modalResults.slice(0, 100).map((item, index) => (
+                                                <tr key={index} className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-all duration-300 hover:scale-[1.02]`}>
+                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-blue-300' : 'text-blue-600'
+                                                        } font-medium`}>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                                                            }`}>
+                                                            {item["LIST LC"].replace(/^0+/, '') || item["LIST LC"]}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                        } max-w-xs`}>
+                                                        <div className="line-clamp-3">
+                                                            {item["Descrição item da lista da Lei Complementar nº 001/2003 - CTM"]}
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center ${darkMode ? 'text-green-300' : 'text-green-600'
+                                                        } font-medium`}>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
+                                                            }`}>
+                                                            {(() => {
+                                                                const cnae = item["CNAE"].toString().replace(/[^0-9]/g, '');
+                                                                if (cnae.length >= 7) {
+                                                                    const paddedCnae = cnae.padStart(7, '0');
+                                                                    return `${paddedCnae.slice(0, 4)}-${paddedCnae.slice(4, 5)}/${paddedCnae.slice(5, 7)}`;
+                                                                }
+                                                                return item["CNAE"];
+                                                            })()}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-sm text-center ${darkMode ? 'text-gray-300' : 'text-gray-900'
+                                                        } max-w-xs`}>
+                                                        <div className="line-clamp-3">
+                                                            {item["Descrição do CNAE"]}
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-center font-bold ${darkMode ? 'text-yellow-300' : 'text-yellow-600'
+                                                        }`}>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border-2 ${darkMode ? 'bg-yellow-900 text-yellow-200 border-yellow-600' : 'bg-yellow-100 text-yellow-800 border-yellow-400'
+                                                            }`}>
+                                                            {item["Alíquota"]}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'
+                                    } rounded-b-lg`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'
+                                            }`}>
+                                            <span className="font-medium">
+                                                Mostrando {Math.min(100, modalResults.length)} de {modalResults.length} resultado{modalResults.length !== 1 ? 's' : ''}
+                                            </span>
+                                            {modalResults.length > 100 && (
+                                                <span className={`ml-2 text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    Primeiros 100 resultados
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'
+                                            }`}>
+                                            💡 Refine sua busca para resultados mais específicos
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <footer className={`fixed bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
+                <p>© 2025 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
+            </footer>
         </div>
+        </div >
+            </div >
+        </div >
     );
 }
 

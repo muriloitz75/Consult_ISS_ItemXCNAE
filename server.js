@@ -62,7 +62,29 @@ const connectDB = async () => {
                 success BOOLEAN DEFAULT true,
                 details JSONB
             );
+
+            CREATE TABLE IF NOT EXISTS "BannerConfig" (
+                id TEXT PRIMARY KEY,
+                key TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                enabled BOOLEAN DEFAULT true,
+                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
+
+        // Seed dos banners padrão (PostgreSQL)
+        const defaultBanners = [
+            { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+            { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+            { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+            { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
+        ];
+        for (const b of defaultBanners) {
+            await pool.query(
+                `INSERT INTO "BannerConfig" (id, key, label, enabled) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING`,
+                [b.id, b.key, b.label, true]
+            );
+        }
     } else {
         console.log("Variável DATABASE_URL não identificada ou incompatível. Usando SQLite Local...");
         const sqlite3 = require('sqlite3').verbose();
@@ -123,6 +145,32 @@ const connectDB = async () => {
                 details TEXT
             );
         `);
+
+        await db.run(`
+            CREATE TABLE IF NOT EXISTS BannerConfig (
+                id TEXT PRIMARY KEY,
+                key TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Seed dos banners padrão (SQLite)
+        const defaultBanners = [
+            { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+            { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+            { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+            { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
+            { id: 'banner-nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+            { id: 'banner-diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+        ];
+        for (const b of defaultBanners) {
+            await db.run(
+                `INSERT OR IGNORE INTO BannerConfig (id, key, label, enabled) VALUES ($1, $2, $3, $4)`,
+                [b.id, b.key, b.label, 1]
+            );
+        }
     }
 
     // Criar usuário admin padrão se não existir / garantir que nunca esteja bloqueado
@@ -492,9 +540,58 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
 });
 
 
+// ================= ROTAS DE BANNERS =================
+
+// Listar banners com status (sem auth - frontend usa para todos)
+app.get('/api/banners', async (req, res) => {
+    try {
+        const banners = await db.query('SELECT id, key, label, enabled FROM "BannerConfig" ORDER BY id');
+        // Normalizar enabled para boolean
+        const normalized = banners.map(b => ({
+            ...b,
+            enabled: b.enabled === true || b.enabled === 1 || b.enabled === 't'
+        }));
+        res.json(normalized);
+    } catch (error) {
+        console.error('Erro ao listar banners:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Alternar estado de um banner (admin only)
+app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { enabled } = req.body;
+
+        if (typeof enabled === 'undefined') {
+            return res.status(400).json({ error: 'Campo "enabled" é obrigatório.' });
+        }
+
+        const banners = await db.query('SELECT * FROM "BannerConfig" WHERE id = $1', [id]);
+        if (banners.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
+
+        const enabledValue = enabled ? 1 : 0;
+        await db.run(
+            'UPDATE "BannerConfig" SET enabled = $1, updatedAt = $2 WHERE id = $3',
+            [enabledValue, new Date().toISOString(), id]
+        );
+
+        await db.run(
+            `INSERT INTO AuditLog (id, userId, action, details) VALUES ($1, $2, $3, $4)`,
+            [uuidv4(), req.user.id, 'admin_toggle_banner', JSON.stringify({ bannerId: id, enabled })]
+        );
+
+        res.json({ message: `Banner ${enabled ? 'ativado' : 'desativado'} com sucesso.`, id, enabled });
+    } catch (error) {
+        console.error('Erro ao atualizar banner:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
 // Servir os arquivos estáticos
 app.use(express.static('.'));
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`\uD83D\uDE80 Servidor rodando na porta ${PORT}`);
 });
