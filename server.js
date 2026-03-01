@@ -321,7 +321,26 @@ app.post('/api/auth/login', async (req, res) => {
         if (isLocked || isBlocked) {
             await db.run(`INSERT INTO "AuditLog" (id, "userId", action, success) VALUES ($1, $2, $3, $4)`,
                 [uuidv4(), user.id, 'login_failed_locked', 0]);
-            return res.status(403).json({ error: "Sua conta está bloqueada." });
+
+            let errorMsg = "Sua conta está bloqueada.";
+            if (isLocked && user.lockUntil) {
+                const lockTime = new Date(user.lockUntil);
+                if (lockTime > new Date()) {
+                    const diffMs = lockTime - new Date();
+                    const diffMins = Math.ceil(diffMs / 60000);
+                    errorMsg = `Conta bloqueada por excesso de tentativas. Tente novamente em ${diffMins} minuto(s).`;
+                } else {
+                    // Time passed, we should theoretically unlock here, but let's unlock and allow retry.
+                    await db.run(`UPDATE "User" SET failedAttempts = 0, accountLocked = 0, lockUntil = NULL WHERE id = $1`, [user.id]);
+                    // We'll let it fail or succeed down the line based on the password logic
+                }
+            } else if (isBlocked) {
+                errorMsg = "Sua conta foi bloqueada pelo administrador.";
+            }
+
+            if ((isLocked && new Date(user.lockUntil) > new Date()) || isBlocked) {
+                return res.status(403).json({ error: errorMsg, isLocked: true });
+            }
         }
 
         const validPassword = await bcrypt.compare(password, user.password);
@@ -343,7 +362,16 @@ app.post('/api/auth/login', async (req, res) => {
             await db.run(`INSERT INTO "AuditLog" (id, "userId", action, success) VALUES ($1, $2, $3, $4)`,
                 [uuidv4(), user.id, 'login_failed_password', 0]);
 
-            return res.status(401).json({ error: "Credenciais inválidas" });
+            if (newFailedAttempts >= 5) {
+                return res.status(401).json({ error: "Conta bloqueada por 30 minutos após 5 tentativas de falha.", isLocked: true });
+            } else {
+                const attemptsLeft = 5 - newFailedAttempts;
+                let warning = "Credenciais inválidas.";
+                if (attemptsLeft <= 2) {
+                    warning = `Credenciais inválidas. Restam apenas ${attemptsLeft} tentativa(s) antes do bloqueio da conta.`;
+                }
+                return res.status(401).json({ error: warning, attemptsLeft });
+            }
         }
 
         if (!isAuthorized) {
@@ -374,6 +402,32 @@ app.post('/api/auth/login', async (req, res) => {
     } catch (error) {
         console.error("Erro no login:", error);
         res.status(500).json({ error: "Erro interno no servidor" });
+    }
+});
+
+// Recuperação de Senha (Esqueci minha Senha)
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) return res.status(400).json({ error: "Nome de usuário é obrigatório." });
+
+        const users = await db.query('SELECT id FROM "User" WHERE username = $1', [username]);
+
+        // Log auditing operation whether user exists or not, avoids enumeration attacks
+        const userId = users.length > 0 ? users[0].id : null;
+
+        await db.run(
+            `INSERT INTO "AuditLog" (id, "userId", action, ipAddress, details) VALUES ($1, $2, $3, $4, $5)`,
+            [uuidv4(), userId, 'forgot_password_request', req.ip || 'unknown', JSON.stringify({ requestedUsername: username })]
+        );
+
+        // Always return success for security (prevents user guessing)
+        res.json({ message: "Se o usuário existir, o administrador responsável será notificado sobre a solicitação de redefinição." });
+
+    } catch (error) {
+        console.error("====== ERRO NO ESQUECI A SENHA ======");
+        console.error(error);
+        res.status(500).json({ error: "Erro interno no servidor." });
     }
 });
 

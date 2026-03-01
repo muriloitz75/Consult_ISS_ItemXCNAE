@@ -187,6 +187,13 @@ class ApiService {
         });
     }
 
+    static async forgotPassword(username) {
+        return this.request('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ username })
+        });
+    }
+
     static async updateProfile(profileData) {
         const response = await this.request('/auth/profile', {
             method: 'PUT',
@@ -660,6 +667,8 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
 // Componente de Login e Cadastro
 function LoginForm({ onLogin, darkMode }) {
     const [isRegistering, setIsRegistering] = useState(false);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
+    const [forgotPasswordMsg, setForgotPasswordMsg] = useState({ type: '', text: '' });
 
     // Estados do formulário
     const [username, setUsername] = useState('');
@@ -701,7 +710,15 @@ function LoginForm({ onLogin, darkMode }) {
 
     const toggleMode = () => {
         setIsRegistering(!isRegistering);
+        setIsForgotPassword(false);
         resetForm();
+    };
+
+    const toggleForgotPassword = () => {
+        setIsForgotPassword(!isForgotPassword);
+        setIsRegistering(false);
+        resetForm();
+        setForgotPasswordMsg({ type: '', text: '' });
     };
 
     const handleRegister = async () => {
@@ -770,113 +787,182 @@ function LoginForm({ onLogin, darkMode }) {
         }
     };
 
+    const handleForgotPasswordSubmit = async (e) => {
+        e.preventDefault();
+        setForgotPasswordMsg({ type: '', text: '' });
+        if (!username) {
+            setForgotPasswordMsg({ type: 'error', text: 'Por favor, informe seu nome de usuário.' });
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const res = await ApiService.forgotPassword(username);
+            setForgotPasswordMsg({ type: 'success', text: res.message || 'Solicitação enviada com sucesso.' });
+            setUsername('');
+        } catch (err) {
+            setForgotPasswordMsg({ type: 'error', text: err.message || 'Erro ao solicitar redefinição.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
             <div className={`max-w-md w-full space-y-8 p-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
                 <div>
                     <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {isRegistering ? 'Criar Nova Conta' : 'Sistema de Consulta ISS'}
+                        {isForgotPassword ? 'Recuperar Senha' : (isRegistering ? 'Criar Nova Conta' : 'Sistema de Consulta ISS')}
                     </h2>
                     <p className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {isRegistering ? 'Preencha os dados abaixo para se cadastrar' : 'Faça login para acessar o sistema'}
+                        {isForgotPassword ? 'Informe seu usuário para solicitar o desbloqueio' : (isRegistering ? 'Preencha os dados abaixo para se cadastrar' : 'Faça login para acessar o sistema')}
                     </p>
                 </div>
 
-                <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-                    <div className={`rounded-md shadow-sm ${isRegistering ? 'space-y-4' : '-space-y-px'}`}>
-
-                        {isRegistering && (
-                            <>
-                                <div>
-                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                        placeholder="Seu nome completo"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                        placeholder="seu@email.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                    />
-                                </div>
-                            </>
-                        )}
-
+                {isForgotPassword ? (
+                    <form className="mt-8 space-y-4 animate-fadeIn" onSubmit={handleForgotPasswordSubmit}>
                         <div>
-                            <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
+                            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
                             <input
                                 type="text"
                                 required
-                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                                placeholder="Usuário"
+                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                placeholder="Seu nome de usuário cadastrado"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                             />
                         </div>
 
+                        {forgotPasswordMsg.text && (
+                            <div className={`text-sm text-center p-3 rounded border animate-fadeIn ${forgotPasswordMsg.type === 'success' ? (darkMode ? 'bg-green-900/40 border-green-700 text-green-300' : 'bg-green-100 border-green-200 text-green-700') : (darkMode ? 'bg-red-900/40 border-red-700 text-red-300' : 'bg-red-100 border-red-200 text-red-700')}`}>
+                                {forgotPasswordMsg.text}
+                            </div>
+                        )}
+
                         <div>
-                            <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
-                            <input
-                                type="password"
-                                required
-                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-b-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                                placeholder="Senha"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50"
+                            >
+                                {isLoading ? 'Enviando Solicitação...' : 'Solicitar Redefinição de Senha'}
+                            </button>
                         </div>
 
-                        {isRegistering && (
+                        <div className="text-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <button
+                                type="button"
+                                onClick={toggleForgotPassword}
+                                className={`text-sm font-medium hover:underline transition-colors ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+                            >
+                                Voltar para o Login Seguro
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <form className="mt-8 space-y-4 animate-fadeIn" onSubmit={handleSubmit}>
+                        <div className={`rounded-md shadow-sm ${isRegistering ? 'space-y-4' : '-space-y-px'}`}>
+                            {isRegistering && (
+                                <>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                            placeholder="Seu nome completo"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                                        <input
+                                            type="email"
+                                            required
+                                            className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                            placeholder="seu@email.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             <div>
-                                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+                                <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+                                    placeholder="Usuário"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
                                 <input
                                     type="password"
                                     required
-                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                    placeholder="Confirme sua senha"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-b-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+                                    placeholder="Senha"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
-                        )}
-                    </div>
 
-                    {error && (
-                        <div className="text-red-500 text-sm text-center bg-red-100 p-2 rounded border border-red-200">
-                            {error}
+                            {isRegistering && (
+                                <div>
+                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                                        placeholder="Confirme sua senha"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
 
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${isRegistering ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50`}
-                        >
-                            {isLoading ? 'Processando...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
-                        </button>
-                    </div>
+                        {error && (
+                            <div className={`text-sm text-center p-3 rounded border animate-pulse ${error.includes('bloqueada') || error.includes('Restam') ? (darkMode ? 'bg-orange-900/40 border-orange-700 text-orange-300' : 'bg-orange-100 border-orange-200 text-orange-800') : (darkMode ? 'bg-red-900/40 border-red-700 text-red-300' : 'bg-red-100 border-red-200 text-red-800')}`}>
+                                {error}
+                            </div>
+                        )}
 
-                    <div className="text-center mt-4">
-                        <button
-                            type="button"
-                            onClick={toggleMode}
-                            className={`text-sm font-medium hover:underline ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}
-                        >
-                            {isRegistering ? 'Já tem uma conta? Faça login' : 'Não tem conta? Cadastre-se'}
-                        </button>
-                    </div>
-                </form>
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${isRegistering ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50`}
+                            >
+                                {isLoading ? 'Processando...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0">
+                            {!isRegistering && (
+                                <button
+                                    type="button"
+                                    onClick={toggleForgotPassword}
+                                    className={`font-medium transition-colors hover:underline ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+                                >
+                                    Esqueceu sua senha?
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={toggleMode}
+                                className={`font-medium transition-colors hover:underline ${isRegistering ? 'w-full text-center' : ''} ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                            >
+                                {isRegistering ? 'Voltar para o Login' : 'Criar nova conta'}
+                            </button>
+                        </div>
+                    </form>
+                )}
             </div>
 
             {/* Modal de Primeiro Acesso */}
