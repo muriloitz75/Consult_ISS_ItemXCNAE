@@ -765,7 +765,7 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
         const banners = await db.query('SELECT * FROM "BannerConfig" WHERE id = $1', [id]);
         if (banners.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
 
-        const enabledValue = enabled ? 1 : 0;
+        const enabledValue = !!enabled;
         await db.run(
             'UPDATE "BannerConfig" SET enabled = $1, updatedAt = $2 WHERE id = $3',
             [enabledValue, new Date().toISOString(), id]
@@ -843,7 +843,7 @@ app.put('/api/admin/users/:userId/banners/:bannerId', authenticateToken, require
         const bannerCheck = await db.query('SELECT id, "orderIndex" FROM "BannerConfig" WHERE id = $1', [bannerId]);
         if (bannerCheck.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
 
-        const enabledValue = enabled ? 1 : 0;
+        const enabledValue = !!enabled;
         const overrideId = uuidv4();
         const now = new Date().toISOString();
         const globalOrder = bannerCheck[0].orderIndex ?? 0;
@@ -906,7 +906,7 @@ app.put('/api/admin/users/:userId/banners/reorder', authenticateToken, requireAd
             } else {
                 // Busca o estado atual global para manter o enabled correto
                 const global = await db.query('SELECT enabled FROM "BannerConfig" WHERE id = $1', [item.id]);
-                const globalEnabled = global.length > 0 ? (global[0].enabled === true || global[0].enabled === 1 || global[0].enabled === 't' ? 1 : 0) : 1;
+                const globalEnabled = global.length > 0 ? (global[0].enabled === true || global[0].enabled === 1 || global[0].enabled === 't') : true;
                 await db.run(
                     'INSERT INTO "UserBannerConfig" (id, "userId", "bannerId", enabled, "orderIndex", updatedAt) VALUES ($1, $2, $3, $4, $5, $6)',
                     [uuidv4(), userId, item.id, globalEnabled, item.orderIndex, now]
