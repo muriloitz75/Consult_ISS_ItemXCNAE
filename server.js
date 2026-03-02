@@ -84,10 +84,18 @@ const connectDB = async () => {
         `);
 
         // Migration para bancos já existentes
-        try {
-            await pool.query(`ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0;`);
-        } catch (e) {
-            console.log("Migration orderIndex info:", e.message);
+        const migrations = [
+            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lockUntil" TIMESTAMP`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firstLogin" BOOLEAN DEFAULT true`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordHistory" JSONB DEFAULT '[]'::jsonb`,
+            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isBlockedByAdmin" BOOLEAN DEFAULT false`,
+        ];
+        for (const mig of migrations) {
+            try { await pool.query(mig); } catch (e) { console.log("Migration info:", e.message); }
         }
 
         // Seed dos banners padrão (PostgreSQL)
