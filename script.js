@@ -811,7 +811,7 @@ function LoginForm({ onLogin, darkMode }) {
             <div className={`max-w-md w-full space-y-8 p-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
                 <div>
                     <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {isForgotPassword ? 'Recuperar Senha' : (isRegistering ? 'Criar Nova Conta' : 'Sistema de Consulta ISS')}
+                        {isForgotPassword ? 'Recuperar Senha' : (isRegistering ? 'Criar Nova Conta' : 'Ecossistema DIAAF')}
                     </h2>
                     <p className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                         {isForgotPassword ? 'Informe seu usuário para solicitar o desbloqueio' : (isRegistering ? 'Preencha os dados abaixo para se cadastrar' : 'Faça login para acessar o sistema')}
@@ -1992,6 +1992,30 @@ const BANNER_STATIC = {
         iconLight: 'bg-white text-green-600 shadow-md',
         iconDark: 'bg-green-500/20 text-green-400',
         hoverBg: { light: 'bg-green-600', dark: 'bg-white' }
+    },
+    'entes': {
+        label: 'Entes Federados',
+        description: 'Acesso aos Entes Federados',
+        imageIcon: 'image/entes.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
+        href: 'https://www10.receita.fazenda.gov.br/login/publico/bemvindo/',
+        light: 'from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-400',
+        dark: 'from-blue-900/50 to-indigo-900/50 border-blue-500/30 hover:border-blue-500',
+        iconLight: 'bg-white text-blue-600 shadow-md',
+        iconDark: 'bg-blue-500/20 text-blue-400',
+        hoverBg: { light: 'bg-blue-600', dark: 'bg-white' }
+    },
+    'empresa-facil': {
+        label: 'Empresa Fácil',
+        description: 'Acesso Rápido Empresa Fácil MA',
+        imageIcon: 'image/ma.png',
+        imageClass: 'w-full h-full object-cover rounded-full',
+        href: 'https://autenticacao.empresafacil.ma.gov.br/',
+        light: 'from-red-50 to-rose-50 border-red-200 hover:border-red-400',
+        dark: 'from-red-900/50 to-rose-900/50 border-red-500/30 hover:border-red-500',
+        iconLight: 'bg-white text-red-600 shadow-md',
+        iconDark: 'bg-red-500/20 text-red-400',
+        hoverBg: { light: 'bg-red-600', dark: 'bg-white' }
     }
 };
 
@@ -2192,6 +2216,13 @@ function App() {
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
 
+    // Estado da Tela de Bloqueio por inatividade
+    const [isLockedOut, setIsLockedOut] = useState(false);
+    const [unlockPassword, setUnlockPassword] = useState('');
+    const [unlockError, setUnlockError] = useState('');
+    const [isUnlocking, setIsUnlocking] = useState(false);
+    const inactivityTimeoutRef = useRef(null);
+
     // Estado para usuários pendentes (apenas admin)
     const [pendingUsers, setPendingUsers] = useState([]);
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
@@ -2246,6 +2277,8 @@ function App() {
                         { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres', enabled: true },
                         { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS', enabled: true },
                         { id: 'banner-processos', key: 'processos', label: 'Análise de Processos', enabled: true },
+                        { id: 'banner-entes', key: 'entes', label: 'Entes Federados', enabled: true },
+                        { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil', enabled: true },
                     ]);
                 });
         };
@@ -2309,67 +2342,91 @@ function App() {
             totalSearches: 0,
             universalSearches: 0,
             advancedSearches: 0,
+            totalBannerClicks: 0,
             lastAccess: null,
             dailyAccesses: {},
-            searchHistory: [],
-            userSessions: {}
+            searchHistory: [], // Mantemos searchHistory por compatibilidade e adaptamos para Atividades Recentes
+            userSessions: {},
+            bannerClicks: {}
         };
     });
 
-    // Funções para estatísticas
+    // Funções para estatísticas seguras
     const updateStatistics = (type, data = {}) => {
         const now = new Date();
         const today = now.toDateString();
 
         setStatistics(prev => {
-            const newStats = { ...prev };
+            // Garantir que todas as chaves existam na base
+            const newStats = {
+                totalAccesses: 0,
+                totalSearches: 0,
+                universalSearches: 0,
+                advancedSearches: 0,
+                totalBannerClicks: 0,
+                lastAccess: null,
+                dailyAccesses: {},
+                searchHistory: [],
+                userSessions: {},
+                bannerClicks: {},
+                ...prev
+            };
 
             switch (type) {
+                case 'page_view':
                 case 'access':
-                    newStats.totalAccesses += 1;
+                    newStats.totalAccesses = (newStats.totalAccesses || 0) + 1;
                     newStats.lastAccess = now.toISOString();
 
-                    // Atualizar acessos diários (Objeto: chave=data, valor=count)
+                    newStats.dailyAccesses = newStats.dailyAccesses || {};
                     newStats.dailyAccesses[today] = (newStats.dailyAccesses[today] || 0) + 1;
 
-                    // Manter histórico de acessos diários limpo (opcional: remover chaves antigas se necessário)
-                    // Para simplificar e evitar complexidade excessiva, mantemos o objeto crescendo por enquanto
-                    // ou poderíamos converter para entries, ordenar e reconstruir se ficar muito grande.
-
-                    // Registrar sessão do usuário (Objeto: chave=user, valor=count)
                     if (data.username) {
+                        newStats.userSessions = newStats.userSessions || {};
                         newStats.userSessions[data.username] = (newStats.userSessions[data.username] || 0) + 1;
                     }
-
-
-                    // Manter histórico de acessos diários limpo (opcional: remover chaves antigas se necessário)
-                    // Para simplificar e evitar complexidade excessiva, mantemos o objeto crescendo por enquanto
-                    // ou poderíamos converter para entries, ordenar e reconstruir se ficar muito grande.
                     break;
 
                 case 'search':
-                    newStats.totalSearches += 1;
+                    newStats.totalSearches = (newStats.totalSearches || 0) + 1;
                     if (data.searchMode === 'universal') {
-                        newStats.universalSearches += 1;
+                        newStats.universalSearches = (newStats.universalSearches || 0) + 1;
                     } else if (data.searchMode === 'advanced') {
-                        newStats.advancedSearches += 1;
+                        newStats.advancedSearches = (newStats.advancedSearches || 0) + 1;
                     }
 
-                    // Adicionar ao histórico de pesquisas
+                    newStats.searchHistory = newStats.searchHistory || [];
                     newStats.searchHistory.push({
                         timestamp: now.toISOString(),
+                        type: 'search',
                         mode: data.searchMode,
-                        user: data.user,
+                        user: data.user || 'Visitante',
                         query: data.query,
                         results: data.results || 0
                     });
 
-                    // Manter apenas últimas 200 pesquisas
+                    newStats.searchHistory = newStats.searchHistory.slice(-200);
+                    break;
+
+                case 'bannerClick':
+                    newStats.totalBannerClicks = (newStats.totalBannerClicks || 0) + 1;
+
+                    const bannerName = data.bannerLabel || 'Banner Desconhecido';
+                    newStats.bannerClicks = newStats.bannerClicks || {};
+                    newStats.bannerClicks[bannerName] = (newStats.bannerClicks[bannerName] || 0) + 1;
+
+                    newStats.searchHistory = newStats.searchHistory || [];
+                    newStats.searchHistory.push({
+                        timestamp: now.toISOString(),
+                        type: 'banner',
+                        user: data.user || 'Visitante',
+                        bannerLabel: bannerName
+                    });
+
                     newStats.searchHistory = newStats.searchHistory.slice(-200);
                     break;
             }
 
-            // Salvar no localStorage
             localStorage.setItem('appStatistics', JSON.stringify(newStats));
             return newStats;
         });
@@ -2408,6 +2465,54 @@ function App() {
         });
     };
 
+    // ----- LOGICA DE INATIVIDADE (1 MINUTO) -----
+    const resetInactivityTimer = () => {
+        if (!isAuthenticated || isLockedOut) return;
+
+        if (inactivityTimeoutRef.current) {
+            clearTimeout(inactivityTimeoutRef.current);
+        }
+
+        // 60000 ms = 1 minuto
+        inactivityTimeoutRef.current = setTimeout(() => {
+            setIsLockedOut(true);
+        }, 60000);
+    };
+
+    useEffect(() => {
+        if (isAuthenticated && !isLockedOut) {
+            // Inicia o timer na montagem do effect
+            resetInactivityTimer();
+
+            // Adiciona listeners para resetar o timer ao interagir
+            const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+            events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+
+            return () => {
+                if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+                events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+            };
+        }
+    }, [isAuthenticated, isLockedOut]);
+
+    const handleUnlockSubmit = async (e) => {
+        e.preventDefault();
+        setUnlockError('');
+        setIsUnlocking(true);
+
+        try {
+            // Tenta fazer login novamente com a mesma conta
+            await ApiService.login(currentUser.username, unlockPassword);
+            setIsLockedOut(false);
+            setUnlockPassword('');
+        } catch (error) {
+            setUnlockError('Senha incorreta. Tente novamente.');
+        } finally {
+            setIsUnlocking(false);
+        }
+    };
+    // ----------------------------------------------
+
     useEffect(() => {
         localStorage.setItem('darkMode', JSON.stringify(darkMode));
         if (darkMode) {
@@ -2416,6 +2521,18 @@ function App() {
             document.documentElement.classList.remove('dark');
         }
     }, [darkMode]);
+
+    // Rastrear 1 "Acesso" global por Sessão do Navegador (Visitantes ou Admins)
+    useEffect(() => {
+        const sessionTracked = sessionStorage.getItem('session_tracked_today');
+        if (!sessionTracked) {
+            // Usa setTimeout para garantir que o state statistics inicializou completamente do localStorage caso haja assincronia
+            setTimeout(() => {
+                updateStatistics('page_view', { username: 'Visitante' });
+                sessionStorage.setItem('session_tracked_today', 'true');
+            }, 1000);
+        }
+    }, []);
 
     useEffect(() => {
         console.log('Carregando dados Markdown...');
@@ -2708,7 +2825,65 @@ function App() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden relative">
+
+            {/* Overlay da Tela de Bloqueio por inatividade (Sobreposto na UI Atual) */}
+            {isLockedOut && (
+                <div className={`absolute inset-0 z-[100] flex items-center justify-center ${darkMode ? 'bg-gray-900/25' : 'bg-gray-500/10'} backdrop-blur-sm transition-all duration-300`}>
+                    <div className={`max-w-md w-full p-8 rounded-3xl shadow-2xl ${darkMode ? 'bg-gray-800/80' : 'bg-white/80'} backdrop-blur-md animate-fadeInUp border ${darkMode ? 'border-gray-700/50' : 'border-white/50'}`}>
+                        <div className="text-center mb-8">
+                            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 shadow-lg ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+                                <span className="text-white font-bold text-2xl tracking-widest">
+                                    {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'US'}
+                                </span>
+                            </div>
+                            <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Sessão Bloqueada
+                            </h2>
+                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Devido à inatividade, sua sessão foi bloqueada por segurança. Digite sua senha para continuar.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleUnlockSubmit} className="space-y-6">
+                            <div>
+                                <input
+                                    type="password"
+                                    required
+                                    value={unlockPassword}
+                                    onChange={(e) => setUnlockPassword(e.target.value)}
+                                    placeholder="Digite sua senha"
+                                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:ring-2 focus:ring-offset-0 focus:outline-none ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/30' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500/20'}`}
+                                />
+                            </div>
+
+                            {unlockError && (
+                                <div className={`text-sm font-medium p-3 rounded-xl text-center animate-pulse ${darkMode ? 'bg-red-900/30 text-red-400 border border-red-800' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                                    {unlockError}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={isUnlocking}
+                                    className={`w-full py-3 rounded-xl font-bold text-white transition-all duration-200 shadow-md transform hover:-translate-y-0.5 ${darkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90'} disabled:opacity-50`}
+                                >
+                                    {isUnlocking ? 'Verificando...' : 'Desbloquear'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    className={`w-full text-sm font-medium py-2 transition-colors ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-800'}`}
+                                >
+                                    Fazer logoff
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Hack CSS Global Dinâmico para Cursor Grabbing - Exibido Apenas Durante o Arraste dos Banners */}
             {isDraggingBanners && (
                 <style dangerouslySetInnerHTML={{
@@ -2770,13 +2945,24 @@ function App() {
                                         </button>
                                     ) : (
                                         currentUser && (
-                                            <div className="hidden sm:block ml-1">
-                                                <h2 className={`font-semibold text-lg tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                                                    Olá, {currentUser.name?.split(' ')[0] || currentUser.username} 👋
-                                                </h2>
-                                                <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                    Bem-vindo ao portal
-                                                </p>
+                                            <div className="flex items-center gap-3 ml-1">
+                                                <div className="relative">
+                                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md transform transition-transform hover:scale-105 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+                                                        <span className="text-white font-bold text-sm tracking-widest">
+                                                            {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800 ${darkMode ? 'bg-green-500' : 'bg-green-400'}`}>
+                                                    </div>
+                                                </div>
+                                                <div className="hidden sm:block">
+                                                    <h2 className={`font-semibold text-lg tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                                        Olá, {currentUser.name?.split(' ')[0] || currentUser.username} 👋
+                                                    </h2>
+                                                    <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        Bem-vindo ao portal
+                                                    </p>
+                                                </div>
                                             </div>
                                         )
                                     )}
@@ -2800,14 +2986,29 @@ function App() {
                                         )}
                                     </button>
 
-                                    <div className="relative ml-2">
-                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md transform transition-transform hover:scale-105 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
-                                            <span className="text-white font-bold text-sm tracking-widest">
-                                                {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
-                                            </span>
-                                        </div>
-                                        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800 ${darkMode ? 'bg-green-500' : 'bg-green-400'}`}>
-                                        </div>
+                                    {/* Botão Menor da IA ao lado do perfil */}
+                                    <div className="relative flex items-center ml-2">
+                                        <a
+                                            href="https://gemini.google.com/app"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`relative group p-2.5 rounded-full transition-all duration-300 flex items-center justify-center border shadow-sm focus:outline-none hover:scale-105 ${darkMode
+                                                ? 'bg-gray-700/80 text-blue-400 border-gray-600 hover:bg-gray-600'
+                                                : 'bg-white text-blue-600 border-gray-100 hover:bg-gray-50'
+                                                }`}
+                                            title="Assistente IA"
+                                        >
+                                            {/* Ícone Solto Reduzido (SVG Sparkles Clean) */}
+                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                                            </svg>
+
+                                            {/* Tooltip com novo texto alinhado */}
+                                            <div className="absolute top-[52px] sm:top-[56px] right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg bg-blue-600 text-white z-50">
+                                                <div className="absolute top-[-6px] right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-blue-600"></div>
+                                                Dúvidas? Pergunte a IA
+                                            </div>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -2912,7 +3113,15 @@ function App() {
                                                 return (
                                                     <button
                                                         key={banner.id}
-                                                        onClick={() => !isDisabledForUser && setCurrentView('search')}
+                                                        onClick={() => {
+                                                            if (!isDisabledForUser) {
+                                                                updateStatistics('bannerClick', {
+                                                                    bannerLabel: s.label || banner.label,
+                                                                    user: currentUser ? currentUser.username : 'Visitante'
+                                                                });
+                                                                setCurrentView('search');
+                                                            }
+                                                        }}
                                                         disabled={isDisabledForUser}
                                                         className={cardClass}
                                                         {...dragProps}
@@ -2928,7 +3137,16 @@ function App() {
                                                     target={isDisabledForUser ? undefined : '_blank'}
                                                     rel="noopener noreferrer"
                                                     className={cardClass}
-                                                    onClick={isDisabledForUser ? (e) => e.preventDefault() : undefined}
+                                                    onClick={(e) => {
+                                                        if (isDisabledForUser) {
+                                                            e.preventDefault();
+                                                        } else {
+                                                            updateStatistics('bannerClick', {
+                                                                bannerLabel: s.label || banner.label,
+                                                                user: currentUser ? currentUser.username : 'Visitante'
+                                                            });
+                                                        }
+                                                    }}
                                                     {...dragProps}
                                                 >
                                                     {content}
@@ -3177,146 +3395,134 @@ function App() {
                         )}
 
 
-                        {/* Painel Administrativo - Apenas para Admins - Visível apenas na view admin-dashboard */}
+                        {/* Painel Administrativo - Novo Global Dashboard (SaaS Style) */}
                         {currentUser?.role === 'admin' && currentView === 'admin-dashboard' && (
                             <div className="animate-fadeInUp space-y-6">
-                                {/* Cabeçalho Premium */}
-                                <div className={`p-6 rounded-2xl ${darkMode ? 'bg-gradient-to-r from-blue-900/40 via-purple-900/30 to-indigo-900/40 border border-blue-800/40' : 'bg-gradient-to-r from-blue-50 via-purple-50 to-indigo-50 border border-blue-100'} backdrop-blur-sm`}>
-                                    <div className="flex items-center justify-between flex-wrap gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${darkMode ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-blue-600 to-purple-700'}`}>
-                                                <svg className="w-7 h-7 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h2 className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Dashboard</h2>
-                                                <p className={`text-sm font-medium ${darkMode ? 'text-blue-300/80' : 'text-blue-600/80'}`}>Painel Administrativo • {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                            </div>
+                                {/* Header Executivo */}
+                                <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                    <div>
+                                        <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Visão Geral do Ecossistema</h2>
+                                        <p className={`text-sm mt-1 mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Analytics de tráfego e uso dos serviços DIAAF em tempo real.</p>
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${darkMode ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                            Monitoramento Ativo
                                         </div>
-                                        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${darkMode ? 'bg-green-900/40 text-green-400 border border-green-700/50' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                            Sistema Online
-                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm('ALERTA: Isso apagará irreversivelmente todos os dados de acessos e cliques registrados no navegador deste administrador. Deseja continuar?')) {
+                                                    localStorage.removeItem('appStatistics');
+                                                    setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, totalBannerClicks: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {}, bannerClicks: {} });
+                                                    alert('Base de dados do dashboard reiniciada com sucesso!');
+                                                }
+                                            }}
+                                            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            Zerar Base de Dados
+                                        </button>
                                     </div>
                                 </div>
-                                {/* Solicitações Pendentes */}
-                                {pendingUsers.length > 0 && (
-                                    <div className={`p-5 rounded-2xl border-2 ${darkMode ? 'border-yellow-500/40 bg-yellow-900/10 backdrop-blur-sm' : 'border-yellow-300 bg-yellow-50'}`}>
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-yellow-500 flex items-center justify-center shadow-lg">
-                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                            </div>
-                                            <span className={`font-bold text-lg ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Solicitações Pendentes ({pendingUsers.length})</span>
-                                        </div>
-                                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                            {pendingUsers.map(user => (
-                                                <div key={user.id} className={`p-3 rounded-xl flex flex-col justify-between ${darkMode ? 'bg-gray-800/80 border border-gray-700' : 'bg-white border border-gray-100'} shadow-sm`}>
-                                                    <div className="mb-2">
-                                                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
-                                                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
-                                                    </div>
-                                                    <button onClick={() => handleAuthorizeUser(user.id)} className="w-full py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">Autorizar</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
 
-                                {/* KPI Cards Premium */}
+                                {/* KPIs Principais */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {[
-                                        { label: 'Acessos Totais', value: statistics.totalAccesses, sub: 'Desde o início', grad: darkMode ? 'from-blue-900/60 to-blue-800/40' : 'from-blue-500 to-blue-600', iBg: darkMode ? 'bg-blue-500/20' : 'bg-white/20', d: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-                                        { label: 'Consultas', value: statistics.totalSearches, sub: 'Total realizadas', grad: darkMode ? 'from-emerald-900/60 to-emerald-800/40' : 'from-emerald-500 to-emerald-600', iBg: darkMode ? 'bg-emerald-500/20' : 'bg-white/20', d: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
-                                        { label: 'Hoje', value: statistics.dailyAccesses[new Date().toDateString()] || 0, sub: 'Acessos hoje', grad: darkMode ? 'from-orange-900/60 to-orange-800/40' : 'from-orange-500 to-orange-600', iBg: darkMode ? 'bg-orange-500/20' : 'bg-white/20', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                                        { label: 'Usuários', value: statistics.userSessions ? Object.keys(statistics.userSessions).length : 0, sub: 'Únicos registrados', grad: darkMode ? 'from-purple-900/60 to-purple-800/40' : 'from-purple-500 to-purple-600', iBg: darkMode ? 'bg-purple-500/20' : 'bg-white/20', d: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' }
-                                    ].map((k, i) => (
-                                        <div key={i} className={`p-5 rounded-2xl bg-gradient-to-br ${k.grad} ${darkMode ? 'border border-white/5' : 'text-white'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`} style={{ animationDelay: `${i * 0.1}s` }}>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-white/90'}`}>{k.label}</span>
-                                                <div className={`w-10 h-10 rounded-xl ${k.iBg} flex items-center justify-center`}>
-                                                    <svg className={`w-5 h-5 ${darkMode ? 'text-white/80' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={k.d} />
-                                                    </svg>
-                                                </div>
+                                        { title: 'Acessos Totais', value: statistics?.totalAccesses || 0, desc: 'Aberturas do Hub', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', colors: darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600' },
+                                        { title: 'Uso de Serviços', value: statistics?.totalBannerClicks || 0, desc: 'Direcionamentos', icon: 'M13 10V3L4 14h7v7l9-11h-7z', colors: darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
+                                        { title: 'Usuários Ativos', value: Object.keys(statistics?.userSessions || {}).length || 0, desc: 'Contas logadas', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', colors: darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600' },
+                                        { title: 'Sessões Hoje', value: statistics?.dailyAccesses?.[new Date().toDateString()] || 0, desc: 'Atividade na data', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', colors: darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600' }
+                                    ].map((kpi, idx) => (
+                                        <div key={idx} className={`p-5 rounded-2xl flex items-start justify-between ${darkMode ? 'bg-gray-800/80 border border-gray-700/50 hover:bg-gray-700/80' : 'bg-white border border-gray-100 hover:border-gray-200'} shadow-sm transition-all duration-300`}>
+                                            <div>
+                                                <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{kpi.title}</p>
+                                                <h3 className={`text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>{kpi.value}</h3>
+                                                <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{kpi.desc}</p>
                                             </div>
-                                            <p className="text-3xl font-black mb-1 text-white">{k.value}</p>
-                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-white/70'}`}>{k.sub}</p>
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.colors}`}>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={kpi.icon} />
+                                                </svg>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Gráficos */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className={`rounded-2xl overflow-hidden ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                        <VerticalBarChart title="Acessos por Usuário" darkMode={darkMode} color="purple" data={Object.entries(statistics.userSessions || {}).map(([user, count]) => ({ label: user, value: count }))} />
-                                    </div>
-                                    <div className={`rounded-2xl overflow-hidden ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                        <PieChart title="Consultas por Usuário" darkMode={darkMode} data={(() => { const c = {}; statistics.searchHistory.forEach(s => { c[s.user] = (c[s.user] || 0) + 1; }); return Object.entries(c).map(([u, v]) => ({ label: u, value: v })).sort((a, b) => b.value - a.value); })()} />
-                                    </div>
-                                </div>
-
-                                {/* Timeline de Consultas */}
-                                <div className={`p-5 rounded-2xl ${darkMode ? 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </div>
-                                        <h4 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Últimas Consultas</h4>
-                                    </div>
-                                    <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
-                                        {statistics.searchHistory.slice(-6).reverse().map((search, index) => (
-                                            <div key={index} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white' : 'bg-gradient-to-br from-blue-500 to-purple-600 text-white'}`}>
-                                                    {search.user?.substring(0, 2).toUpperCase() || '??'}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{search.user}</p>
-                                                    <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{search.query}</p>
-                                                </div>
-                                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>{search.results} res.</span>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Top Serviços */}
+                                    <div className={`p-6 rounded-2xl flex flex-col ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                                             </div>
-                                        ))}
-                                        {statistics.searchHistory.length === 0 && (
-                                            <p className={`text-sm text-center py-6 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhuma consulta realizada recentemente</p>
-                                        )}
+                                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Top Serviços Mais Acessados</h3>
+                                        </div>
+                                        <div className="flex-1">
+                                            {Object.keys(statistics?.bannerClicks || {}).length > 0 ? (
+                                                <div className="space-y-5">
+                                                    {Object.entries(statistics?.bannerClicks || {})
+                                                        .sort((a, b) => b[1] - a[1])
+                                                        .slice(0, 5)
+                                                        .map(([banner, clicks], idx) => {
+                                                            const max = Math.max(...Object.values(statistics?.bannerClicks || {}));
+                                                            const percentage = Math.round((clicks / max) * 100);
+                                                            return (
+                                                                <div key={idx} className="relative group">
+                                                                    <div className="flex justify-between items-end mb-2">
+                                                                        <span className={`text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{banner}</span>
+                                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{clicks} acessos</span>
+                                                                    </div>
+                                                                    <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                                                                        <div className={`h-full rounded-full transition-all duration-1000 ${idx === 0 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : darkMode ? 'bg-blue-500/50' : 'bg-blue-300'}`} style={{ width: `${percentage}%` }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    }
+                                                </div>
+                                            ) : (
+                                                <div className={`h-full flex flex-col items-center justify-center py-10 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
+                                                    <svg className={`w-8 h-8 mb-2 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Nenhum dado captado ainda.</p>
+                                                    <p className={`text-xs mt-1 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>Os cliques em banners aparecerão aqui.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Info do Sistema + Ações */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className={`p-4 rounded-2xl flex items-center gap-3 ${darkMode ? 'bg-gray-800/60 border border-gray-700/50' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-sky-500/20 text-sky-400' : 'bg-sky-100 text-sky-600'}`}>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
+                                    {/* Timeline/Audit Log live */}
+                                    <div className={`p-6 rounded-2xl flex flex-col ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </div>
+                                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Audit Log ao Vivo</h3>
                                         </div>
-                                        <div>
-                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Itens na Base</p>
-                                            <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{data.length}</p>
+                                        <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                            {statistics?.searchHistory && statistics.searchHistory.length > 0 ? (
+                                                statistics.searchHistory.slice(-20).reverse().map((activity, index) => (
+                                                    <div key={index} className={`flex gap-4 items-start pb-4 border-b last:border-0 last:pb-0 ${darkMode ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                                                        <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${activity.type === 'banner' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`}></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{activity.user || 'Visitante'}</span>
+                                                                {activity.type === 'banner' ? ' usou o acesso rápido ' : ' pesquisou por '}
+                                                                <span className={`font-semibold ${darkMode ? (activity.type === 'banner' ? 'text-emerald-400' : 'text-blue-400') : (activity.type === 'banner' ? 'text-emerald-600' : 'text-blue-600')}`}>
+                                                                    {activity.type === 'banner' ? activity.bannerLabel : `"${activity.query}"`}
+                                                                </span>
+                                                            </p>
+                                                            <p className={`text-xs mt-1 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                                {new Date(activity.timestamp).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className={`h-full flex flex-col items-center justify-center py-10 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
+                                                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Nenhuma ação registrada nas últimas 24h.</p>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl flex items-center gap-3 ${darkMode ? 'bg-gray-800/60 border border-gray-700/50' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </div>
-                                        <div>
-                                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Último Acesso</p>
-                                            <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.lastAccess ? new Date(statistics.lastAccess).toLocaleString('pt-BR') : 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <button className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/30' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200'}`}>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            Exportar
-                                        </button>
-                                        <button
-                                            onClick={() => { if (confirm('Tem certeza que deseja limpar todas as estatísticas?')) { localStorage.removeItem('appStatistics'); setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {} }); } }}
-                                            className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${darkMode ? 'bg-red-600/80 hover:bg-red-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'}`}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            Limpar
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -3482,9 +3688,10 @@ function App() {
                             </div>
                         )}
 
-                        <footer className={`fixed bottom-4 left-1/2 -translate-x-1/2 text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
-                            <p>© 2025 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
+                        <footer className={`mt-8 text-center text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
+                            <p>© 2026 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
                         </footer>
+
                     </div>
                 </div >
             </div >

@@ -91,6 +91,8 @@ const connectDB = async () => {
             { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
             { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
             { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
+            { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
+            { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
@@ -173,7 +175,11 @@ const connectDB = async () => {
         `);
 
         try {
-            await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
+            const columns = await db.query("PRAGMA table_info(BannerConfig)");
+            const hasOrderIndex = columns.some(col => col.name === 'orderIndex');
+            if (!hasOrderIndex) {
+                await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
+            }
         } catch (e) {
             // Se já existir a coluna (ou dependendo da versão SQLite), pode dar erro ignorável na migração
         }
@@ -189,6 +195,8 @@ const connectDB = async () => {
             { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
             { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
             { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
+            { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
+            { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
