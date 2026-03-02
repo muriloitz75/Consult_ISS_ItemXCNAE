@@ -71,6 +71,16 @@ const connectDB = async () => {
                 "orderIndex" INTEGER DEFAULT 0,
                 updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS "UserBannerConfig" (
+                id TEXT PRIMARY KEY,
+                "userId" TEXT NOT NULL,
+                "bannerId" TEXT NOT NULL,
+                enabled BOOLEAN DEFAULT true,
+                "orderIndex" INTEGER DEFAULT 0,
+                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE("userId", "bannerId")
+            );
         `);
 
         // Migration para bancos já existentes
@@ -171,6 +181,18 @@ const connectDB = async () => {
                 enabled INTEGER DEFAULT 1,
                 orderIndex INTEGER DEFAULT 0,
                 updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await db.run(`
+            CREATE TABLE IF NOT EXISTS UserBannerConfig (
+                id TEXT PRIMARY KEY,
+                userId TEXT NOT NULL,
+                bannerId TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                orderIndex INTEGER DEFAULT 0,
+                updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(userId, bannerId)
             );
         `);
 
@@ -630,15 +652,60 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
 
 // ================= ROTAS DE BANNERS =================
 
-// Listar banners com status (sem auth - frontend usa para todos)
+// Listar banners com status — com token opcional para personalização por usuário
 app.get('/api/banners', async (req, res) => {
     try {
-        const banners = await db.query('SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
-        // Normalizar enabled para boolean
-        const normalized = banners.map(b => ({
+        const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
+        const normalized = globalBanners.map(b => ({
             ...b,
             enabled: b.enabled === true || b.enabled === 1 || b.enabled === 't'
         }));
+
+        // Tenta extrair o userId do token JWT (se enviado)
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = require('jsonwebtoken').verify(token, JWT_SECRET);
+                const userId = decoded.id;
+
+                // Busca overrides do usuário
+                const overrides = await db.query(
+                    'SELECT "bannerId", enabled, "orderIndex" FROM "UserBannerConfig" WHERE "userId" = $1',
+                    [userId]
+                );
+
+                if (overrides.length > 0) {
+                    // Mescla: override prevalece sobre global
+                    const overrideMap = {};
+                    overrides.forEach(o => {
+                        overrideMap[o.bannerId] = {
+                            enabled: o.enabled === true || o.enabled === 1 || o.enabled === 't',
+                            orderIndex: o.orderIndex
+                        };
+                    });
+
+                    const merged = normalized.map(b => {
+                        if (overrideMap[b.id] !== undefined) {
+                            return {
+                                ...b,
+                                enabled: overrideMap[b.id].enabled,
+                                orderIndex: overrideMap[b.id].orderIndex,
+                                hasOverride: true
+                            };
+                        }
+                        return b;
+                    });
+
+                    // Reordena se houver overrides com orderIndex
+                    merged.sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
+                    return res.json(merged);
+                }
+            } catch (e) {
+                // token inválido ou expirado — retorna global sem erro
+            }
+        }
+
         res.json(normalized);
     } catch (error) {
         console.error('Erro ao listar banners:', error);
@@ -704,6 +771,171 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
         res.json({ message: `Banner ${enabled ? 'ativado' : 'desativado'} com sucesso.`, id, enabled });
     } catch (error) {
         console.error('Erro ao atualizar banner:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// =============== ROTAS DE BANNERS POR USUÁRIO (ADMIN) ===============
+
+// Listar banners globais com overrides do usuário mesclados
+app.get('/api/admin/users/:userId/banners', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const globalBanners = await db.query(
+            'SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC'
+        );
+        const overrides = await db.query(
+            'SELECT "bannerId", enabled, "orderIndex" FROM "UserBannerConfig" WHERE "userId" = $1',
+            [userId]
+        );
+
+        const overrideMap = {};
+        overrides.forEach(o => {
+            overrideMap[o.bannerId] = {
+                enabled: o.enabled === true || o.enabled === 1 || o.enabled === 't',
+                orderIndex: o.orderIndex
+            };
+        });
+
+        const merged = globalBanners.map(b => {
+            const normalizedGlobal = b.enabled === true || b.enabled === 1 || b.enabled === 't';
+            if (overrideMap[b.id] !== undefined) {
+                return {
+                    ...b,
+                    enabled: overrideMap[b.id].enabled,
+                    orderIndex: overrideMap[b.id].orderIndex,
+                    globalEnabled: normalizedGlobal,
+                    hasOverride: true
+                };
+            }
+            return { ...b, enabled: normalizedGlobal, globalEnabled: normalizedGlobal, hasOverride: false };
+        });
+
+        res.json(merged);
+    } catch (error) {
+        console.error('Erro ao listar banners do usuário:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Ativar/desativar um banner específico para um usuário (cria ou atualiza override)
+app.put('/api/admin/users/:userId/banners/:bannerId', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { userId, bannerId } = req.params;
+        const { enabled } = req.body;
+
+        if (typeof enabled === 'undefined') {
+            return res.status(400).json({ error: 'Campo "enabled" é obrigatório.' });
+        }
+
+        const userCheck = await db.query('SELECT id FROM "User" WHERE id = $1', [userId]);
+        if (userCheck.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+        const bannerCheck = await db.query('SELECT id, "orderIndex" FROM "BannerConfig" WHERE id = $1', [bannerId]);
+        if (bannerCheck.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
+
+        const enabledValue = enabled ? 1 : 0;
+        const overrideId = uuidv4();
+        const now = new Date().toISOString();
+        const globalOrder = bannerCheck[0].orderIndex ?? 0;
+
+        // UPSERT: se já existe override, atualiza; senão, cria
+        const existing = await db.query(
+            'SELECT id FROM "UserBannerConfig" WHERE "userId" = $1 AND "bannerId" = $2',
+            [userId, bannerId]
+        );
+
+        if (existing.length > 0) {
+            await db.run(
+                'UPDATE "UserBannerConfig" SET enabled = $1, updatedAt = $2 WHERE "userId" = $3 AND "bannerId" = $4',
+                [enabledValue, now, userId, bannerId]
+            );
+        } else {
+            await db.run(
+                'INSERT INTO "UserBannerConfig" (id, "userId", "bannerId", enabled, "orderIndex", updatedAt) VALUES ($1, $2, $3, $4, $5, $6)',
+                [overrideId, userId, bannerId, enabledValue, globalOrder, now]
+            );
+        }
+
+        await db.run(
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            [uuidv4(), req.user.id, 'admin_toggle_user_banner', JSON.stringify({ targetUserId: userId, bannerId, enabled })]
+        );
+
+        res.json({ message: `Banner ${enabled ? 'ativado' : 'desativado'} para o usuário com sucesso.`, userId, bannerId, enabled });
+    } catch (error) {
+        console.error('Erro ao atualizar banner do usuário:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Reordenar banners de um usuário específico
+app.put('/api/admin/users/:userId/banners/reorder', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { orderedBanners } = req.body;
+
+        if (!Array.isArray(orderedBanners)) {
+            return res.status(400).json({ error: 'Payload inválido. Esperado um array de banners.' });
+        }
+
+        const now = new Date().toISOString();
+
+        for (const item of orderedBanners) {
+            if (item.id === undefined || item.orderIndex === undefined) continue;
+
+            const existing = await db.query(
+                'SELECT id, enabled FROM "UserBannerConfig" WHERE "userId" = $1 AND "bannerId" = $2',
+                [userId, item.id]
+            );
+
+            if (existing.length > 0) {
+                await db.run(
+                    'UPDATE "UserBannerConfig" SET "orderIndex" = $1, updatedAt = $2 WHERE "userId" = $3 AND "bannerId" = $4',
+                    [item.orderIndex, now, userId, item.id]
+                );
+            } else {
+                // Busca o estado atual global para manter o enabled correto
+                const global = await db.query('SELECT enabled FROM "BannerConfig" WHERE id = $1', [item.id]);
+                const globalEnabled = global.length > 0 ? (global[0].enabled === true || global[0].enabled === 1 || global[0].enabled === 't' ? 1 : 0) : 1;
+                await db.run(
+                    'INSERT INTO "UserBannerConfig" (id, "userId", "bannerId", enabled, "orderIndex", updatedAt) VALUES ($1, $2, $3, $4, $5, $6)',
+                    [uuidv4(), userId, item.id, globalEnabled, item.orderIndex, now]
+                );
+            }
+        }
+
+        await db.run(
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            [uuidv4(), req.user.id, 'admin_reorder_user_banners', JSON.stringify({ targetUserId: userId, count: orderedBanners.length })]
+        );
+
+        res.json({ message: 'Ordem dos banners do usuário atualizada com sucesso.', success: true });
+    } catch (error) {
+        console.error('Erro ao reordenar banners do usuário:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Remover todos os overrides do usuário (resetar para configuração global)
+app.delete('/api/admin/users/:userId/banners', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const userCheck = await db.query('SELECT id FROM "User" WHERE id = $1', [userId]);
+        if (userCheck.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+        await db.run('DELETE FROM "UserBannerConfig" WHERE "userId" = $1', [userId]);
+
+        await db.run(
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            [uuidv4(), req.user.id, 'admin_reset_user_banners', JSON.stringify({ targetUserId: userId })]
+        );
+
+        res.json({ message: 'Configurações de banners do usuário resetadas para o padrão global.', success: true });
+    } catch (error) {
+        console.error('Erro ao resetar banners do usuário:', error);
         res.status(500).json({ error: 'Erro interno no servidor' });
     }
 });

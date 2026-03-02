@@ -262,6 +262,31 @@ class ApiService {
         });
     }
 
+    // --- Métodos de Banners por Usuário (Admin) ---
+    static async adminGetUserBanners(userId) {
+        return this.request(`/admin/users/${userId}/banners`);
+    }
+
+    static async adminToggleUserBanner(userId, bannerId, enabled) {
+        return this.request(`/admin/users/${userId}/banners/${bannerId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ enabled })
+        });
+    }
+
+    static async adminResetUserBanners(userId) {
+        return this.request(`/admin/users/${userId}/banners`, {
+            method: 'DELETE'
+        });
+    }
+
+    static async adminReorderUserBanners(userId, orderedBanners) {
+        return this.request(`/admin/users/${userId}/banners/reorder`, {
+            method: 'PUT',
+            body: JSON.stringify({ orderedBanners })
+        });
+    }
+
     static getCurrentUser() {
         try {
             return JSON.parse(localStorage.getItem('currentUser'));
@@ -2019,28 +2044,27 @@ const BANNER_STATIC = {
     }
 };
 
-function AdminBannersPanel({ darkMode }) {
+// ==================== MODAL DE BANNERS POR USUÁRIO ====================
+function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
     const [savingId, setSavingId] = useState(null);
+    const [resetting, setResetting] = useState(false);
     const [toast, setToast] = useState(null);
-    const [isReordering, setIsReordering] = useState(false);
-
-    // Refs for Drag and Drop
     const dragItem = useRef();
     const dragOverItem = useRef();
 
     useEffect(() => {
-        loadBanners();
-    }, []);
+        loadUserBanners();
+    }, [userId]);
 
-    const loadBanners = async () => {
+    const loadUserBanners = async () => {
         setLoading(true);
         try {
-            const data = await ApiService.getBanners();
+            const data = await ApiService.adminGetUserBanners(userId);
             setBanners(data);
         } catch (e) {
-            setToast({ type: 'error', msg: 'Erro ao carregar banners.' });
+            setToast({ type: 'error', msg: 'Erro ao carregar banners do usuário.' });
         } finally {
             setLoading(false);
         }
@@ -2050,51 +2074,199 @@ function AdminBannersPanel({ darkMode }) {
         setSavingId(banner.id);
         const newEnabled = !banner.enabled;
         try {
-            await ApiService.toggleBanner(banner.id, newEnabled);
-            setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: newEnabled } : b));
-            setToast({ type: 'success', msg: `Banner "${banner.label}" ${newEnabled ? 'ativado' : 'desativado'} com sucesso.` });
+            await ApiService.adminToggleUserBanner(userId, banner.id, newEnabled);
+            setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: newEnabled, hasOverride: true } : b));
+            showToast('success', `"${BANNER_STATIC[banner.key]?.label || banner.label}" ${newEnabled ? 'ativado' : 'desativado'} para ${userName}.`);
         } catch (e) {
-            setToast({ type: 'error', msg: 'Erro ao atualizar banner.' });
+            showToast('error', 'Erro ao atualizar banner.');
         } finally {
             setSavingId(null);
-            setTimeout(() => setToast(null), 3000);
+        }
+    };
+
+    const handleReset = async () => {
+        if (!confirm(`Resetar todos os banners de "${userName}" para o padrão global?`)) return;
+        setResetting(true);
+        try {
+            await ApiService.adminResetUserBanners(userId);
+            showToast('success', `Banners de "${userName}" resetados para o padrão global.`);
+            await loadUserBanners();
+        } catch (e) {
+            showToast('error', 'Erro ao resetar banners.');
+        } finally {
+            setResetting(false);
         }
     };
 
     const handleSort = async () => {
         if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
-            setIsReordering(true);
             const _banners = [...banners];
-            // Remove the dragged item
-            const draggedItemContent = _banners.splice(dragItem.current, 1)[0];
-            // Insert it at the new position
-            _banners.splice(dragOverItem.current, 0, draggedItemContent);
-
-            // Re-assign orderIndex locally to ensure the new order is correct payload
-            const orderedPayload = _banners.map((b, index) => ({ id: b.id, orderIndex: index }));
-
+            const dragged = _banners.splice(dragItem.current, 1)[0];
+            _banners.splice(dragOverItem.current, 0, dragged);
+            const orderedPayload = _banners.map((b, i) => ({ id: b.id, orderIndex: i }));
             setBanners(_banners);
-
             try {
-                await ApiService.reorderBanners(orderedPayload);
-                setToast({ type: 'success', msg: 'Ordem dos banners atualizada!' });
+                await ApiService.adminReorderUserBanners(userId, orderedPayload);
+                showToast('success', 'Ordem atualizada!');
             } catch (e) {
-                setToast({ type: 'error', msg: 'Erro ao salvar a nova ordem.' });
-                loadBanners(); // Reload original order on fail
-            } finally {
-                setIsReordering(false);
-                setTimeout(() => setToast(null), 3000);
+                showToast('error', 'Erro ao salvar a nova ordem.');
+                loadUserBanners();
             }
         }
-
-        // Reset refs
         dragItem.current = null;
         dragOverItem.current = null;
     };
 
+    const showToast = (type, msg) => {
+        setToast({ type, msg });
+        setTimeout(() => setToast(null), 3500);
+    };
+
+    const hasAnyOverride = banners.some(b => b.hasOverride);
+
+    return ReactDOM.createPortal(
+        <div
+            className="fixed inset-0 overflow-y-auto"
+            style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999 }}
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div className="flex items-center justify-center min-h-full p-6">
+                <div className={`relative w-full max-w-md flex flex-col rounded-2xl shadow-2xl ${darkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-100'}`} style={{ maxHeight: '70vh' }} onClick={(e) => e.stopPropagation()}>
+                    {/* Header */}
+                    <div className={`flex items-center justify-between p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                        <div>
+                            <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                🎛️ Banners de <span className={darkMode ? 'text-blue-400' : 'text-blue-600'}>{userName}</span>
+                            </h3>
+                            <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {hasAnyOverride ? 'Configuração personalizada ativa' : 'Seguindo padrão global'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-gray-800 text-gray-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-800'}`}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Toast */}
+                    {toast && (
+                        <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 ${toast.type === 'success' ? (darkMode ? 'bg-green-900/40 text-green-300 border border-green-700' : 'bg-green-50 text-green-800 border border-green-200') : (darkMode ? 'bg-red-900/40 text-red-300 border border-red-700' : 'bg-red-50 text-red-800 border border-red-200')}`}>
+                            {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+                        </div>
+                    )}
+
+                    {/* Lista de banners */}
+                    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                        {loading ? (
+                            <div className="flex justify-center items-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"></div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {banners.map((banner, index) => {
+                                    const s = BANNER_STATIC[banner.key];
+                                    if (!s) return null;
+                                    const isSaving = savingId === banner.id;
+
+                                    return (
+                                        <div
+                                            key={banner.id}
+                                            draggable
+                                            onDragStart={() => dragItem.current = index}
+                                            onDragEnter={() => dragOverItem.current = index}
+                                            onDragEnd={handleSort}
+                                            onDragOver={e => e.preventDefault()}
+                                            className={`flex items-center p-3.5 rounded-xl border transition-all duration-200 cursor-move ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'} ${!banner.enabled ? 'opacity-60' : ''}`}
+                                        >
+                                            <div className="text-gray-400 px-1.5 mr-1 cursor-grab">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+                                            </div>
+
+                                            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mr-3 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden shadow-inner pointer-events-none`}>
+                                                {s.imageIcon ? (
+                                                    <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-contain p-1.5'} />
+                                                ) : (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon || 'M4 5h16'} />
+                                                    </svg>
+                                                )}
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <span className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</span>
+                                                <p className={`text-[10px] mt-0.5 ${banner.enabled ? (darkMode ? 'text-green-400' : 'text-green-600') : (darkMode ? 'text-gray-500' : 'text-gray-400')}`}>
+                                                    {banner.enabled ? '● Visível' : '● Oculto'}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                onClick={() => handleToggle(banner)}
+                                                disabled={isSaving}
+                                                className={`relative flex-shrink-0 ml-3 inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 ${banner.enabled ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')} ${isSaving ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                            >
+                                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out flex items-center justify-center ${banner.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                                    {isSaving && <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>}
+                                                </span>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={`p-4 border-t text-center ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                        <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            Arraste para reordenar
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// ==================== PAINEL DE CONTROLE DE BANNERS ====================
+function AdminBannersPanel({ darkMode }) {
+    const [users, setUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(true);
+    const [toast, setToast] = useState(null);
+    const [selectedUserModal, setSelectedUserModal] = useState(null); // {id, name}
+
+    useEffect(() => {
+        loadUsers();
+    }, []);
+
+    const loadUsers = async () => {
+        setLoadingUsers(true);
+        try {
+            const data = await ApiService.getUsers();
+            setUsers(data.filter(u => u.role !== 'admin' && (u.isAuthorized === true || u.isAuthorized === 1)));
+        } catch (e) {
+            setToast({ type: 'error', msg: 'Erro ao carregar usuários.' });
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
     return (
         <div className="animate-fadeInUp">
-            {/* Header Clean */}
+            {/* Modal de banners por usuário */}
+            {selectedUserModal && (
+                <AdminUserBannersModal
+                    userId={selectedUserModal.id}
+                    userName={selectedUserModal.name}
+                    darkMode={darkMode}
+                    onClose={() => setSelectedUserModal(null)}
+                />
+            )}
+
+            {/* Header */}
             <div className={`mb-6 p-5 rounded-2xl ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-100 shadow-sm'}`}>
                 <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
@@ -2104,7 +2276,7 @@ function AdminBannersPanel({ darkMode }) {
                     </div>
                     <div>
                         <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerenciador de Banners</h2>
-                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Controle dinamicamente quais recursos aparecem na tela inicial.</p>
+                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Personalize quais recursos cada usuário visualiza na tela inicial.</p>
                     </div>
                 </div>
             </div>
@@ -2119,64 +2291,46 @@ function AdminBannersPanel({ darkMode }) {
                 </div>
             )}
 
-            {loading ? (
+            {/* Lista de Usuários */}
+            {loadingUsers ? (
                 <div className="flex justify-center items-center py-16">
                     <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"></div>
                 </div>
+            ) : users.length === 0 ? (
+                <div className={`flex flex-col items-center justify-center py-16 gap-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <svg className="w-12 h-12 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm font-medium">Nenhum usuário autorizado encontrado.</p>
+                </div>
             ) : (
-                <div className="flex flex-col gap-4">
-                    {banners.map((banner, index) => {
-                        const s = BANNER_STATIC[banner.key];
-                        if (!s) return null;
-                        const isSaving = savingId === banner.id;
-
-                        return (
-                            <div
-                                key={banner.id}
-                                draggable
-                                onDragStart={(e) => { dragItem.current = index; e.currentTarget.classList.add('opacity-50', 'scale-95'); }}
-                                onDragEnter={(e) => dragOverItem.current = index}
-                                onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleSort(); }}
-                                onDragOver={(e) => e.preventDefault()}
-                                className={`flex items-center p-4 rounded-xl transition-all duration-200 border cursor-move ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'} ${!banner.enabled ? 'opacity-70 grayscale-[20%]' : ''}`}
-                            >
-                                <div className={`flex items-center justify-center px-2 mr-2 text-gray-400 cursor-grab active:cursor-grabbing`}>
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
-                                </div>
-                                <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center mr-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden shadow-inner pointer-events-none`}>
-                                    {s.imageIcon ? (
-                                        <img src={s.imageIcon} alt="" className={s.imageClass || "w-full h-full object-contain p-1.5"} />
-                                    ) : (
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon || 'M4 5h16'} />
-                                        </svg>
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0 pr-4">
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                        <h3 className={`font-semibold text-base truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${banner.enabled ? (darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700') : (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500')}`}>
-                                            {banner.enabled ? 'On' : 'Off'}
-                                        </span>
-                                    </div>
-                                    {s.description && <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{s.description}</p>}
-                                </div>
-
-                                <button
-                                    onClick={() => handleToggle(banner)}
-                                    disabled={isSaving}
-                                    title={banner.enabled ? "Desativar banner" : "Ativar banner"}
-                                    className={`relative flex-shrink-0 inline-flex h-7 w-12 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${darkMode ? 'focus:ring-offset-gray-900' : ''} ${banner.enabled ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')} ${isSaving ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-                                >
-                                    <span
-                                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${banner.enabled ? 'translate-x-5' : 'translate-x-0'}`}
-                                    >
-                                        {isSaving && <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>}
-                                    </span>
-                                </button>
+                <div className="flex flex-col gap-3">
+                    <div className={`px-4 py-3 rounded-xl text-sm flex items-start gap-2 ${darkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-700/30' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+                        💡 <span>Clique em <strong>Gerenciar Banners</strong> para personalizar a visibilidade de cada banner por usuário.</span>
+                    </div>
+                    {users.map(user => (
+                        <div
+                            key={user.id}
+                            className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${darkMode ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'}`}
+                        >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white text-base shadow-md ${darkMode ? 'bg-blue-700' : 'bg-blue-500'}`}>
+                                {(user.name || user.username)?.charAt(0).toUpperCase()}
                             </div>
-                        );
-                    })}
+                            <div className="flex-1 min-w-0">
+                                <p className={`font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name || user.username}</p>
+                                <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>@{user.username}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedUserModal({ id: user.id, name: user.name || user.username })}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex-shrink-0 ${darkMode ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-600/30' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'}`}
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                </svg>
+                                Gerenciar Banners
+                            </button>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
@@ -2269,6 +2423,7 @@ function App() {
     // Carregar/recarregar config de banners ao montar e sempre que voltar para Home
     useEffect(() => {
         const loadBanners = () => {
+            // Passa o token para receber banners personalizados do usuário
             ApiService.getBanners()
                 .then(data => setBannerConfig(data))
                 .catch(() => {
@@ -2283,7 +2438,14 @@ function App() {
                 });
         };
         loadBanners();
-    }, [currentView]);
+    }, [currentView, isAuthenticated]);
+
+    // Função para recarregar banners manualmente (ex: após gerenciar banners de um usuário)
+    const reloadBanners = () => {
+        ApiService.getBanners()
+            .then(data => setBannerConfig(data))
+            .catch(() => { });
+    };
 
     useEffect(() => {
         if (currentUser?.role === 'admin') {
@@ -3069,11 +3231,6 @@ function App() {
                                             const content = (
                                                 <>
                                                     <div className={`absolute inset-0 opacity-0 ${'group-hover:opacity-10'} transition-opacity duration-300 ${darkMode ? s.hoverBg?.dark || 'bg-white' : s.hoverBg?.light || 'bg-blue-600'}`}></div>
-                                                    {!banner.enabled && isAdmin && (
-                                                        <div className="absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-500/80 text-white">
-                                                            Inativo
-                                                        </div>
-                                                    )}
                                                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden pointer-events-none`}>
                                                         {s.imageIcon ? (
                                                             <img src={s.imageIcon} alt="" className={s.imageClass || "w-full h-full object-contain p-1.5"} />
@@ -3688,7 +3845,7 @@ function App() {
                             </div>
                         )}
 
-                        <footer className={`mt-8 text-center text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
+                        <footer className={`relative z-[1] mt-8 text-center text-xs font-semibold leading-tight transition-colors duration-500 select-none pointer-events-none whitespace-nowrap px-4 py-2 rounded-full backdrop-blur-sm ${darkMode ? 'text-gray-400 bg-gray-900/20' : 'text-gray-500 bg-white/20'}`}>
                             <p>© 2026 Ecossistema DIAAF · <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Murilo Miguel</span> 🚀</p>
                         </footer>
 
