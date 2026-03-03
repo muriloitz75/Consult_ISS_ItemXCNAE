@@ -21,6 +21,7 @@ const connectDB = async () => {
         });
 
         db = {
+            isPg: true,
             query: async (text, params) => {
                 const { rows } = await pool.query(text, params);
                 return rows;
@@ -126,6 +127,7 @@ const connectDB = async () => {
         const sqldb = new sqlite3.Database('./dev.sqlite3');
 
         db = {
+            isPg: false,
             query: (text, params) => new Promise((resolve, reject) => {
                 const formattedText = text.replace(/\$\d+/g, '?');
                 sqldb.all(formattedText, params, (err, rows) => {
@@ -351,10 +353,10 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: "Credenciais inválidas" });
         }
 
-        // SQLite converte booleanos para 1/0
-        const isLocked = user.accountLocked === true || user.accountLocked === 1;
-        const isBlocked = user.isBlockedByAdmin === true || user.isBlockedByAdmin === 1;
-        const isAuthorized = user.isAuthorized === true || user.isAuthorized === 1;
+        // SQLite converte booleanos para 1/0, e PG pode retornar strings ou booleanos nativos
+        const isLocked = String(user.accountLocked).toLowerCase() === 'true' || user.accountLocked === true || user.accountLocked === 1 || user.accountLocked === 't';
+        const isBlocked = String(user.isBlockedByAdmin).toLowerCase() === 'true' || user.isBlockedByAdmin === true || user.isBlockedByAdmin === 1 || user.isBlockedByAdmin === 't';
+        const isAuthorized = String(user.isAuthorized).toLowerCase() === 'true' || user.isAuthorized === true || user.isAuthorized === 1 || user.isAuthorized === 't';
 
         if (isLocked || isBlocked) {
             await db.run(`INSERT INTO "AuditLog" (id, "userId", action, success) VALUES ($1, $2, $3, $4)`,
@@ -419,7 +421,7 @@ app.post('/api/auth/login', async (req, res) => {
         // Resetar failed attempts
         await db.run(`UPDATE "User" SET failedAttempts = 0, accountLocked = 0, lockUntil = NULL WHERE id = $1`, [user.id]);
 
-        const firstLogin = user.firstLogin === true || user.firstLogin === 1;
+        const firstLogin = String(user.firstLogin).toLowerCase() === 'true' || user.firstLogin === true || user.firstLogin === 1 || user.firstLogin === 't';
 
         const token = jwt.sign(
             { id: user.id, username: user.username, role: user.role, firstLogin },
@@ -666,7 +668,7 @@ app.get('/api/banners', async (req, res) => {
         const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
         const normalized = globalBanners.map(b => ({
             ...b,
-            enabled: b.enabled === true || b.enabled === 1 || b.enabled === 't'
+            enabled: String(b.enabled).toLowerCase() === 'true' || b.enabled === true || b.enabled === 1 || b.enabled === 't'
         }));
 
         // Tenta extrair o userId do token JWT (se enviado)
@@ -688,7 +690,7 @@ app.get('/api/banners', async (req, res) => {
                     const overrideMap = {};
                     overrides.forEach(o => {
                         overrideMap[o.bannerId] = {
-                            enabled: o.enabled === true || o.enabled === 1 || o.enabled === 't',
+                            enabled: String(o.enabled).toLowerCase() === 'true' || o.enabled === true || o.enabled === 1 || o.enabled === 't',
                             orderIndex: o.orderIndex
                         };
                     });
@@ -765,7 +767,7 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
         const banners = await db.query('SELECT * FROM "BannerConfig" WHERE id = $1', [id]);
         if (banners.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
 
-        const enabledValue = !!enabled;
+        const enabledValue = db.isPg ? !!enabled : (enabled ? 1 : 0);
         await db.run(
             'UPDATE "BannerConfig" SET enabled = $1, updatedAt = $2 WHERE id = $3',
             [enabledValue, new Date().toISOString(), id]
@@ -801,13 +803,13 @@ app.get('/api/admin/users/:userId/banners', authenticateToken, requireAdmin, asy
         const overrideMap = {};
         overrides.forEach(o => {
             overrideMap[o.bannerId] = {
-                enabled: o.enabled === true || o.enabled === 1 || o.enabled === 't',
+                enabled: String(o.enabled).toLowerCase() === 'true' || o.enabled === true || o.enabled === 1 || o.enabled === 't',
                 orderIndex: o.orderIndex
             };
         });
 
         const merged = globalBanners.map(b => {
-            const normalizedGlobal = b.enabled === true || b.enabled === 1 || b.enabled === 't';
+            const normalizedGlobal = String(b.enabled).toLowerCase() === 'true' || b.enabled === true || b.enabled === 1 || b.enabled === 't';
             if (overrideMap[b.id] !== undefined) {
                 return {
                     ...b,
@@ -843,7 +845,7 @@ app.put('/api/admin/users/:userId/banners/:bannerId', authenticateToken, require
         const bannerCheck = await db.query('SELECT id, "orderIndex" FROM "BannerConfig" WHERE id = $1', [bannerId]);
         if (bannerCheck.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
 
-        const enabledValue = !!enabled;
+        const enabledValue = db.isPg ? !!enabled : (enabled ? 1 : 0);
         const overrideId = uuidv4();
         const now = new Date().toISOString();
         const globalOrder = bannerCheck[0].orderIndex ?? 0;
@@ -906,7 +908,8 @@ app.put('/api/admin/users/:userId/banners/reorder', authenticateToken, requireAd
             } else {
                 // Busca o estado atual global para manter o enabled correto
                 const global = await db.query('SELECT enabled FROM "BannerConfig" WHERE id = $1', [item.id]);
-                const globalEnabled = global.length > 0 ? (global[0].enabled === true || global[0].enabled === 1 || global[0].enabled === 't') : true;
+                const isGloballyEnabled = global.length > 0 ? (String(global[0].enabled).toLowerCase() === 'true' || global[0].enabled === true || global[0].enabled === 1 || global[0].enabled === 't') : true;
+                const globalEnabled = db.isPg ? isGloballyEnabled : (isGloballyEnabled ? 1 : 0);
                 await db.run(
                     'INSERT INTO "UserBannerConfig" (id, "userId", "bannerId", enabled, "orderIndex", updatedAt) VALUES ($1, $2, $3, $4, $5, $6)',
                     [uuidv4(), userId, item.id, globalEnabled, item.orderIndex, now]

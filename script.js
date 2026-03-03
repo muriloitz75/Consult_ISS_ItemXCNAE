@@ -242,8 +242,14 @@ class ApiService {
 
     // --- Métodos de Banners ---
     static async getBanners() {
-        // Chama sem auth para funcionar tanto pra admin quanto pra usuário
-        const response = await fetch(`${API_BASE_URL}/banners`);
+        const token = localStorage.getItem('authToken');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/banners`, {
+            headers
+        });
+
         if (!response.ok) throw new Error('Erro ao carregar banners');
         return response.json();
     }
@@ -2073,11 +2079,15 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
     const handleToggle = async (banner) => {
         setSavingId(banner.id);
         const newEnabled = !banner.enabled;
+        // Optimistic UI update: atualiza a tela instantaneamente
+        setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: newEnabled, hasOverride: true } : b));
+
         try {
             await ApiService.adminToggleUserBanner(userId, banner.id, newEnabled);
-            setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: newEnabled, hasOverride: true } : b));
             showToast('success', `"${BANNER_STATIC[banner.key]?.label || banner.label}" ${newEnabled ? 'ativado' : 'desativado'} para ${userName}.`);
         } catch (e) {
+            // Reverte o estado em caso de falha da API
+            setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, enabled: banner.enabled, hasOverride: true } : b));
             showToast('error', 'Erro ao atualizar banner.');
         } finally {
             setSavingId(null);
