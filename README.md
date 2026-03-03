@@ -1,141 +1,80 @@
-# Sistema de Consulta de Serviços & CNAEs
+# Ecossistema DIAAF
 
-Uma aplicação web moderna e intuitiva para consulta de serviços fiscais e códigos CNAE, desenvolvida especialmente para profissionais fiscais e contábeis.
+Uma plataforma digital completa e integrada, desenvolvida para unificar consultas analíticas, gestão de processos e automação de serviços da Divisão de Informações e Arrecadação (DIAAF).
 
-## 🚀 Funcionalidades
+## 🚀 Novas Funcionalidades e Módulos Principais
 
-### 🔍 Modos de Busca
-- **Busca Universal**: Pesquisa inteligente que identifica automaticamente o tipo de consulta
-- **Busca Avançada**: Filtros específicos para cada campo (Código, Serviço, CNAE)
+### 🔒 Autenticação e Segurança Avançada
+- **Sistema de Login Completo**: Registro de usuários, recuperação de senha com código único.
+- **Aprovação Manual**: Novos usuários ficam pendentes até um Administrador autorizá-los.
+- **Soft-Lock (Inatividade)**: Bloqueio automático da sessão após inatividade, exigindo apenas a senha para desbloqueio rápido sem perda de dados.
+- **Prevenção de Ataques**: Bloqueio de conta após múltiplas tentativas de login falhas.
 
-### 🎨 Interface
-- **Modo Escuro/Claro**: Alternância entre temas para melhor experiência visual
-- **Design Responsivo**: Funciona perfeitamente em desktop, tablet e mobile
-- **Animações Suaves**: Transições e efeitos visuais modernos
+### 🎛️ Gestão Dinâmica de Banners (Módulos)
+- **Controle Global**: Administradores podem ocultar ou habilitar módulos (`Consulta ISS`, `Análise de Processos`, etc.) globalmente.
+- **Controle por Usuário**: O administrador pode sobrepor a configuração global, determinando módulos específicos que cada usuário pode acessar, reorganizando a visualização de Banners em um modal Drag & Drop individualizado.
 
-### 🔐 Gestão de Acesso (Novo)
-- **Aprovação de Cadastros**: Novos usuários requerem aprovação manual do administrador.
-- **Reset de Senha Admin**: Administradores podem resetar senhas de usuários para um padrão temporário.
-- **Bloqueio de Usuários**: Funcionalidade para bloquear/desbloquear acesso de usuários instantaneamente.
-- **Segurança Reforçada**: Feedback imediato de bloqueio e expiração de sessão.
+### 🔍 Motor de Consultas (ISS / CNAE)
+- Busca Universal e Avançada combinando descrições, códigos LC e CNAEs.
+- Autocomplete, Histórico de 5 últimas pesquisas de usuário e Exportação em CSV.
+- Processamento assíncrono (Debounce local) de altos volumes de pesquisa para evitar gargalos.
 
-### 📊 Recursos Avançados
-- **Autocomplete**: Sugestões automáticas durante a digitação
-- **Histórico de Busca**: Armazena as últimas 5 pesquisas realizadas
-- **Exportação CSV**: Exporta os resultados filtrados para planilha
-- **Filtros por Categoria**: Visualização focada em Serviços ou CNAEs
-- **Debounce**: Otimização de performance nas buscas
+### 📡 Sistema de Processamento de Arquivos
+- **Processos e Pareceres**: Ferramentas emuladas que agora contam com sistema de uploads monitorado.
+- **Cancelamento Assíncrono**: Painel nativo para cancelamento e limpeza de cache de requisições de upload pesadas sendo processadas em back-end no Node.js.
 
-## 📁 Estrutura do Projeto
+### 📊 Painéis de Administração
+- Indicadores de Acessos (KPIs tracking), buscas mensais e controle minucioso do fluxo de uso diário na aba Dashboard.
+- Controle direto sob usuários, reset amigável de senhas e monitoramento de atividades recentes de consultas.
 
+## 📁 Arquitetura do Projeto
+
+A evolução estrutural migrou de um projeto puramente estático para uma API Express e banco interligado:
 ```
 Consult_ItemXCNAE/
-├── index.html          # Aplicação principal
-├── dados.md            # Base de dados com registros e alíquotas pré-calculadas
-└── README.md           # Documentação
+├── index.html        # Front-End Dinâmico
+├── script.js         # Orquestração do Front-End (React + Fetch API)
+├── style.css         # Estilização CSS e Tailwind injetado
+├── server.js         # API Node.js / Express Backend
+├── .env              # Variáveis de Ambiente e Secret do JWT
+├── dev.sqlite3       # Banco Local (Desenvolvimento/Offline)
+└── prisma/           # Estruturas antigas de modelagem (opcional dependendo da build)
 ```
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **React 18**: Framework JavaScript para interface de usuário
-- **Tailwind CSS**: Framework CSS para estilização
-- **Babel**: Transpilador JavaScript
-- **LocalStorage**: Armazenamento local do histórico
+- **Frontend**: React 18, Babel (in-browser para testes rápidos), Tailwind CSS (CDN/Customizadas), Lucide-React (Ícones).
+- **Backend API**: Node.js, Express.
+- **Segurança Backend**: `jsonwebtoken` (JWT), `bcrypt` (Hashing de Senhas).
+- **Banco de Dados (DB Híbrido)**: 
+  - `sqlite3`: Autoconfigurado em ambiente local.
+  - `pg` (PostgreSQL): Configurado para deploy no **Railway** ou VPS através de `DATABASE_URL`.
 
-## 🚀 Como Usar
+## 🚀 Como Usar e Deploy Inicial
 
-### Instalação
-1. Clone ou baixe o projeto
-2. Certifique-se que o arquivo `dados.md` está na mesma pasta que `index.html`
-3. Abra o arquivo `index.html` em qualquer navegador moderno (requer servidor local devido a políticas de CORS, ex: `python -m http.server`)
+### Executando Localmente (Desenvolvimento)
+1. Certifique-se de ter o [Node.js](https://nodejs.org/) instalado.
+2. Clone o repositório na sua máquina.
+3. Instale as dependências executando:
+   ```bash
+   npm install
+   ```
+4. Crie um usuário Admin Padrão (ele é auto-gerado caso o banco esteja vazio) rodando a aplicação:
+   ```bash
+   node server.js
+   # ou npm run dev (se tiver nodemon configurado)
+   ```
+5. Acesse na máquina `http://localhost:3001`
+   - O primeiro usuário cadastrado que coincida com a regra de admin (ex. nome admin/Admin@123) possuirá os direitos máximos.
 
-### Tipos de Busca
+### Tipos de Bancos
+O projeto faz a migração automática das tabelas.
+Caso você forneça uma string `DATABASE_URL` no seu arquivo `.env`, o servidor conectará a sua nuvem PostgreSQL, abstraindo diferenças booleanas (`db.isPg`) magicamente. Caso contrário, criará um `dev.sqlite3` na pasta para funcionar de ponta a ponta offline.
 
-#### Busca Universal
-- **Por Código**: Digite códigos como "1.01" ou "1"
-- **Por CNAE**: Digite números como "61" ou "619060100"
-- **Por Descrição**: Digite palavras-chave do serviço
-
-#### Busca Avançada
-- **Código do Item**: Busca exata ou por prefixo (ex: "1.01")
-- **Descrição do Serviço**: Busca por palavras contidas na descrição
-- **Código CNAE**: Busca por prefixo numérico (ex: "61")
-- **Descrição do CNAE**: Busca por palavras na descrição do CNAE
-
-### Filtros por Categoria
-- **Todos**: Exibe todos os registros
-- **Serviços**: Foca nos itens da Lista LC
-- **CNAEs**: Foca nos códigos CNAE
-
-## 📊 Base de Dados
-
-O sistema utiliza uma base com **registros atualizados** contendo:
-- **LIST LC**: Código do item da Lei Complementar nº 001/2003
-- **Descrição do Serviço**: Descrição completa do serviço
-- **CNAE**: Código Nacional de Atividade Econômica
-- **Descrição do CNAE**: Descrição da atividade econômica
-- **Alíquota ISS**: Taxa aplicada conforme regras específicas (Ex: Educação 2%, Saúde 3%, Construção 4%, Padrão 5%)
-
-## 🎯 Casos de Uso
-
-### Para Contadores
-- Consulta rápida de códigos de serviço para emissão de notas fiscais
-- Verificação de enquadramento CNAE para clientes
-- Consulta imediata da alíquota de ISS aplicável
-- Exportação de listas para análise em planilhas
-
-### Para Fiscais
-- Verificação de correspondência entre serviços e CNAEs
-- Consulta de descrições detalhadas para autuações
-- Histórico de consultas para relatórios
-
-### Para Empresários
-- Verificação do CNAE adequado para sua atividade
-- Consulta de serviços permitidos por código
-- Planejamento tributário com base nas alíquotas disponíveis
-
-## 🔧 Funcionalidades Técnicas
-
-### Performance
-- **Debounce**: Evita buscas excessivas durante a digitação
-- **Limitação de Resultados**: Exibe até 100 registros por vez
-- **Memoização**: Cache de resultados para melhor performance
-
-### Usabilidade
-- **Autocomplete**: Sugestões baseadas nos dados reais
-- **Histórico Persistente**: Mantém buscas entre sessões
-- **Feedback Visual**: Indicadores de carregamento e estados
-
-### Acessibilidade
-- **Contraste**: Modo escuro para reduzir fadiga visual
-- **Responsividade**: Adaptação automática a diferentes telas
-- **Navegação por Teclado**: Suporte completo a navegação sem mouse
-
-## 📱 Compatibilidade
-
-- **Navegadores**: Chrome, Firefox, Safari, Edge (versões modernas)
-- **Dispositivos**: Desktop, Tablet, Smartphone
-- **Sistemas**: Windows, macOS, Linux, iOS, Android
-
-## 🔄 Atualizações
-
-Para atualizar a base de dados:
-1. Substitua o arquivo `dados.md` pela nova versão preservando a estrutura de tabela Markdown
-2. Mantenha a ordem das colunas: | LIST LC | Descrição LC | CNAE | Descrição CNAE | Alíquota |
-3. Recarregue a página no navegador
-
-## 📞 Suporte
-
-Este sistema foi desenvolvido para ser:
-- **Intuitivo**: Interface familiar e fácil de usar
-- **Rápido**: Respostas instantâneas às consultas
-- **Confiável**: Base de dados oficial e atualizada
-- **Flexível**: Múltiplas formas de busca e filtros
+## 📱 Compatibilidade & Performance
+- Suporte Full PWA Concept: Interface adaptativa aos cartões mobile, scrollbar customizado e modais dinâmicos com limite de viewport.
+- Multi-Theme (Dark/Light mode) persistido individualmente por perfil de autenticação.
 
 ---
-
-**Desenvolvido com ❤️ para profissionais fiscais e contábeis**
-
 **Desenvolvedor**: Murilo Miguel
-
-*© 2026 Sistema de Consulta Fiscal*
+*© 2026 Ecossistema DIAAF - Inteligência e Gestão Fiscal*
