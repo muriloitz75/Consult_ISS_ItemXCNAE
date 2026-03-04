@@ -300,7 +300,7 @@ const connectDB = async () => {
 
         try {
             await db.run(
-                `INSERT INTO "User" (id, username, password, name, role, isAuthorized, "isBlockedByAdmin", "accountLocked", "failedAttempts", "firstLogin")
+                `INSERT INTO "User" (id, username, password, name, role, "isAuthorized", "isBlockedByAdmin", "accountLocked", "failedAttempts", "firstLogin")
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                 [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
             );
