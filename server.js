@@ -330,7 +330,7 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: "Todos os campos obrigatórios precisam ser preenchidos" });
         }
 
-        const existingQuery = await db.query('SELECT * FROM User WHERE username = $1', [username]);
+        const existingQuery = await db.query('SELECT * FROM "User" WHERE username = $1', [username]);
         if (existingQuery.length > 0) {
             return res.status(400).json({ error: "Nome de usuário já existe" });
         }
@@ -348,7 +348,7 @@ app.post('/api/auth/register', async (req, res) => {
         console.log("Usuario inserido. Inserindo log...");
 
         await db.run(
-            `INSERT INTO AuditLog (id, userId, action, ipAddress, details) VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, "ipAddress", details) VALUES ($1, $2, $3, $4, $5)`,
             [uuidv4(), userId, 'user_registered', req.ip || 'unknown', JSON.stringify({ username })]
         );
 
@@ -368,12 +368,12 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (!username || !password) return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
 
-        const users = await db.query('SELECT * FROM User WHERE username = $1', [username]);
+        const users = await db.query('SELECT * FROM "User" WHERE username = $1', [username]);
         const user = users.length > 0 ? users[0] : null;
 
         if (!user) {
-            await db.run(`INSERT INTO AuditLog (id, action, details, success) VALUES ($1, $2, $3, $4)`,
-                [uuidv4(), 'login_failed', JSON.stringify({ username, reason: 'user_not_found' }), 0]);
+            await db.run(`INSERT INTO "AuditLog" (id, action, details, success) VALUES ($1, $2, $3, $4)`,
+                [uuidv4(), 'login_failed', JSON.stringify({ username, reason: 'user_not_found' }), false]);
             return res.status(401).json({ error: "Credenciais inválidas" });
         }
 
@@ -501,7 +501,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         const userId = req.user.id;
         const { name, email, username, currentPassword, newPassword } = req.body;
 
-        const users = await db.query('SELECT * FROM User WHERE id = $1', [userId]);
+        const users = await db.query('SELECT * FROM "User" WHERE id = $1', [userId]);
         if (users.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
         const user = users[0];
 
@@ -516,7 +516,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         if (email) addUpdate('email', email);
 
         if (username && username !== user.username) {
-            const existing = await db.query('SELECT * FROM User WHERE username = $1', [username]);
+            const existing = await db.query('SELECT * FROM "User" WHERE username = $1', [username]);
             if (existing.length > 0) return res.status(400).json({ error: "Este nome de usuário já está em uso" });
             addUpdate('username', username);
         }
@@ -548,17 +548,17 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
 
         if (updates.length > 0) {
             params.push(userId); // Adiciona userId como o ULTIMO parametro
-            const query = `UPDATE User SET ${updates.join(', ')} WHERE id = $${params.length}`;
+            const query = `UPDATE "User" SET ${updates.join(', ')} WHERE id = $${params.length}`;
             await db.run(query, params);
         }
 
         await db.run(
-            `INSERT INTO AuditLog (id, userId, action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
             [uuidv4(), userId, 'profile_updated', JSON.stringify({ passwordChanged: isPasswordChanged })]
         );
 
         // Retornar o usuário atualizado pra facilitar vida do front
-        const updatedUsers = await db.query('SELECT * FROM User WHERE id = $1', [userId]);
+        const updatedUsers = await db.query('SELECT * FROM "User" WHERE id = $1', [userId]);
         const updatedUser = updatedUsers[0];
 
         res.json({
@@ -598,10 +598,10 @@ app.get('/api/auth/users', authenticateToken, requireAdmin, async (req, res) => 
 app.post('/api/auth/users/:id/authorize', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        await db.run('UPDATE User SET isAuthorized = 1 WHERE id = $1', [id]);
+        await db.run('UPDATE "User" SET "isAuthorized" = $1 WHERE id = $2', [true, id]);
 
         await db.run(
-            `INSERT INTO AuditLog (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
             [uuidv4(), req.user.id, 'admin_authorized_user', JSON.stringify({ targetUserId: id })]
         );
 
@@ -616,18 +616,17 @@ app.post('/api/auth/users/:id/authorize', authenticateToken, requireAdmin, async
 app.post('/api/auth/users/:id/block', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const users = await db.query('SELECT isBlockedByAdmin FROM User WHERE id = $1', [id]);
+        const users = await db.query('SELECT "isBlockedByAdmin" FROM "User" WHERE id = $1', [id]);
 
         if (users.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
 
         // SQLite boolean to int
         const currentStatus = users[0].isBlockedByAdmin === true || users[0].isBlockedByAdmin === 1;
-        const newStatus = currentStatus ? 0 : 1;
-
-        await db.run('UPDATE User SET isBlockedByAdmin = $1 WHERE id = $2', [newStatus, id]);
+        const newStatus = !currentStatus;
+        await db.run('UPDATE "User" SET "isBlockedByAdmin" = $1 WHERE id = $2', [newStatus, id]);
 
         await db.run(
-            `INSERT INTO AuditLog (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
             [uuidv4(), req.user.id, newStatus ? 'admin_blocked_user' : 'admin_unblocked_user', JSON.stringify({ targetUserId: id })]
         );
 
@@ -645,10 +644,10 @@ app.post('/api/auth/users/:id/reset-password', authenticateToken, requireAdmin, 
         const defaultPassword = "Mudar@123";
         const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-        await db.run('UPDATE User SET password = $1, firstLogin = 1 WHERE id = $2', [hashedPassword, id]);
+        await db.run('UPDATE "User" SET password = $1, "firstLogin" = $2 WHERE id = $3', [hashedPassword, true, id]);
 
         await db.run(
-            `INSERT INTO AuditLog (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
             [uuidv4(), req.user.id, 'admin_reset_password', JSON.stringify({ targetUserId: id })]
         );
 
@@ -668,11 +667,11 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
             return res.status(400).json({ error: "Não é possível excluir o próprio usuário." });
         }
 
-        await db.run('DELETE FROM User WHERE id = $1', [id]);
-        await db.run('DELETE FROM AuditLog WHERE "userId" = $1', [id]);
+        await db.run('DELETE FROM "User" WHERE id = $1', [id]);
+        await db.run('DELETE FROM "AuditLog" WHERE "userId" = $1', [id]);
 
         await db.run(
-            `INSERT INTO AuditLog (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
             [uuidv4(), req.user.id, 'admin_deleted_user', JSON.stringify({ targetUserId: id })]
         );
 
