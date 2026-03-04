@@ -366,7 +366,7 @@ app.post('/api/auth/register', async (req, res) => {
         await db.run(
             `INSERT INTO "User" (id, username, password, name, email, role, "isAuthorized", "passwordHistory", "firstLogin")
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [userId, username, hashedPassword, name, email || null, 'user', 0, jsonHistory, false]
+            [userId, username, hashedPassword, name, email || null, 'user', false, jsonHistory, false]
         );
 
         console.log("Usuario inserido. Inserindo log...");
@@ -408,7 +408,7 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (isLocked || isBlocked) {
             await db.run(`INSERT INTO "AuditLog" (id, "userId", action, success) VALUES ($1, $2, $3, $4)`,
-                [uuidv4(), user.id, 'login_failed_locked', 0]);
+                [uuidv4(), user.id, 'login_failed_locked', false]);
 
             let errorMsg = "Sua conta está bloqueada.";
             if (isLocked && user.lockUntil) {
@@ -419,7 +419,7 @@ app.post('/api/auth/login', async (req, res) => {
                     errorMsg = `Conta bloqueada por excesso de tentativas. Tente novamente em ${diffMins} minuto(s).`;
                 } else {
                     // Time passed, we should theoretically unlock here, but let's unlock and allow retry.
-                    await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = 0, "lockUntil" = NULL WHERE id = $1`, [user.id]);
+                    await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = false, "lockUntil" = NULL WHERE id = $1`, [user.id]);
                     // We'll let it fail or succeed down the line based on the password logic
                 }
             } else if (isBlocked) {
@@ -442,13 +442,13 @@ app.post('/api/auth/login', async (req, res) => {
                 query += `, "accountLocked" = $2, "lockUntil" = $3`;
                 const lockUntil = new Date();
                 lockUntil.setMinutes(lockUntil.getMinutes() + 30);
-                params = [newFailedAttempts, 1, lockUntil.toISOString(), user.id];
+                params = [newFailedAttempts, true, lockUntil.toISOString(), user.id];
             }
             query += ` WHERE id = $${params.length}`; // $2 ou $4 dependendo da condição
 
             await db.run(query, params);
             await db.run(`INSERT INTO "AuditLog" (id, "userId", action, success) VALUES ($1, $2, $3, $4)`,
-                [uuidv4(), user.id, 'login_failed_password', 0]);
+                [uuidv4(), user.id, 'login_failed_password', false]);
 
             if (newFailedAttempts >= 5) {
                 return res.status(401).json({ error: "Conta bloqueada por 30 minutos após 5 tentativas de falha.", isLocked: true });
@@ -467,7 +467,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Resetar failed attempts
-        await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = 0, "lockUntil" = NULL WHERE id = $1`, [user.id]);
+        await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = false, "lockUntil" = NULL WHERE id = $1`, [user.id]);
 
         const firstLogin = String(user.firstLogin).toLowerCase() === 'true' || user.firstLogin === true || user.firstLogin === 1 || user.firstLogin === 't';
 
@@ -560,8 +560,8 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
             if (isReused) return res.status(400).json({ error: "Esta senha já foi usada recentemente" });
 
             addUpdate('password', newHashedPassword);
-            addUpdate('firstLogin', 0);
-            addUpdate('lastPasswordChange', new Date().toISOString());
+            addUpdate('"firstLogin"', false);
+            addUpdate('"lastPasswordChange"', new Date().toISOString());
 
             history.push(newHashedPassword);
             if (history.length > 5) history.shift();
