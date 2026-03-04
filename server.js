@@ -292,31 +292,33 @@ const connectDB = async () => {
         }
     }
 
-    // Criar usuário admin padrão se não existir / garantir que nunca esteja bloqueado
     const bcrypt = require('bcrypt');
     const adminCheck = await db.query('SELECT * FROM "User" WHERE username = $1', ['admin']);
     if (!adminCheck || adminCheck.length === 0) {
-        const adminId = '10000000-0000-0000-0000-000000000000';
+        const adminId = uuidv4(); // Use UUID dinâmico para evitar colisão de PK se o admin antigo foi renomeado
         const hashedAdminPass = await bcrypt.hash('Admin@123', 10);
-        await db.run(
-            `INSERT INTO "User" (id, username, password, name, role, isAuthorized, isBlockedByAdmin, accountLocked, failedAttempts, firstLogin)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
-        );
-        console.log("Usuário admin padrão criado com sucesso. Login: admin / Senha: Admin@123");
-    } else {
-        // Se o admin já existe mas está bloqueado (pode acontecer após redeploy), desbloqueia
-        const admin = adminCheck[0];
-        const isBlocked = admin.isBlockedByAdmin === true || admin.isBlockedByAdmin === 1 || admin.isBlockedByAdmin === 't';
-        const isLocked = admin.accountLocked === true || admin.accountLocked === 1 || admin.accountLocked === 't';
-        const notAuthorized = !admin.isAuthorized || admin.isAuthorized === 0 || admin.isAuthorized === 'f';
-        if (isBlocked || isLocked || notAuthorized) {
+
+        try {
             await db.run(
-                `UPDATE "User" SET "isBlockedByAdmin" = $1, "accountLocked" = $2, "failedAttempts" = $3, "isAuthorized" = $4, "lockUntil" = NULL WHERE username = $5`,
-                [false, false, 0, true, 'admin']
+                `INSERT INTO "User" (id, username, password, name, role, isAuthorized, "isBlockedByAdmin", "accountLocked", "failedAttempts", "firstLogin")
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
             );
-            console.log("Admin desbloqueado automaticamente na inicialização.");
+            console.log("Usuário admin padrão criado com sucesso (Fallback). Login: admin / Senha: Admin@123");
+        } catch (e) {
+            console.log("Aviso: Admin não pôde ser criado.", e.message);
         }
+    }
+
+    // Garantir que TODOS os administradores (não apenas 'admin') estejam desbloqueados na inicialização para evitar lockouts de produção
+    try {
+        await db.run(
+            `UPDATE "User" SET "isBlockedByAdmin" = $1, "accountLocked" = $2, "failedAttempts" = $3, "isAuthorized" = $4, "lockUntil" = NULL WHERE role = $5`,
+            [false, false, 0, true, 'admin']
+        );
+        console.log("Todos os administradores foram desbloqueados e autorizados na inicialização.");
+    } catch (e) {
+        console.log("Aviso ao tentar desbloquear admins:", e.message);
     }
 };
 
@@ -1046,7 +1048,96 @@ app.delete('/api/admin/users/:userId/banners', authenticateToken, requireAdmin, 
     }
 });
 
-// Servir os arquivos estáticos
+// ================= ROTAS DE AUDITORIA (NOVO) =================
+
+// Obter estatísticas globais consolidadas
+app.get('/api/admin/audit/stats', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        // 1. Acessos Totais à Aplicação (Logins com Sucesso)
+        const loginsQuery = await db.query('SELECT COUNT(*) as count FROM "AuditLog" WHERE action = $1', ['login_success']);
+        const totalAccesses = parseInt(loginsQuery[0].count, 10) || 0;
+
+        // 2. Acessos a Serviços (Cliques em Banners)
+        const bannerClicksQuery = await db.query('SELECT COUNT(*) as count FROM "AuditLog" WHERE action = $1', ['banner_clicked']);
+        const totalBannerClicks = parseInt(bannerClicksQuery[0].count, 10) || 0;
+
+        // 3. Usuários Únicos (Contas Distintas que Fizeram Login)
+        const uniqueUsersQuery = await db.query('SELECT COUNT(DISTINCT "userId") as count FROM "AuditLog" WHERE action = $1', ['login_success']);
+        const uniqueUsers = parseInt(uniqueUsersQuery[0].count, 10) || 0;
+
+        // 4. Sessões Hoje (Logins Hoje)
+        // Usar data local ou timezone UTC simplificado para SQLite e Postgres
+        let todayCount = 0;
+        if (db.isPg) {
+            const todayQuery = await db.query(`SELECT COUNT(*) as count FROM "AuditLog" WHERE action = 'login_success' AND timestamp >= current_date`);
+            todayCount = parseInt(todayQuery[0].count, 10) || 0;
+        } else {
+            const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const todayQuery = await db.query(`SELECT COUNT(*) as count FROM "AuditLog" WHERE action = 'login_success' AND timestamp LIKE $1`, [`${dateStr}%`]);
+            todayCount = parseInt(todayQuery[0].count, 10) || 0;
+        }
+
+        // 5. Histórico Recente de Banners (Para Exportação CSV e Gráfico)
+        const searchHistoryRaw = await db.query(`
+            SELECT a.timestamp, u.username as user, a.details 
+            FROM "AuditLog" a
+            LEFT JOIN "User" u ON a."userId" = u.id
+            WHERE a.action = 'banner_clicked'
+            ORDER BY a.timestamp DESC
+            LIMIT 1000
+        `);
+
+        const searchHistory = searchHistoryRaw.map(row => {
+            let detailsObj = {};
+            try { detailsObj = typeof row.details === 'string' ? JSON.parse(row.details || '{}') : (row.details || {}); } catch (e) { }
+            return {
+                timestamp: row.timestamp,
+                user: row.user || 'Visitante',
+                type: 'banner',
+                bannerLabel: detailsObj.bannerLabel || 'Serviço Desconhecido'
+            };
+        });
+
+        // 6. Top Serviços Acessados (Agrupamento manual para evitar JSON parsing complexo no SQLite vs PG)
+        const bannerClicks = {};
+        searchHistory.forEach(s => {
+            bannerClicks[s.bannerLabel] = (bannerClicks[s.bannerLabel] || 0) + 1;
+        });
+
+        res.json({
+            totalAccesses,
+            totalBannerClicks,
+            uniqueUsers,
+            sessionsToday: todayCount,
+            searchHistory,
+            bannerClicks
+        });
+
+    } catch (error) {
+        console.error('Erro ao calcular estatísticas de auditoria:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Limpar todos os registros de auditoria
+app.delete('/api/admin/audit', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        await db.run('DELETE FROM "AuditLog"');
+
+        // Registrar a própria ação de exclusão para manter rastro de quem destruiu os logs
+        await db.run(
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4' + (db.isPg ? '::jsonb' : '') + ')',
+            [uuidv4(), req.user.id, 'admin_cleared_audit_logs', JSON.stringify({ action: 'cleared_all' })]
+        );
+
+        res.json({ message: 'Dados de auditoria reiniciados com sucesso!', success: true });
+    } catch (error) {
+        console.error('Erro ao limpar auditoria:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Servir arquivos estáticos da página inicial.
 app.use(express.static('.'));
 
 app.listen(PORT, () => {

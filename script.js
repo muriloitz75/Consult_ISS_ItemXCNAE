@@ -240,6 +240,19 @@ class ApiService {
         });
     }
 
+    // --- Métodos de Auditoria ---
+    static async getAuditStats() {
+        return this.request('/admin/audit/stats', {
+            method: 'GET'
+        });
+    }
+
+    static async clearAuditLogs() {
+        return this.request('/admin/audit', {
+            method: 'DELETE'
+        });
+    }
+
     // --- Métodos de Banners ---
     static async getBanners() {
         const token = localStorage.getItem('authToken');
@@ -2663,124 +2676,58 @@ function App() {
         }
     };
 
-    // Estados para estatísticas de uso
-    const [statistics, setStatistics] = useState(() => {
-        const saved = localStorage.getItem('appStatistics');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                // Validar estrutura esperada
-                if (typeof parsed === 'object' && parsed !== null) {
-                    // Garantir que userSessions seja objeto
-                    if (Array.isArray(parsed.userSessions)) {
-                        parsed.userSessions = {};
-                    }
-                    // Garantir que searchHistory seja array válido
-                    if (!Array.isArray(parsed.searchHistory)) {
-                        parsed.searchHistory = [];
-                    }
-                    return parsed;
-                }
-            } catch (e) {
-                console.error('Erro ao carregar estatísticas, resetando:', e);
-                localStorage.removeItem('appStatistics');
-            }
-        }
-        return {
-            totalAccesses: 0,
-            totalSearches: 0,
-            universalSearches: 0,
-            advancedSearches: 0,
-            totalBannerClicks: 0,
-            lastAccess: null,
-            dailyAccesses: {},
-            searchHistory: [], // Mantemos searchHistory por compatibilidade e adaptamos para Atividades Recentes
-            userSessions: {},
-            bannerClicks: {}
-        };
+    // Estados para estatísticas de uso backend
+    const [statistics, setStatistics] = useState({
+        totalAccesses: 0,
+        totalSearches: 0,
+        universalSearches: 0,
+        advancedSearches: 0,
+        totalBannerClicks: 0,
+        lastAccess: null,
+        dailyAccesses: {},
+        searchHistory: [],
+        userSessions: {},
+        bannerClicks: {}
     });
 
-    // Funções para estatísticas seguras
-    const updateStatistics = (type, data = {}) => {
-        const now = new Date();
-        const today = now.toDateString();
+    const [isAuditLoading, setIsAuditLoading] = useState(false);
 
-        setStatistics(prev => {
-            // Garantir que todas as chaves existam na base
-            const newStats = {
-                totalAccesses: 0,
-                totalSearches: 0,
+    // Carregar dados reais da API quando estiver na view admin-dashboard
+    useEffect(() => {
+        if (currentView === 'admin-dashboard' && currentUser?.role === 'admin') {
+            loadAuditData();
+        }
+    }, [currentView, currentUser]);
+
+    const loadAuditData = async () => {
+        setIsAuditLoading(true);
+        try {
+            const data = await ApiService.getAuditStats();
+            setStatistics({
+                totalAccesses: data.totalAccesses,
+                totalSearches: 0, // Legacy, manter zero
                 universalSearches: 0,
                 advancedSearches: 0,
-                totalBannerClicks: 0,
+                totalBannerClicks: data.totalBannerClicks,
                 lastAccess: null,
-                dailyAccesses: {},
-                searchHistory: [],
-                userSessions: {},
-                bannerClicks: {},
-                ...prev
-            };
-
-            switch (type) {
-                case 'page_view':
-                case 'access':
-                    newStats.totalAccesses = (newStats.totalAccesses || 0) + 1;
-                    newStats.lastAccess = now.toISOString();
-
-                    newStats.dailyAccesses = newStats.dailyAccesses || {};
-                    newStats.dailyAccesses[today] = (newStats.dailyAccesses[today] || 0) + 1;
-
-                    if (data.username) {
-                        newStats.userSessions = newStats.userSessions || {};
-                        newStats.userSessions[data.username] = (newStats.userSessions[data.username] || 0) + 1;
-                    }
-                    break;
-
-                case 'search':
-                    newStats.totalSearches = (newStats.totalSearches || 0) + 1;
-                    if (data.searchMode === 'universal') {
-                        newStats.universalSearches = (newStats.universalSearches || 0) + 1;
-                    } else if (data.searchMode === 'advanced') {
-                        newStats.advancedSearches = (newStats.advancedSearches || 0) + 1;
-                    }
-
-                    newStats.searchHistory = newStats.searchHistory || [];
-                    newStats.searchHistory.push({
-                        timestamp: now.toISOString(),
-                        type: 'search',
-                        mode: data.searchMode,
-                        user: data.user || 'Visitante',
-                        query: data.query,
-                        results: data.results || 0
-                    });
-
-                    newStats.searchHistory = newStats.searchHistory.slice(-200);
-                    break;
-
-                case 'bannerClick':
-                    newStats.totalBannerClicks = (newStats.totalBannerClicks || 0) + 1;
-
-                    const bannerName = data.bannerLabel || 'Banner Desconhecido';
-                    newStats.bannerClicks = newStats.bannerClicks || {};
-                    newStats.bannerClicks[bannerName] = (newStats.bannerClicks[bannerName] || 0) + 1;
-
-                    newStats.searchHistory = newStats.searchHistory || [];
-                    newStats.searchHistory.push({
-                        timestamp: now.toISOString(),
-                        type: 'banner',
-                        user: data.user || 'Visitante',
-                        bannerLabel: bannerName
-                    });
-
-                    newStats.searchHistory = newStats.searchHistory.slice(-200);
-                    break;
-            }
-
-            localStorage.setItem('appStatistics', JSON.stringify(newStats));
-            return newStats;
-        });
+                dailyAccesses: { [new Date().toDateString()]: data.sessionsToday },
+                searchHistory: data.searchHistory,
+                userSessions: { 'Usuários Únicos': data.uniqueUsers },
+                bannerClicks: data.bannerClicks
+            });
+        } catch (e) {
+            console.error('Erro ao buscar auditoria do backend:', e);
+            // Fallback não exibe erro invasivo, apenas mantém zeros
+        } finally {
+            setIsAuditLoading(false);
+        }
     };
 
+    // Funções para estatísticas seguras (Apenas compatibilidade para evitar quebras em logs locais)
+    const updateStatistics = (type, data = {}) => {
+        // Obsoleto: Dados agora são gerenciados puramente via Banco de Dados no server.js.
+        // Mantemos a função vazia apenas para não gerar 'undefined function error' no código legado.
+    };
     // Funções de autenticação
     const handleLogin = (user) => {
         setIsAuthenticated(true);
@@ -3843,18 +3790,27 @@ function App() {
                                             Exportar CSV
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                if (window.confirm('ALERTA: Isso apagará irreversivelmente todos os dados de auditoria registrados. Deseja continuar?')) {
-                                                    localStorage.removeItem('appStatistics');
-                                                    setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, totalBannerClicks: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {}, bannerClicks: {} });
-                                                    setAuditUserFilter('');
-                                                    alert('Dados de auditoria reiniciados com sucesso!');
+                                            onClick={async () => {
+                                                if (window.confirm('ALERTA: Isso apagará irreversivelmente todos os dados de auditoria registrados NO BANCO DE DADOS. Deseja continuar?')) {
+                                                    try {
+                                                        setIsAuditLoading(true);
+                                                        await ApiService.clearAuditLogs();
+                                                        localStorage.removeItem('appStatistics'); // limpeza de cache legado
+                                                        setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, totalBannerClicks: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {}, bannerClicks: {} });
+                                                        setAuditUserFilter('');
+                                                        alert('Dados de auditoria reiniciados e apagados do servidor com sucesso!');
+                                                    } catch (e) {
+                                                        alert('Erro ao limpar auditoria: ' + e.message);
+                                                    } finally {
+                                                        setIsAuditLoading(false);
+                                                    }
                                                 }
                                             }}
-                                            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}
+                                            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'} ${isAuditLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            disabled={isAuditLoading}
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            Limpar Dados
+                                            {isAuditLoading ? 'Carregando...' : 'Limpar Dados'}
                                         </button>
                                     </div>
                                 </div>
