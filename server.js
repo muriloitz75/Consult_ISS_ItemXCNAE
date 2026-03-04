@@ -560,8 +560,8 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
             if (isReused) return res.status(400).json({ error: "Esta senha já foi usada recentemente" });
 
             addUpdate('password', newHashedPassword);
-            addUpdate('"firstLogin"', false);
-            addUpdate('"lastPasswordChange"', new Date().toISOString());
+            addUpdate('firstLogin', false);
+            addUpdate('lastPasswordChange', new Date().toISOString());
 
             history.push(newHashedPassword);
             if (history.length > 5) history.shift();
