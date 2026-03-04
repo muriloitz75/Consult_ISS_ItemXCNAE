@@ -11,13 +11,27 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod
 // ----- Configuração Isolada do Banco de Dados Dinâmico (PG no Railway / SQLite local) -----
 let db;
 const connectDB = async () => {
-    // Se DATABASE_URL existir e não for local/vazia, tenta PG
-    if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
-        console.log("Conectando ao PostgreSQL baseado em DATABASE_URL...");
+    // Tenta construir a connection string a partir das variáveis individuais do Railway Postgres plugin
+    // caso DATABASE_URL não esteja definida explicitamente
+    const pgFromEnv = process.env.PGHOST
+        ? `postgresql://${process.env.PGUSER || 'postgres'}:${process.env.PGPASSWORD || ''}@${process.env.PGHOST}:${process.env.PGPORT || 5432}/${process.env.PGDATABASE || 'railway'}`
+        : null;
+
+    const dbUrl = (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'))
+        ? process.env.DATABASE_URL
+        : pgFromEnv;
+
+    // Log de diagnóstico para facilitar troubleshooting
+    console.log(`[DB] DATABASE_URL presente: ${!!process.env.DATABASE_URL}`);
+    console.log(`[DB] PGHOST presente: ${!!process.env.PGHOST}`);
+    console.log(`[DB] Connection via: ${dbUrl ? 'PostgreSQL' : 'SQLite (fallback)'}`);
+
+    if (dbUrl) {
+        console.log("Conectando ao PostgreSQL...");
         const { Pool } = require('pg');
         const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false } // Necessário para várias instâncias de nuvem/Railway
+            connectionString: dbUrl,
+            ssl: { rejectUnauthorized: false }
         });
 
         db = {
@@ -125,7 +139,7 @@ const connectDB = async () => {
             );
         }
     } else {
-        console.log("Variável DATABASE_URL não identificada ou incompatível. Usando SQLite Local...");
+        console.log("Nenhuma configuração de PostgreSQL encontrada (DATABASE_URL ou PGHOST). Usando SQLite Local...");
         const sqlite3 = require('sqlite3').verbose();
         const dbPath = process.env.SQLITE_PATH || './dev.sqlite3';
         const sqldb = new sqlite3.Database(dbPath);
