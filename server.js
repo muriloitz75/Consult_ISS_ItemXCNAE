@@ -552,9 +552,17 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         }
 
         let isPasswordChanged = false;
-        if (newPassword && currentPassword) {
-            const validPassword = await bcrypt.compare(currentPassword, user.password);
-            if (!validPassword) return res.status(401).json({ error: "Senha atual incorreta" });
+        if (newPassword) {
+            const isFirstLogin = String(user.firstLogin).toLowerCase() === 'true' || user.firstLogin === 1 || user.firstLogin === true || user.firstLogin === 't';
+
+            if (!isFirstLogin && !currentPassword) {
+                return res.status(400).json({ error: "A senha atual é obrigatória para redefinir a senha." });
+            }
+
+            if (!isFirstLogin && currentPassword) {
+                const validPassword = await bcrypt.compare(currentPassword, user.password);
+                if (!validPassword) return res.status(401).json({ error: "Senha atual incorreta" });
+            }
 
             const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
