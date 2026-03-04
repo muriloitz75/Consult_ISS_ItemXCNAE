@@ -1748,10 +1748,10 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
     const adminItems = [
         {
             id: 'admin-dashboard',
-            label: 'Dashboard',
+            label: 'Auditoria',
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
             ),
             view: 'admin-dashboard'
@@ -2391,6 +2391,7 @@ function App() {
     const [pendingUsers, setPendingUsers] = useState([]);
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
+    const [auditUserFilter, setAuditUserFilter] = useState('');
 
     const handleSortBanners = async () => {
         if (!currentUser || currentUser.role !== 'admin') return;
@@ -2637,7 +2638,7 @@ function App() {
         });
     };
 
-    // ----- LOGICA DE INATIVIDADE (1 MINUTO) -----
+    // ----- LOGICA DE INATIVIDADE (5 MINUTOS) -----
     const resetInactivityTimer = () => {
         if (!isAuthenticated || isLockedOut) return;
 
@@ -2645,10 +2646,10 @@ function App() {
             clearTimeout(inactivityTimeoutRef.current);
         }
 
-        // 60000 ms = 1 minuto
+        // 300000 ms = 5 minutos
         inactivityTimeoutRef.current = setTimeout(() => {
             setIsLockedOut(true);
-        }, 60000);
+        }, 300000);
     };
 
     useEffect(() => {
@@ -3562,133 +3563,235 @@ function App() {
                         )}
 
 
-                        {/* Painel Administrativo - Novo Global Dashboard (SaaS Style) */}
+                        {/* Painel de Auditoria */}
                         {currentUser?.role === 'admin' && currentView === 'admin-dashboard' && (
                             <div className="animate-fadeInUp space-y-6">
-                                {/* Header Executivo */}
+                                {/* Header */}
                                 <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
                                     <div>
-                                        <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Visão Geral do Ecossistema</h2>
-                                        <p className={`text-sm mt-1 mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Analytics de tráfego e uso dos serviços DIAAF em tempo real.</p>
-                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${darkMode ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                                            Monitoramento Ativo
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                            </div>
+                                            <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Central de Auditoria</h2>
+                                        </div>
+                                        <p className={`text-sm mb-2 ml-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Monitoramento de acessos à aplicação e utilização dos banners de serviço.</p>
+                                        <div className="flex items-center gap-2 ml-12">
+                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${darkMode ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                                Monitoramento Ativo
+                                            </div>
+                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                                                {(statistics?.searchHistory || []).filter(a => a.type === 'banner').length} acessos a serviços registrados
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-3 flex-shrink-0">
                                         <button
                                             onClick={() => {
-                                                if (window.confirm('ALERTA: Isso apagará irreversivelmente todos os dados de acessos e cliques registrados no navegador deste administrador. Deseja continuar?')) {
+                                                const bannerHistory = (statistics?.searchHistory || []).filter(a => a.type === 'banner');
+                                                if (bannerHistory.length === 0) { alert('Nenhum dado para exportar.'); return; }
+                                                const rows = [['Timestamp', 'Usuário', 'Serviço Acessado']];
+                                                bannerHistory.forEach(a => {
+                                                    rows.push([
+                                                        new Date(a.timestamp).toLocaleString('pt-BR'),
+                                                        a.user || 'Visitante',
+                                                        a.bannerLabel || '-'
+                                                    ]);
+                                                });
+                                                const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+                                                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                                                const url = URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = url;
+                                                link.download = 'auditoria_acessos_' + new Date().toISOString().split('T')[0] + '.csv';
+                                                link.click();
+                                                URL.revokeObjectURL(url);
+                                            }}
+                                            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                            Exportar CSV
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm('ALERTA: Isso apagará irreversivelmente todos os dados de auditoria registrados. Deseja continuar?')) {
                                                     localStorage.removeItem('appStatistics');
                                                     setStatistics({ totalAccesses: 0, totalSearches: 0, universalSearches: 0, advancedSearches: 0, totalBannerClicks: 0, lastAccess: null, dailyAccesses: {}, searchHistory: [], userSessions: {}, bannerClicks: {} });
-                                                    alert('Base de dados do dashboard reiniciada com sucesso!');
+                                                    setAuditUserFilter('');
+                                                    alert('Dados de auditoria reiniciados com sucesso!');
                                                 }
                                             }}
                                             className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            Zerar Base de Dados
+                                            Limpar Dados
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* KPIs Principais */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* KPIs */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                     {[
-                                        { title: 'Acessos Totais', value: statistics?.totalAccesses || 0, desc: 'Aberturas do Hub', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', colors: darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600' },
-                                        { title: 'Uso de Serviços', value: statistics?.totalBannerClicks || 0, desc: 'Direcionamentos', icon: 'M13 10V3L4 14h7v7l9-11h-7z', colors: darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
-                                        { title: 'Usuários Ativos', value: Object.keys(statistics?.userSessions || {}).length || 0, desc: 'Contas logadas', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', colors: darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600' },
-                                        { title: 'Sessões Hoje', value: statistics?.dailyAccesses?.[new Date().toDateString()] || 0, desc: 'Atividade na data', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', colors: darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600' }
+                                        { title: 'Acessos à Aplicação', value: statistics?.totalAccesses || 0, desc: 'Aberturas da plataforma', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', colors: darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600' },
+                                        { title: 'Acessos a Serviços', value: statistics?.totalBannerClicks || 0, desc: 'Cliques em banners', icon: 'M13 10V3L4 14h7v7l9-11h-7z', colors: darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
+                                        { title: 'Usuários Únicos', value: Object.keys(statistics?.userSessions || {}).length || 0, desc: 'Contas distintas', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', colors: darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600' },
+                                        { title: 'Sessões Hoje', value: statistics?.dailyAccesses?.[new Date().toDateString()] || 0, desc: 'Acessos na data atual', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', colors: darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600' }
                                     ].map((kpi, idx) => (
-                                        <div key={idx} className={`p-5 rounded-2xl flex items-start justify-between ${darkMode ? 'bg-gray-800/80 border border-gray-700/50 hover:bg-gray-700/80' : 'bg-white border border-gray-100 hover:border-gray-200'} shadow-sm transition-all duration-300`}>
-                                            <div>
-                                                <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{kpi.title}</p>
+                                        <div key={idx} className={`p-5 rounded-2xl flex items-start justify-between gap-3 ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                            <div className="min-w-0">
+                                                <p className={`text-xs font-semibold mb-1 uppercase tracking-wider truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{kpi.title}</p>
                                                 <h3 className={`text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>{kpi.value}</h3>
                                                 <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{kpi.desc}</p>
                                             </div>
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.colors}`}>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={kpi.icon} />
-                                                </svg>
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${kpi.colors}`}>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={kpi.icon} /></svg>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
+                                {/* Analytics Row */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {/* Top Serviços */}
-                                    <div className={`p-6 rounded-2xl flex flex-col ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                    {/* Acessos a Serviços por Usuário */}
+                                    <div className={`p-6 rounded-2xl ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                             </div>
-                                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Top Serviços Mais Acessados</h3>
+                                            <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>Acessos a Serviços por Usuário</h3>
                                         </div>
-                                        <div className="flex-1">
-                                            {Object.keys(statistics?.bannerClicks || {}).length > 0 ? (
-                                                <div className="space-y-5">
-                                                    {Object.entries(statistics?.bannerClicks || {})
-                                                        .sort((a, b) => b[1] - a[1])
-                                                        .slice(0, 5)
-                                                        .map(([banner, clicks], idx) => {
-                                                            const max = Math.max(...Object.values(statistics?.bannerClicks || {}));
-                                                            const percentage = Math.round((clicks / max) * 100);
-                                                            return (
-                                                                <div key={idx} className="relative group">
-                                                                    <div className="flex justify-between items-end mb-2">
-                                                                        <span className={`text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{banner}</span>
-                                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{clicks} acessos</span>
-                                                                    </div>
-                                                                    <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                                                        <div className={`h-full rounded-full transition-all duration-1000 ${idx === 0 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : darkMode ? 'bg-blue-500/50' : 'bg-blue-300'}`} style={{ width: `${percentage}%` }}></div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })
-                                                    }
+                                        {(() => {
+                                            const bannerEvents = (statistics?.searchHistory || []).filter(a => a.type === 'banner');
+                                            const userStats = bannerEvents.reduce((acc, a) => { const u = a.user || 'Visitante'; acc[u] = (acc[u] || 0) + 1; return acc; }, {});
+                                            const sorted = Object.entries(userStats).sort((a, b) => b[1] - a[1]).slice(0, 6);
+                                            const max = sorted[0]?.[1] || 1;
+                                            return sorted.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {sorted.map(([user, count], i) => (
+                                                        <div key={i}>
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <span className={`text-xs font-semibold truncate max-w-[200px] ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{user}</span>
+                                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{count} acessos</span>
+                                                            </div>
+                                                            <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                                                <div className={`h-full rounded-full transition-all duration-700 ${i === 0 ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : darkMode ? 'bg-purple-500/50' : 'bg-purple-300'}`} style={{ width: `${Math.round((count / max) * 100)}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             ) : (
-                                                <div className={`h-full flex flex-col items-center justify-center py-10 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
-                                                    <svg className={`w-8 h-8 mb-2 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Nenhum dado captado ainda.</p>
-                                                    <p className={`text-xs mt-1 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>Os cliques em banners aparecerão aqui.</p>
+                                                <div className={`flex flex-col items-center justify-center py-8 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
+                                                    <p className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhum acesso a serviço registrado ainda.</p>
                                                 </div>
-                                            )}
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
 
-                                    {/* Timeline/Audit Log live */}
-                                    <div className={`p-6 rounded-2xl flex flex-col ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    {/* Top Serviços */}
+                                    <div className={`p-6 rounded-2xl ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                                             </div>
-                                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Audit Log ao Vivo</h3>
+                                            <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>Top Serviços Acessados</h3>
                                         </div>
-                                        <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                                            {statistics?.searchHistory && statistics.searchHistory.length > 0 ? (
-                                                statistics.searchHistory.slice(-20).reverse().map((activity, index) => (
-                                                    <div key={index} className={`flex gap-4 items-start pb-4 border-b last:border-0 last:pb-0 ${darkMode ? 'border-gray-700/50' : 'border-gray-100'}`}>
-                                                        <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${activity.type === 'banner' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`}></div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                                <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{activity.user || 'Visitante'}</span>
-                                                                {activity.type === 'banner' ? ' usou o acesso rápido ' : ' pesquisou por '}
-                                                                <span className={`font-semibold ${darkMode ? (activity.type === 'banner' ? 'text-emerald-400' : 'text-blue-400') : (activity.type === 'banner' ? 'text-emerald-600' : 'text-blue-600')}`}>
-                                                                    {activity.type === 'banner' ? activity.bannerLabel : `"${activity.query}"`}
-                                                                </span>
-                                                            </p>
-                                                            <p className={`text-xs mt-1 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                                {new Date(activity.timestamp).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-                                                            </p>
-                                                        </div>
+                                        {Object.keys(statistics?.bannerClicks || {}).length > 0 ? (
+                                            <div className="space-y-3">
+                                                {Object.entries(statistics?.bannerClicks || {})
+                                                    .sort((a, b) => b[1] - a[1])
+                                                    .slice(0, 6)
+                                                    .map(([banner, clicks], idx) => {
+                                                        const max = Math.max(...Object.values(statistics?.bannerClicks || {}));
+                                                        return (
+                                                            <div key={idx}>
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <span className={`text-xs font-semibold truncate max-w-[200px] ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{banner}</span>
+                                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${darkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>{clicks} cliques</span>
+                                                                </div>
+                                                                <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                                                    <div className={`h-full rounded-full transition-all duration-700 ${idx === 0 ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : darkMode ? 'bg-emerald-500/40' : 'bg-emerald-300'}`} style={{ width: `${Math.round((clicks / max) * 100)}%` }}></div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        ) : (
+                                            <div className={`flex flex-col items-center justify-center py-8 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
+                                                <p className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nenhum serviço acessado ainda.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Log de Acessos a Serviços */}
+                                <div className={`rounded-2xl overflow-hidden ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
+                                    {/* Filter Bar */}
+                                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b ${darkMode ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            </div>
+                                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Log de Acessos a Serviços</h3>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
+                                                {(statistics?.searchHistory || []).filter(a => a.type === 'banner').filter(a => auditUserFilter === '' || a.user === auditUserFilter).length} registros
+                                            </span>
+                                        </div>
+                                        <select
+                                            value={auditUserFilter}
+                                            onChange={e => setAuditUserFilter(e.target.value)}
+                                            className={`text-xs font-semibold rounded-xl px-3 py-1.5 border outline-none transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}
+                                        >
+                                            <option value="">Todos os usuários</option>
+                                            {[...new Set((statistics?.searchHistory || []).filter(a => a.type === 'banner').map(a => a.user).filter(Boolean))].map(u => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {/* Table */}
+                                    <div className="overflow-x-auto">
+                                        <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
+                                            {(() => {
+                                                const filtered = (statistics?.searchHistory || [])
+                                                    .filter(a => a.type === 'banner')
+                                                    .filter(a => auditUserFilter === '' || a.user === auditUserFilter)
+                                                    .slice().reverse();
+                                                return filtered.length > 0 ? (
+                                                    <table className="w-full text-sm">
+                                                        <thead className={`sticky top-0 z-10 ${darkMode ? 'bg-gray-800/95 border-b border-gray-700/50' : 'bg-gray-50 border-b border-gray-100'}`}>
+                                                            <tr>
+                                                                {['Timestamp', 'Usuário', 'Serviço Acessado'].map(h => (
+                                                                    <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {filtered.map((a, i) => (
+                                                                <tr key={i} className={`border-b transition-colors ${darkMode ? 'border-gray-700/40 hover:bg-gray-700/30' : 'border-gray-50 hover:bg-gray-50/80'}`}>
+                                                                    <td className={`px-4 py-3 whitespace-nowrap text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                                        {new Date(a.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                                    </td>
+                                                                    <td className={`px-4 py-3 whitespace-nowrap text-xs font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                                                                        {a.user || 'Visitante'}
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${darkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                                                                            {a.bannerLabel || '—'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                ) : (
+                                                    <div className={`flex flex-col items-center justify-center py-16 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                        <svg className="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                                        <p className="text-sm font-medium">Nenhum acesso a serviço registrado.</p>
+                                                        <p className="text-xs mt-1 opacity-70">Os acessos via banners aparecerão aqui.</p>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className={`h-full flex flex-col items-center justify-center py-10 rounded-xl border border-dashed ${darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'}`}>
-                                                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Nenhuma ação registrada nas últimas 24h.</p>
-                                                </div>
-                                            )}
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
