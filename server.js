@@ -55,16 +55,16 @@ const connectDB = async () => {
                 role TEXT DEFAULT 'user',
                 name TEXT NOT NULL,
                 email TEXT,
-                firstLogin BOOLEAN DEFAULT true,
-                lastPasswordChange TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                passwordHistory JSONB DEFAULT '[]'::jsonb,
-                accountLocked BOOLEAN DEFAULT false,
-                failedAttempts INTEGER DEFAULT 0,
-                isAuthorized BOOLEAN DEFAULT false,
-                isBlockedByAdmin BOOLEAN DEFAULT false,
-                lockUntil TIMESTAMP,
-                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                "firstLogin" BOOLEAN DEFAULT true,
+                "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "passwordHistory" JSONB DEFAULT '[]'::jsonb,
+                "accountLocked" BOOLEAN DEFAULT false,
+                "failedAttempts" INTEGER DEFAULT 0,
+                "isAuthorized" BOOLEAN DEFAULT false,
+                "isBlockedByAdmin" BOOLEAN DEFAULT false,
+                "lockUntil" TIMESTAMP,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS "AuditLog" (
@@ -72,8 +72,8 @@ const connectDB = async () => {
                 "userId" TEXT,
                 action TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ipAddress TEXT,
-                userAgent TEXT,
+                "ipAddress" TEXT,
+                "userAgent" TEXT,
                 success BOOLEAN DEFAULT true,
                 details JSONB
             );
@@ -85,7 +85,7 @@ const connectDB = async () => {
                 enabled BOOLEAN DEFAULT true,
                 "orderIndex" INTEGER DEFAULT 0,
                 "isFrozen" BOOLEAN DEFAULT false,
-                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS "UserBannerConfig" (
@@ -94,10 +94,34 @@ const connectDB = async () => {
                 "bannerId" TEXT NOT NULL,
                 enabled BOOLEAN DEFAULT true,
                 "orderIndex" INTEGER DEFAULT 0,
-                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE("userId", "bannerId")
             );
         `);
+
+        // Migração: renomear colunas lowercase para camelCase (seguro re-executar)
+        const colMigrations = [
+            { table: 'User', from: 'firstlogin', to: 'firstLogin' },
+            { table: 'User', from: 'lastpasswordchange', to: 'lastPasswordChange' },
+            { table: 'User', from: 'passwordhistory', to: 'passwordHistory' },
+            { table: 'User', from: 'accountlocked', to: 'accountLocked' },
+            { table: 'User', from: 'failedattempts', to: 'failedAttempts' },
+            { table: 'User', from: 'isauthorized', to: 'isAuthorized' },
+            { table: 'User', from: 'isblockedbyadmin', to: 'isBlockedByAdmin' },
+            { table: 'User', from: 'lockuntil', to: 'lockUntil' },
+            { table: 'User', from: 'createdat', to: 'createdAt' },
+            { table: 'User', from: 'updatedat', to: 'updatedAt' },
+            { table: 'AuditLog', from: 'ipaddress', to: 'ipAddress' },
+            { table: 'AuditLog', from: 'useragent', to: 'userAgent' },
+        ];
+        for (const m of colMigrations) {
+            try {
+                await pool.query(`ALTER TABLE "${m.table}" RENAME COLUMN ${m.from} TO "${m.to}"`);
+                console.log(`[Migration] Coluna renomeada: ${m.table}.${m.from} → ${m.to}`);
+            } catch (e) {
+                // Ignora silenciosamente — coluna já tem nome correto ou não existe
+            }
+        }
 
         // Migration para bancos já existentes
         const migrations = [
@@ -283,7 +307,7 @@ const connectDB = async () => {
         const notAuthorized = !admin.isAuthorized || admin.isAuthorized === 0 || admin.isAuthorized === 'f';
         if (isBlocked || isLocked || notAuthorized) {
             await db.run(
-                `UPDATE "User" SET isBlockedByAdmin = $1, accountLocked = $2, failedAttempts = $3, isAuthorized = $4, lockUntil = NULL WHERE username = $5`,
+                `UPDATE "User" SET "isBlockedByAdmin" = $1, "accountLocked" = $2, "failedAttempts" = $3, "isAuthorized" = $4, "lockUntil" = NULL WHERE username = $5`,
                 [false, false, 0, true, 'admin']
             );
             console.log("Admin desbloqueado automaticamente na inicialização.");
@@ -340,7 +364,7 @@ app.post('/api/auth/register', async (req, res) => {
         const jsonHistory = JSON.stringify([hashedPassword]);
 
         await db.run(
-            `INSERT INTO "User" (id, username, password, name, email, role, isAuthorized, passwordHistory, firstLogin)
+            `INSERT INTO "User" (id, username, password, name, email, role, "isAuthorized", "passwordHistory", "firstLogin")
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
             [userId, username, hashedPassword, name, email || null, 'user', 0, jsonHistory, false]
         );
@@ -395,7 +419,7 @@ app.post('/api/auth/login', async (req, res) => {
                     errorMsg = `Conta bloqueada por excesso de tentativas. Tente novamente em ${diffMins} minuto(s).`;
                 } else {
                     // Time passed, we should theoretically unlock here, but let's unlock and allow retry.
-                    await db.run(`UPDATE "User" SET failedAttempts = 0, accountLocked = 0, lockUntil = NULL WHERE id = $1`, [user.id]);
+                    await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = 0, "lockUntil" = NULL WHERE id = $1`, [user.id]);
                     // We'll let it fail or succeed down the line based on the password logic
                 }
             } else if (isBlocked) {
@@ -411,11 +435,11 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (!validPassword) {
             const newFailedAttempts = (user.failedAttempts || 0) + 1;
-            let query = `UPDATE "User" SET failedAttempts = $1`;
+            let query = `UPDATE "User" SET "failedAttempts" = $1`;
             let params = [newFailedAttempts, user.id];
 
             if (newFailedAttempts >= 5) {
-                query += `, accountLocked = $2, lockUntil = $3`;
+                query += `, "accountLocked" = $2, "lockUntil" = $3`;
                 const lockUntil = new Date();
                 lockUntil.setMinutes(lockUntil.getMinutes() + 30);
                 params = [newFailedAttempts, 1, lockUntil.toISOString(), user.id];
@@ -443,7 +467,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Resetar failed attempts
-        await db.run(`UPDATE "User" SET failedAttempts = 0, accountLocked = 0, lockUntil = NULL WHERE id = $1`, [user.id]);
+        await db.run(`UPDATE "User" SET "failedAttempts" = 0, "accountLocked" = 0, "lockUntil" = NULL WHERE id = $1`, [user.id]);
 
         const firstLogin = String(user.firstLogin).toLowerCase() === 'true' || user.firstLogin === true || user.firstLogin === 1 || user.firstLogin === 't';
 
@@ -586,7 +610,7 @@ const requireAdmin = (req, res, next) => {
 // 1. Listar todos os usuários (Apenas Admin)
 app.get('/api/auth/users', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const users = await db.query('SELECT id, username, name, email, role, isAuthorized, isBlockedByAdmin, accountLocked, createdAt FROM "User"');
+        const users = await db.query('SELECT id, username, name, email, role, "isAuthorized", "isBlockedByAdmin", "accountLocked", "createdAt" FROM "User"');
         res.json(users);
     } catch (error) {
         console.error("Erro ao listar usuários:", error);
