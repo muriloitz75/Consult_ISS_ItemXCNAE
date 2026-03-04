@@ -372,7 +372,7 @@ app.post('/api/auth/register', async (req, res) => {
         console.log("Usuario inserido. Inserindo log...");
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, "ipAddress", details) VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, "ipAddress", details) VALUES ($1, $2, $3, $4, $5${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), userId, 'user_registered', req.ip || 'unknown', JSON.stringify({ username })]
         );
 
@@ -396,7 +396,7 @@ app.post('/api/auth/login', async (req, res) => {
         const user = users.length > 0 ? users[0] : null;
 
         if (!user) {
-            await db.run(`INSERT INTO "AuditLog" (id, action, details, success) VALUES ($1, $2, $3, $4)`,
+            await db.run(`INSERT INTO "AuditLog" (id, action, details, success) VALUES ($1, $2, $3${db.isPg ? '::jsonb' : ''}, $4)`,
                 [uuidv4(), 'login_failed', JSON.stringify({ username, reason: 'user_not_found' }), false]);
             return res.status(401).json({ error: "Credenciais inválidas" });
         }
@@ -505,7 +505,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const userId = users.length > 0 ? users[0].id : null;
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, ipAddress, details) VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, "ipAddress", details) VALUES ($1, $2, $3, $4, $5${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), userId, 'forgot_password_request', req.ip || 'unknown', JSON.stringify({ requestedUsername: username })]
         );
 
@@ -531,9 +531,10 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
 
         const updates = [];
         const params = [];
-        const addUpdate = (field, value) => {
+        const addUpdate = (field, value, isJson = false) => {
             params.push(value);
-            updates.push(`"${field}" = $${params.length}`);
+            const cast = (isJson && db.isPg) ? '::jsonb' : '';
+            updates.push(`"${field}" = $${params.length}${cast}`);
         };
 
         if (name) addUpdate('name', name);
@@ -565,7 +566,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
 
             history.push(newHashedPassword);
             if (history.length > 5) history.shift();
-            addUpdate('passwordHistory', JSON.stringify(history));
+            addUpdate('passwordHistory', JSON.stringify(history), true);
 
             isPasswordChanged = true;
         }
@@ -577,7 +578,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         }
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), userId, 'profile_updated', JSON.stringify({ passwordChanged: isPasswordChanged })]
         );
 
@@ -625,7 +626,7 @@ app.post('/api/auth/users/:id/authorize', authenticateToken, requireAdmin, async
         await db.run('UPDATE "User" SET "isAuthorized" = $1 WHERE id = $2', [true, id]);
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_authorized_user', JSON.stringify({ targetUserId: id })]
         );
 
@@ -650,7 +651,7 @@ app.post('/api/auth/users/:id/block', authenticateToken, requireAdmin, async (re
         await db.run('UPDATE "User" SET "isBlockedByAdmin" = $1 WHERE id = $2', [newStatus, id]);
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, newStatus ? 'admin_blocked_user' : 'admin_unblocked_user', JSON.stringify({ targetUserId: id })]
         );
 
@@ -671,7 +672,7 @@ app.post('/api/auth/users/:id/reset-password', authenticateToken, requireAdmin, 
         await db.run('UPDATE "User" SET password = $1, "firstLogin" = $2 WHERE id = $3', [hashedPassword, true, id]);
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_reset_password', JSON.stringify({ targetUserId: id })]
         );
 
@@ -695,7 +696,7 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
         await db.run('DELETE FROM "AuditLog" WHERE "userId" = $1', [id]);
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_deleted_user', JSON.stringify({ targetUserId: id })]
         );
 
@@ -792,7 +793,7 @@ app.put('/api/admin/banners/reorder', authenticateToken, requireAdmin, async (re
         }
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_reorder_banners', JSON.stringify({ count: orderedBanners.length })]
         );
 
@@ -823,7 +824,7 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
         );
 
         await db.run(
-            `INSERT INTO AuditLog (id, userId, action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO AuditLog (id, userId, action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_toggle_banner', JSON.stringify({ bannerId: id, enabled })]
         );
 
@@ -854,7 +855,7 @@ app.put('/api/admin/banners/:id/freeze', authenticateToken, requireAdmin, async 
         );
 
         await db.run(
-            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
             [uuidv4(), req.user.id, 'admin_freeze_banner', JSON.stringify({ bannerId: id, isFrozen })]
         );
 
@@ -949,7 +950,7 @@ app.put('/api/admin/users/:userId/banners/:bannerId', authenticateToken, require
         }
 
         await db.run(
-            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4' + (db.isPg ? '::jsonb' : '') + ')',
             [uuidv4(), req.user.id, 'admin_toggle_user_banner', JSON.stringify({ targetUserId: userId, bannerId, enabled })]
         );
 
@@ -998,7 +999,7 @@ app.put('/api/admin/users/:userId/banners/reorder', authenticateToken, requireAd
         }
 
         await db.run(
-            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4' + (db.isPg ? '::jsonb' : '') + ')',
             [uuidv4(), req.user.id, 'admin_reorder_user_banners', JSON.stringify({ targetUserId: userId, count: orderedBanners.length })]
         );
 
@@ -1020,7 +1021,7 @@ app.delete('/api/admin/users/:userId/banners', authenticateToken, requireAdmin, 
         await db.run('DELETE FROM "UserBannerConfig" WHERE "userId" = $1', [userId]);
 
         await db.run(
-            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)',
+            'INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4' + (db.isPg ? '::jsonb' : '') + ')',
             [uuidv4(), req.user.id, 'admin_reset_user_banners', JSON.stringify({ targetUserId: userId })]
         );
 
