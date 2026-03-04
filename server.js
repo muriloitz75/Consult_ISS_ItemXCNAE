@@ -112,6 +112,7 @@ const connectDB = async () => {
             { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
             { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
             { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+            { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
@@ -124,7 +125,8 @@ const connectDB = async () => {
     } else {
         console.log("Variável DATABASE_URL não identificada ou incompatível. Usando SQLite Local...");
         const sqlite3 = require('sqlite3').verbose();
-        const sqldb = new sqlite3.Database('./dev.sqlite3');
+        const dbPath = process.env.SQLITE_PATH || './dev.sqlite3';
+        const sqldb = new sqlite3.Database(dbPath);
 
         db = {
             isPg: false,
@@ -229,6 +231,7 @@ const connectDB = async () => {
             { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
             { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
             { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+            { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];

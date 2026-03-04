@@ -1946,7 +1946,7 @@ const BANNER_STATIC = {
     'incidencia': {
         label: 'Incidência do ISS',
         description: 'LC 116/2003 – Art. 3º',
-        icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+        icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z',
         href: 'https://script.google.com/macros/s/AKfycbwFWD5zweoKS-WccLZJkH4KCVQSKcLR-guuITNhmOYg/dev',
         light: 'from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400',
         dark: 'from-orange-900/50 to-amber-900/50 border-orange-500/30 hover:border-orange-500',
@@ -1994,6 +1994,7 @@ const BANNER_STATIC = {
         description: 'O seu portal centralizado para serviços e tributos municipais',
         imageIcon: 'image/bauhaus.png',
         imageClass: 'w-full h-full object-cover rounded-full',
+        isModal: true,
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/index.php?',
         light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-400',
         dark: 'from-rose-900/50 to-pink-900/50 border-rose-500/30 hover:border-rose-500',
@@ -2047,8 +2048,71 @@ const BANNER_STATIC = {
         iconLight: 'bg-white text-red-600 shadow-md',
         iconDark: 'bg-red-500/20 text-red-400',
         hoverBg: { light: 'bg-red-600', dark: 'bg-white' }
+    },
+    'biblioteca': {
+        label: 'Biblioteca',
+        description: 'Acervo de legislação, normas e documentos municipais',
+        icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+        comingSoon: true,
+        light: 'from-amber-50 to-yellow-50 border-amber-200 hover:border-amber-300',
+        dark: 'from-amber-900/50 to-yellow-900/50 border-amber-500/30 hover:border-amber-500',
+        iconLight: 'bg-white text-amber-600 shadow-md',
+        iconDark: 'bg-amber-500/20 text-amber-400',
+        hoverBg: { light: 'bg-amber-500', dark: 'bg-white' }
     }
 };
+
+// ==================== SUB-BANNERS DA PREFEITURA MODERNA ====================
+const DTE_SUB_BANNERS = [
+    {
+        id: 'dte-portal',
+        label: 'Terra Cloud',
+        description: 'Acesse o portal central de serviços municipais',
+        href: 'https://imperatriz-ma.prefeituramoderna.cloud/#/',
+        icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+        color: { light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-300', dark: 'from-rose-900/40 to-pink-900/40 border-rose-500/30 hover:border-rose-400', iconLight: 'bg-rose-100 text-rose-600', iconDark: 'bg-rose-500/20 text-rose-400' }
+    },
+    {
+        id: 'dte-meuiss',
+        label: 'Meu ISS',
+        description: 'Portal do contribuinte para serviços de ISS',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiss_new/',
+        icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5',
+        color: { light: 'from-pink-50 to-fuchsia-50 border-pink-200 hover:border-pink-300', dark: 'from-pink-900/40 to-fuchsia-900/40 border-pink-500/30 hover:border-pink-400', iconLight: 'bg-pink-100 text-pink-600', iconDark: 'bg-pink-500/20 text-pink-400' }
+    },
+    {
+        id: 'dte-nfe',
+        label: 'NFS-e / Nota Fiscal',
+        description: 'Emissão e consulta de notas fiscais eletrônicas',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiss_new/nfe/',
+        icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        color: { light: 'from-fuchsia-50 to-purple-50 border-fuchsia-200 hover:border-fuchsia-300', dark: 'from-fuchsia-900/40 to-purple-900/40 border-fuchsia-500/30 hover:border-fuchsia-400', iconLight: 'bg-fuchsia-100 text-fuchsia-600', iconDark: 'bg-fuchsia-500/20 text-fuchsia-400' }
+    },
+    {
+        id: 'dte-iptu',
+        label: 'Protocolo',
+        description: 'Acompanhe e gerencie processos administrativos',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiptu/protocolo-servidor/index.php',
+        icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m-4 0h6',
+        color: { light: 'from-purple-50 to-violet-50 border-purple-200 hover:border-purple-300', dark: 'from-purple-900/40 to-violet-900/40 border-purple-500/30 hover:border-purple-400', iconLight: 'bg-purple-100 text-purple-600', iconDark: 'bg-purple-500/20 text-purple-400' }
+    },
+    {
+        id: 'dte-meuiptu',
+        label: 'Meu IPTU',
+        description: 'Consulte e gerencie o seu IPTU municipal',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiptu/',
+        icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+        color: { light: 'from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-300', dark: 'from-violet-900/40 to-indigo-900/40 border-violet-500/30 hover:border-violet-400', iconLight: 'bg-violet-100 text-violet-600', iconDark: 'bg-violet-500/20 text-violet-400' }
+    },
+    {
+        id: 'dte-login',
+        label: 'DTE - Domicílio Tributário',
+        description: 'Acesse seu domicílio tributário eletrônico',
+        href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/?route=login-main',
+        icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+        color: { light: 'from-indigo-50 to-blue-50 border-indigo-200 hover:border-indigo-300', dark: 'from-indigo-900/40 to-blue-900/40 border-indigo-500/30 hover:border-indigo-400', iconLight: 'bg-indigo-100 text-indigo-600', iconDark: 'bg-indigo-500/20 text-indigo-400' }
+    },
+];
 
 // ==================== MODAL DE BANNERS POR USUÁRIO ====================
 function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
@@ -2392,6 +2456,7 @@ function App() {
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
     const [auditUserFilter, setAuditUserFilter] = useState('');
+    const [dteModalOpen, setDteModalOpen] = useState(false);
 
     const handleSortBanners = async () => {
         if (!currentUser || currentUser.role !== 'admin') return;
@@ -2445,6 +2510,7 @@ function App() {
                         { id: 'banner-processos', key: 'processos', label: 'Análise de Processos', enabled: true },
                         { id: 'banner-entes', key: 'entes', label: 'Entes Federados', enabled: true },
                         { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil', enabled: true },
+                        { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca', enabled: true },
                     ]);
                 });
         };
@@ -3237,6 +3303,7 @@ function App() {
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
+                                                } ${s.comingSoon ? 'cursor-default hover:translate-y-0 hover:shadow-none' : ''
                                                 } ${isAdmin ? 'cursor-pointer active:cursor-grabbing' : ''}`;
 
                                             const content = (
@@ -3253,6 +3320,12 @@ function App() {
                                                     </div>
                                                     <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
                                                     <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                    {s.comingSoon && (
+                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}>
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                                            Em Construção
+                                                        </span>
+                                                    )}
                                                     {isAdmin && (
                                                         <div className="absolute bottom-3 right-3 text-gray-400 opacity-0 group-hover:opacity-[0.8] transition-opacity cursor-grab active:cursor-grabbing pb-1 pr-1 pointer-events-none">
                                                             <svg className="w-6 h-6 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
@@ -3277,6 +3350,27 @@ function App() {
                                                 onDragOver: (e) => e.preventDefault()
                                             } : {};
 
+                                            if (s.isModal) {
+                                                return (
+                                                    <button
+                                                        key={banner.id}
+                                                        onClick={() => {
+                                                            if (!isDisabledForUser) {
+                                                                updateStatistics('bannerClick', {
+                                                                    bannerLabel: s.label || banner.label,
+                                                                    user: currentUser ? currentUser.username : 'Visitante'
+                                                                });
+                                                                setDteModalOpen(true);
+                                                            }
+                                                        }}
+                                                        disabled={isDisabledForUser}
+                                                        className={cardClass}
+                                                        {...dragProps}
+                                                    >
+                                                        {content}
+                                                    </button>
+                                                );
+                                            }
                                             if (s.isInternal) {
                                                 return (
                                                     <button
@@ -3301,12 +3395,12 @@ function App() {
                                             return (
                                                 <a
                                                     key={banner.id}
-                                                    href={isDisabledForUser ? undefined : s.href}
-                                                    target={isDisabledForUser ? undefined : '_blank'}
+                                                    href={(isDisabledForUser || s.comingSoon) ? undefined : s.href}
+                                                    target={(isDisabledForUser || s.comingSoon) ? undefined : '_blank'}
                                                     rel="noopener noreferrer"
                                                     className={cardClass}
                                                     onClick={(e) => {
-                                                        if (isDisabledForUser) {
+                                                        if (isDisabledForUser || s.comingSoon) {
                                                             e.preventDefault();
                                                         } else {
                                                             updateStatistics('bannerClick', {
@@ -3794,6 +3888,73 @@ function App() {
                                             })()}
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Modal Sub-Banners — Prefeitura Moderna */}
+                        {dteModalOpen && (
+                            <div
+                                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+                                onClick={() => setDteModalOpen(false)}
+                            >
+                                <div
+                                    className={`relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-fadeInUp ${darkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}`}
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    {/* Header */}
+                                    <div className={`flex items-center justify-between px-6 py-5 border-b ${darkMode ? 'border-gray-700/60 bg-gradient-to-r from-rose-900/40 to-pink-900/40' : 'border-rose-100 bg-gradient-to-r from-rose-50 to-pink-50'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${darkMode ? 'bg-rose-500/20' : 'bg-white shadow-sm'}`}>
+                                                <img src="image/bauhaus.png" className="w-8 h-8 rounded-full object-cover" alt="Prefeitura Moderna" />
+                                            </div>
+                                            <div>
+                                                <h2 className={`text-lg font-bold leading-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Prefeitura Moderna</h2>
+                                                <p className={`text-xs ${darkMode ? 'text-rose-300/70' : 'text-rose-500'}`}>Selecione o serviço desejado</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setDteModalOpen(false)}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`}
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                    {/* Sub-banners grid */}
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {DTE_SUB_BANNERS.map(sub => {
+                                            const isPlaceholder = sub.href === '#';
+                                            return (
+                                                <a
+                                                    key={sub.id}
+                                                    href={isPlaceholder ? undefined : sub.href}
+                                                    target={isPlaceholder ? undefined : '_blank'}
+                                                    rel="noopener noreferrer"
+                                                    onClick={isPlaceholder ? e => e.preventDefault() : undefined}
+                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.color.dark : sub.color.light}`}
+                                                >
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.color.iconDark : sub.color.iconLight}`}>
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sub.icon} /></svg>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            {!isPlaceholder && (
+                                                                <svg className={`w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{sub.description}</p>
+                                                    </div>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                    {DTE_SUB_BANNERS.some(s => s.href === '#') && (
+                                        <p className={`pb-5 text-center text-xs ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                                            Serviços indisponíveis aguardam configuração de link.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         )}
