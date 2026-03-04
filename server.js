@@ -127,6 +127,7 @@ const connectDB = async () => {
         const migrations = [
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "isFrozen" BOOLEAN DEFAULT false`,
+            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lockUntil" TIMESTAMP`,
@@ -258,6 +259,10 @@ const connectDB = async () => {
             const hasIsFrozen = columns.some(col => col.name === 'isFrozen');
             if (!hasIsFrozen) {
                 await db.run(`ALTER TABLE BannerConfig ADD COLUMN isFrozen INTEGER DEFAULT 0;`);
+            }
+            const hasUpdatedAt = columns.some(col => col.name === 'updatedAt');
+            if (!hasUpdatedAt) {
+                await db.run(`ALTER TABLE BannerConfig ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP;`);
             }
         } catch (e) {
             // Se já existir a coluna (ou dependendo da versão SQLite), pode dar erro ignorável na migração
