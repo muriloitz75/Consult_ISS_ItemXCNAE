@@ -268,6 +268,13 @@ class ApiService {
         });
     }
 
+    static async adminFreezeBanner(id, isFrozen) {
+        return this.request(`/admin/banners/${id}/freeze`, {
+            method: 'PUT',
+            body: JSON.stringify({ isFrozen })
+        });
+    }
+
     // --- Métodos de Banners por Usuário (Admin) ---
     static async adminGetUserBanners(userId) {
         return this.request(`/admin/users/${userId}/banners`);
@@ -1922,15 +1929,16 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
 // Config estática dos banners (UI, cores, links)
 const BANNER_STATIC = {
     'iss-cnae': {
-        label: 'Consulta ISS / CNAE',
-        description: 'Pesquise alíquotas e códigos de serviço rapidamente',
+        label: 'Consultas Fiscais',
+        description: 'Acesse os serviços de consulta fiscal',
         icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
         light: 'from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400',
         dark: 'from-blue-900/50 to-purple-900/50 border-blue-500/30 hover:border-blue-500',
         iconLight: 'bg-white text-blue-600 shadow-md',
         iconDark: 'bg-blue-500/20 text-blue-400',
         hoverBg: { light: 'bg-blue-600', dark: 'bg-white' },
-        isInternal: true
+        isModal: true,
+        modalId: 'consultas-fiscais'
     },
     'pareceres': {
         label: 'Gerador de Pareceres',
@@ -1966,11 +1974,11 @@ const BANNER_STATIC = {
         hoverBg: { light: 'bg-violet-600', dark: 'bg-white' }
     },
     'nfse-nacional': {
-        label: 'NFS-e Nacional',
-        description: 'Emissor Nacional de Nota Fiscal de Serviço',
+        label: 'Gestão da NFS-e',
+        description: 'Acesso exclusivo aos servidores para controle e painel do sistema nacional',
         imageIcon: 'image/nfs-e.png',
         imageClass: 'w-full h-full object-cover rounded-full',
-        href: 'https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/acesso-aos-sistemas',
+        href: 'https://www.nfse.gov.br/PainelMunicipal/Login?ReturnUrl=%2fPainelMunicipal',
         light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400',
         dark: 'from-cyan-900/50 to-sky-900/50 border-cyan-500/30 hover:border-cyan-500',
         iconLight: 'bg-white text-cyan-600 shadow-md',
@@ -1995,6 +2003,7 @@ const BANNER_STATIC = {
         imageIcon: 'image/bauhaus.png',
         imageClass: 'w-full h-full object-cover rounded-full',
         isModal: true,
+        modalId: 'dte',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/index.php?',
         light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-400',
         dark: 'from-rose-900/50 to-pink-900/50 border-rose-500/30 hover:border-rose-500',
@@ -2112,6 +2121,28 @@ const DTE_SUB_BANNERS = [
         icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
         color: { light: 'from-indigo-50 to-blue-50 border-indigo-200 hover:border-indigo-300', dark: 'from-indigo-900/40 to-blue-900/40 border-indigo-500/30 hover:border-indigo-400', iconLight: 'bg-indigo-100 text-indigo-600', iconDark: 'bg-indigo-500/20 text-indigo-400' }
     },
+];
+
+// ==================== SUB-BANNERS DE CONSULTAS FISCAIS ====================
+const CONSULTAS_FISCAIS_SUB_BANNERS = [
+    {
+        id: 'consultas-iss-cnae',
+        label: 'Consulta ISS / CNAE',
+        description: 'Pesquise alíquotas e códigos de serviço rapidamente',
+        isInternal: true,
+        view: 'search',
+        icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+        color: { light: 'from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300', dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400', iconLight: 'bg-blue-100 text-blue-600', iconDark: 'bg-blue-500/20 text-blue-400' }
+    },
+    {
+        id: 'consultas-nfse-nacional',
+        label: 'Consulta NFS-e Nacional',
+        description: 'Consulta Pública de NFS-e (Nota Fiscal de Serviços Eletrônica)',
+        isInternal: false,
+        href: 'https://www.nfse.gov.br/consultapublica',
+        icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        color: { light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-300', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400' }
+    }
 ];
 
 // ==================== MODAL DE BANNERS POR USUÁRIO ====================
@@ -2308,12 +2339,15 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
 // ==================== PAINEL DE CONTROLE DE BANNERS ====================
 function AdminBannersPanel({ darkMode }) {
     const [users, setUsers] = useState([]);
+    const [globalBanners, setGlobalBanners] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [loadingBanners, setLoadingBanners] = useState(true);
     const [toast, setToast] = useState(null);
     const [selectedUserModal, setSelectedUserModal] = useState(null); // {id, name}
 
     useEffect(() => {
         loadUsers();
+        loadGlobalBanners();
     }, []);
 
     const loadUsers = async () => {
@@ -2322,10 +2356,39 @@ function AdminBannersPanel({ darkMode }) {
             const data = await ApiService.getUsers();
             setUsers(data.filter(u => u.role !== 'admin' && (u.isAuthorized === true || u.isAuthorized === 1)));
         } catch (e) {
-            setToast({ type: 'error', msg: 'Erro ao carregar usuários.' });
+            showToast('error', 'Erro ao carregar usuários.');
         } finally {
             setLoadingUsers(false);
         }
+    };
+
+    const loadGlobalBanners = async () => {
+        setLoadingBanners(true);
+        try {
+            const data = await ApiService.getBanners();
+            setGlobalBanners(data);
+        } catch (e) {
+            showToast('error', 'Erro ao carregar banners globais.');
+        } finally {
+            setLoadingBanners(false);
+        }
+    };
+
+    const handleFreezeToggle = async (banner) => {
+        const newFrozen = !banner.isFrozen;
+        setGlobalBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: newFrozen } : b));
+        try {
+            await ApiService.adminFreezeBanner(banner.id, newFrozen);
+            showToast('success', `"${BANNER_STATIC[banner.key]?.label || banner.label}" ${newFrozen ? 'congelado' : 'descongelado'} globalmente.`);
+        } catch (e) {
+            setGlobalBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: banner.isFrozen } : b));
+            showToast('error', 'Erro ao alterar status do banner.');
+        }
+    };
+
+    const showToast = (type, msg) => {
+        setToast({ type, msg });
+        setTimeout(() => setToast(null), 3500);
     };
 
     return (
@@ -2350,7 +2413,7 @@ function AdminBannersPanel({ darkMode }) {
                     </div>
                     <div>
                         <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerenciador de Banners</h2>
-                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Personalize quais recursos cada usuário visualiza na tela inicial.</p>
+                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Gerencie o status global e a visibilidade para cada usuário.</p>
                     </div>
                 </div>
             </div>
@@ -2364,6 +2427,53 @@ function AdminBannersPanel({ darkMode }) {
                     {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
                 </div>
             )}
+
+            {/* Banners Globais */}
+            <div className={`mb-8 p-5 rounded-xl border ${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                <h3 className={`font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Controle Global (Congelamento)</h3>
+
+                {loadingBanners ? (
+                    <div className="flex justify-center py-6">
+                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-blue-200 border-t-blue-600"></div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {globalBanners.map(banner => {
+                            const s = BANNER_STATIC[banner.key];
+                            if (!s) return null;
+                            return (
+                                <div key={banner.id} className={`flex items-center p-3 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} ${banner.isFrozen ? 'opacity-80' : ''}`}>
+                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mr-3 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden`}>
+                                        {s.imageIcon ? (
+                                            <img src={s.imageIcon} alt="" className="w-full h-full object-contain p-1" />
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon || 'M4 5h16'} />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</p>
+                                        <p className={`text-[10px] ${banner.isFrozen ? 'text-red-500 font-bold' : (darkMode ? 'text-green-400' : 'text-green-600')}`}>
+                                            {banner.isFrozen ? '❄️ CONGELADO' : 'ATIVO'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleFreezeToggle(banner)}
+                                        className={`relative flex-shrink-0 ml-2 inline-flex h-5 w-9 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 ${banner.isFrozen ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')}`}
+                                        title={banner.isFrozen ? "Descongelar" : "Congelar (Em Manutenção)"}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${banner.isFrozen ? 'translate-x-4' : 'translate-x-0'}`}></span>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Titulo Usuários */}
+            <h3 className={`font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Personalização de Usuários</h3>
 
             {/* Lista de Usuários */}
             {loadingUsers ? (
@@ -2457,6 +2567,7 @@ function App() {
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
     const [auditUserFilter, setAuditUserFilter] = useState('');
     const [dteModalOpen, setDteModalOpen] = useState(false);
+    const [consultasModalOpen, setConsultasModalOpen] = useState(false);
 
     const handleSortBanners = async () => {
         if (!currentUser || currentUser.role !== 'admin') return;
@@ -3298,13 +3409,15 @@ function App() {
                                             if (!s) return null;
                                             const isAdmin = currentUser?.role === 'admin';
                                             const isDisabledForUser = !banner.enabled && !isAdmin;
+                                            const isFrozen = banner.isFrozen === true;
+                                            const isEffectivelyFrozen = isFrozen && !isAdmin;
 
                                             const cardClass = `flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
-                                                } ${s.comingSoon ? 'cursor-default hover:translate-y-0 hover:shadow-none' : ''
-                                                } ${isAdmin ? 'cursor-pointer active:cursor-grabbing' : ''}`;
+                                                } ${(s.comingSoon || isEffectivelyFrozen) ? 'cursor-default hover:translate-y-0 hover:shadow-none opactity-75' : ''
+                                                } ${(isAdmin || (isFrozen && isAdmin)) ? 'cursor-pointer active:cursor-grabbing' : ''}`;
 
                                             const content = (
                                                 <>
@@ -3320,10 +3433,16 @@ function App() {
                                                     </div>
                                                     <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
                                                     <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
-                                                    {s.comingSoon && (
+                                                    {s.comingSoon && !isFrozen && (
                                                         <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}>
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
                                                             Em Construção
+                                                        </span>
+                                                    )}
+                                                    {isFrozen && (
+                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold pointer-events-none ${darkMode ? 'bg-red-900/40 text-red-500 border border-red-800' : 'bg-red-100 text-red-700 border border-red-300'}`}>
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                                            EM MANUTENÇÃO
                                                         </span>
                                                     )}
                                                     {isAdmin && (
@@ -3354,13 +3473,22 @@ function App() {
                                                 return (
                                                     <button
                                                         key={banner.id}
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            if (isEffectivelyFrozen) {
+                                                                e.preventDefault();
+                                                                alert('Este acesso está temporariamente indisponível. Em manutenção.');
+                                                                return;
+                                                            }
                                                             if (!isDisabledForUser) {
                                                                 updateStatistics('bannerClick', {
                                                                     bannerLabel: s.label || banner.label,
                                                                     user: currentUser ? currentUser.username : 'Visitante'
                                                                 });
-                                                                setDteModalOpen(true);
+                                                                if (s.modalId === 'consultas-fiscais') {
+                                                                    setConsultasModalOpen(true);
+                                                                } else {
+                                                                    setDteModalOpen(true);
+                                                                }
                                                             }
                                                         }}
                                                         disabled={isDisabledForUser}
@@ -3375,7 +3503,12 @@ function App() {
                                                 return (
                                                     <button
                                                         key={banner.id}
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            if (isEffectivelyFrozen) {
+                                                                e.preventDefault();
+                                                                alert('Este acesso está temporariamente indisponível. Em manutenção.');
+                                                                return;
+                                                            }
                                                             if (!isDisabledForUser) {
                                                                 updateStatistics('bannerClick', {
                                                                     bannerLabel: s.label || banner.label,
@@ -3395,12 +3528,15 @@ function App() {
                                             return (
                                                 <a
                                                     key={banner.id}
-                                                    href={(isDisabledForUser || s.comingSoon) ? undefined : s.href}
-                                                    target={(isDisabledForUser || s.comingSoon) ? undefined : '_blank'}
+                                                    href={(isDisabledForUser || s.comingSoon || isEffectivelyFrozen) ? undefined : s.href}
+                                                    target={(isDisabledForUser || s.comingSoon || isEffectivelyFrozen) ? undefined : '_blank'}
                                                     rel="noopener noreferrer"
                                                     className={cardClass}
                                                     onClick={(e) => {
-                                                        if (isDisabledForUser || s.comingSoon) {
+                                                        if (isEffectivelyFrozen) {
+                                                            e.preventDefault();
+                                                            alert('Este acesso está temporariamente indisponível. Em manutenção.');
+                                                        } else if (isDisabledForUser || s.comingSoon) {
                                                             e.preventDefault();
                                                         } else {
                                                             updateStatistics('bannerClick', {
@@ -3955,6 +4091,77 @@ function App() {
                                             Serviços indisponíveis aguardam configuração de link.
                                         </p>
                                     )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Modal Sub-Banners — Consultas Fiscais */}
+                        {consultasModalOpen && (
+                            <div
+                                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+                                onClick={() => setConsultasModalOpen(false)}
+                            >
+                                <div
+                                    className={`relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-fadeInUp ${darkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}`}
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className={`flex items-center justify-between px-6 py-5 border-b ${darkMode ? 'border-gray-700/60 bg-gradient-to-r from-blue-900/40 to-purple-900/40' : 'border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                            </div>
+                                            <div>
+                                                <h2 className={`text-lg font-bold leading-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>Consultas Fiscais</h2>
+                                                <p className={`text-xs ${darkMode ? 'text-blue-300/70' : 'text-blue-600'}`}>Selecione o serviço de consulta desejado</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setConsultasModalOpen(false)}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`}
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {CONSULTAS_FISCAIS_SUB_BANNERS.map(sub => {
+                                            const isPlaceholder = sub.href && sub.href === '#';
+                                            const clickHandler = (e) => {
+                                                if (isPlaceholder) {
+                                                    e.preventDefault();
+                                                    return;
+                                                }
+                                                if (sub.isInternal) {
+                                                    e.preventDefault();
+                                                    setConsultasModalOpen(false);
+                                                    setCurrentView(sub.view);
+                                                }
+                                            };
+                                            return (
+                                                <a
+                                                    key={sub.id}
+                                                    href={sub.isInternal ? '#' : (isPlaceholder ? undefined : sub.href)}
+                                                    target={sub.isInternal || isPlaceholder ? undefined : '_blank'}
+                                                    rel="noopener noreferrer"
+                                                    onClick={clickHandler}
+                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.color.dark : sub.color.light}`}
+                                                >
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.color.iconDark : sub.color.iconLight}`}>
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sub.icon} /></svg>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            {!isPlaceholder && !sub.isInternal && (
+                                                                <svg className={`w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{sub.description}</p>
+                                                    </div>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         )}

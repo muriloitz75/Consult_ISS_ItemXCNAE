@@ -70,6 +70,7 @@ const connectDB = async () => {
                 label TEXT NOT NULL,
                 enabled BOOLEAN DEFAULT true,
                 "orderIndex" INTEGER DEFAULT 0,
+                "isFrozen" BOOLEAN DEFAULT false,
                 updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -87,6 +88,7 @@ const connectDB = async () => {
         // Migration para bancos já existentes
         const migrations = [
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
+            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "isFrozen" BOOLEAN DEFAULT false`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lockUntil" TIMESTAMP`,
@@ -192,6 +194,7 @@ const connectDB = async () => {
                 label TEXT NOT NULL,
                 enabled INTEGER DEFAULT 1,
                 orderIndex INTEGER DEFAULT 0,
+                isFrozen INTEGER DEFAULT 0,
                 updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -213,6 +216,10 @@ const connectDB = async () => {
             const hasOrderIndex = columns.some(col => col.name === 'orderIndex');
             if (!hasOrderIndex) {
                 await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
+            }
+            const hasIsFrozen = columns.some(col => col.name === 'isFrozen');
+            if (!hasIsFrozen) {
+                await db.run(`ALTER TABLE BannerConfig ADD COLUMN isFrozen INTEGER DEFAULT 0;`);
             }
         } catch (e) {
             // Se já existir a coluna (ou dependendo da versão SQLite), pode dar erro ignorável na migração
@@ -668,10 +675,11 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
 // Listar banners com status — com token opcional para personalização por usuário
 app.get('/api/banners', async (req, res) => {
     try {
-        const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
+        const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex", "isFrozen" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
         const normalized = globalBanners.map(b => ({
             ...b,
-            enabled: String(b.enabled).toLowerCase() === 'true' || b.enabled === true || b.enabled === 1 || b.enabled === 't'
+            enabled: String(b.enabled).toLowerCase() === 'true' || b.enabled === true || b.enabled === 1 || b.enabled === 't',
+            isFrozen: String(b.isFrozen).toLowerCase() === 'true' || b.isFrozen === true || b.isFrozen === 1 || b.isFrozen === 't'
         }));
 
         // Tenta extrair o userId do token JWT (se enviado)
@@ -704,6 +712,7 @@ app.get('/api/banners', async (req, res) => {
                                 ...b,
                                 enabled: overrideMap[b.id].enabled,
                                 orderIndex: overrideMap[b.id].orderIndex,
+                                isFrozen: b.isFrozen,
                                 hasOverride: true
                             };
                         }
@@ -784,6 +793,37 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
         res.json({ message: `Banner ${enabled ? 'ativado' : 'desativado'} com sucesso.`, id, enabled });
     } catch (error) {
         console.error('Erro ao atualizar banner:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
+// Congelar/Descongelar um banner global (admin only)
+app.put('/api/admin/banners/:id/freeze', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isFrozen } = req.body;
+
+        if (typeof isFrozen === 'undefined') {
+            return res.status(400).json({ error: 'Campo "isFrozen" é obrigatório.' });
+        }
+
+        const banners = await db.query('SELECT * FROM "BannerConfig" WHERE id = $1', [id]);
+        if (banners.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
+
+        const frozenValue = db.isPg ? !!isFrozen : (isFrozen ? 1 : 0);
+        await db.run(
+            'UPDATE "BannerConfig" SET "isFrozen" = $1, "updatedAt" = $2 WHERE id = $3',
+            [frozenValue, new Date().toISOString(), id]
+        );
+
+        await db.run(
+            `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4)`,
+            [uuidv4(), req.user.id, 'admin_freeze_banner', JSON.stringify({ bannerId: id, isFrozen })]
+        );
+
+        res.json({ message: `Banner ${isFrozen ? 'congelado' : 'descongelado'} com sucesso.`, id, isFrozen });
+    } catch (error) {
+        console.error('Erro ao congelar/descongelar banner:', error);
         res.status(500).json({ error: 'Erro interno no servidor' });
     }
 });
