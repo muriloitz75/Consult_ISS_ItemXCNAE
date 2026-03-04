@@ -566,7 +566,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
             if (isReused) return res.status(400).json({ error: "Esta senha já foi usada recentemente" });
 
             addUpdate('password', newHashedPassword);
-            addUpdate('firstLogin', false);
+            addUpdate('firstLogin', db.isPg ? false : 0);
             addUpdate('lastPasswordChange', new Date().toISOString());
 
             history.push(newHashedPassword);
@@ -594,7 +594,8 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
         res.json({
             message: "Perfil atualizado com sucesso", user: {
                 id: updatedUser.id, username: updatedUser.username, name: updatedUser.name,
-                email: updatedUser.email, role: updatedUser.role, firstLogin: (updatedUser.firstLogin === 1 || updatedUser.firstLogin === true)
+                email: updatedUser.email, role: updatedUser.role,
+                firstLogin: String(updatedUser.firstLogin).toLowerCase() === 'true' || updatedUser.firstLogin === 1 || updatedUser.firstLogin === true || updatedUser.firstLogin === 't'
             }
         });
     } catch (error) {
