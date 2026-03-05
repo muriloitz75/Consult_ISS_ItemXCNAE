@@ -2079,7 +2079,9 @@ const BANNER_STATIC = {
         dark: 'from-amber-900/50 to-yellow-900/50 border-amber-500/30 hover:border-amber-500',
         iconLight: 'bg-white text-amber-600 shadow-md',
         iconDark: 'bg-amber-500/20 text-amber-400',
-        hoverBg: { light: 'bg-amber-500', dark: 'bg-white' }
+        hoverBg: { light: 'bg-amber-500', dark: 'bg-white' },
+        isModal: true,
+        modalId: 'biblioteca'
     }
 };
 
@@ -2155,6 +2157,72 @@ const CONSULTAS_FISCAIS_SUB_BANNERS = [
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
         color: { light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-300', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400' }
     }
+];
+
+// ==================== BIBLIOTECA: CATEGORIAS BENTO BOX ====================
+const BIBLIOTECA_CATEGORIAS = [
+    {
+        id: 'legislacao',
+        label: 'Legislação Municipal',
+        description: 'Leis e decretos do município',
+        icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+        size: 'wide',
+        colorLight: 'from-amber-50 to-orange-50 border-amber-200 hover:border-amber-400',
+        colorDark: 'from-amber-900/40 to-orange-900/40 border-amber-500/30 hover:border-amber-400',
+        iconLight: 'bg-amber-100 text-amber-700',
+        iconDark: 'bg-amber-500/20 text-amber-400',
+        links: [
+            { id: 'ctm', label: 'CTM – Cód. Tributário Municipal', href: '#', description: 'Lei Complementar nº 001/2003', badge: 'Em breve' },
+            { id: 'lc116', label: 'LC 116/2003 – ISS Nacional', href: '#', description: 'Lei Complementar Federal do ISS', badge: 'Em breve' },
+            { id: 'decreto', label: 'Decreto Regulamentador', href: '#', description: 'Regulamenta o CTM vigente', badge: 'Em breve' },
+        ]
+    },
+    {
+        id: 'manuais',
+        label: 'Manuais e Procedimentos',
+        description: 'Guias operacionais e procedimentos internos',
+        icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+        size: 'normal',
+        colorLight: 'from-orange-50 to-red-50 border-orange-200 hover:border-orange-400',
+        colorDark: 'from-orange-900/40 to-red-900/40 border-orange-500/30 hover:border-orange-400',
+        iconLight: 'bg-orange-100 text-orange-700',
+        iconDark: 'bg-orange-500/20 text-orange-400',
+        links: [
+            { id: 'simples', label: 'Simples Nacional', href: '#', description: 'Manual do regime Simples Nacional', badge: 'PDF' },
+            { id: 'dte-manual', label: 'Manual DTE', href: '#', description: 'Domicílio Tributário Eletrônico', badge: 'PDF' },
+            { id: 'nfse-manual', label: 'Manual NFS-e', href: '#', description: 'Emissão de Nota Fiscal de Serviços', badge: 'Novo' },
+        ]
+    },
+    {
+        id: 'ebooks',
+        label: 'E-books e Guias',
+        description: 'Material de apoio e capacitação',
+        icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+        size: 'normal',
+        colorLight: 'from-yellow-50 to-amber-50 border-yellow-200 hover:border-yellow-400',
+        colorDark: 'from-yellow-900/40 to-amber-900/40 border-yellow-500/30 hover:border-yellow-400',
+        iconLight: 'bg-yellow-100 text-yellow-700',
+        iconDark: 'bg-yellow-500/20 text-yellow-400',
+        links: [
+            { id: 'ebook-iss', label: 'E-book ISS Explicado', href: '#', description: 'Guia completo sobre ISS municipal', badge: 'PDF' },
+            { id: 'ebook-cnae', label: 'Guia CNAE Prático', href: '#', description: 'Como classificar atividades econômicas', badge: 'Em breve' },
+        ]
+    },
+    {
+        id: 'normas',
+        label: 'Normas e Instruções',
+        description: 'Resoluções, portarias e instruções normativas',
+        icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
+        size: 'normal',
+        colorLight: 'from-stone-50 to-amber-50 border-stone-200 hover:border-stone-400',
+        colorDark: 'from-stone-900/40 to-amber-900/40 border-stone-500/30 hover:border-stone-400',
+        iconLight: 'bg-stone-100 text-stone-700',
+        iconDark: 'bg-stone-500/20 text-stone-400',
+        links: [
+            { id: 'instrucao-01', label: 'Instrução Normativa 01/2024', href: '#', description: 'Procedimentos de fiscalização', badge: 'Em breve' },
+            { id: 'portaria-02', label: 'Portaria 02/2024', href: '#', description: 'Atualização de alíquotas', badge: 'Atualizado' },
+        ]
+    },
 ];
 
 // ==================== MODAL DE BANNERS POR USUÁRIO ====================
@@ -2580,6 +2648,9 @@ function App() {
     const [auditUserFilter, setAuditUserFilter] = useState('');
     const [dteModalOpen, setDteModalOpen] = useState(false);
     const [consultasModalOpen, setConsultasModalOpen] = useState(false);
+    const [bibliotecaModalOpen, setBibliotecaModalOpen] = useState(false);
+    const [bibliotecaCategoria, setBibliotecaCategoria] = useState(null);
+    const [bibliotecaSearch, setBibliotecaSearch] = useState('');
 
     const handleSortBanners = async () => {
         if (!currentUser || currentUser.role !== 'admin') return;
@@ -3454,6 +3525,9 @@ function App() {
                                                                 });
                                                                 if (s.modalId === 'consultas-fiscais') {
                                                                     setConsultasModalOpen(true);
+                                                                } else if (s.modalId === 'biblioteca') {
+                                                                    setBibliotecaCategoria(null);
+                                                                    setBibliotecaModalOpen(true);
                                                                 } else {
                                                                     setDteModalOpen(true);
                                                                 }
@@ -4142,6 +4216,198 @@ function App() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Modal Bento Box — Biblioteca */}
+                        {bibliotecaModalOpen && (() => {
+                            const categoriaAtual = bibliotecaCategoria
+                                ? BIBLIOTECA_CATEGORIAS.find(c => c.id === bibliotecaCategoria)
+                                : null;
+                            return (
+                                <div
+                                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+                                    onClick={() => { setBibliotecaModalOpen(false); setBibliotecaCategoria(null); setBibliotecaSearch(''); }}
+                                >
+                                    <div
+                                        className={`relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-fadeInUp ${darkMode ? 'bg-gray-900 border border-gray-700/60' : 'bg-white border border-amber-100'}`}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        {/* Header */}
+                                        <div className={`flex items-center justify-between px-6 py-5 border-b ${darkMode ? 'border-gray-700/60 bg-gradient-to-r from-amber-900/50 to-yellow-900/40' : 'border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50'}`}>
+                                            <div className="flex items-center gap-3">
+                                                {categoriaAtual ? (
+                                                    <button
+                                                        onClick={() => { setBibliotecaCategoria(null); setBibliotecaSearch(''); }}
+                                                        className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors mr-1 ${darkMode ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                                        Voltar
+                                                    </button>
+                                                ) : (
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <h2 className={`text-lg font-bold leading-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                        {categoriaAtual ? categoriaAtual.label : 'Biblioteca'}
+                                                    </h2>
+                                                    <p className={`text-xs ${darkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>
+                                                        {categoriaAtual ? `${categoriaAtual.links.length} ${categoriaAtual.links.length === 1 ? 'item disponível' : 'itens disponíveis'}` : 'Selecione uma categoria ou pesquise'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => { setBibliotecaModalOpen(false); setBibliotecaCategoria(null); setBibliotecaSearch(''); }}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ${darkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+
+                                        {/* Barra de Busca — só no grid (nível 1) */}
+                                        {!categoriaAtual && (
+                                            <div className="px-5 pt-4 pb-1">
+                                                <div className="relative">
+                                                    <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                    <input
+                                                        type="text"
+                                                        value={bibliotecaSearch}
+                                                        onChange={e => setBibliotecaSearch(e.target.value)}
+                                                        placeholder="Buscar em todas as categorias..."
+                                                        className={`w-full pl-9 pr-9 py-2.5 text-sm rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${darkMode
+                                                            ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-amber-500 focus:ring-amber-500/20'
+                                                            : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-amber-400 focus:ring-amber-400/20'
+                                                            }`}
+                                                    />
+                                                    {bibliotecaSearch && (
+                                                        <button
+                                                            onClick={() => setBibliotecaSearch('')}
+                                                            className={`absolute right-3 top-1/2 -translate-y-1/2 ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-700'}`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Helper de badge — cores semânticas */}
+                                        {(() => {
+                                            const badgeColors = {
+                                                'Novo': darkMode ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-green-100 text-green-700 border border-green-200',
+                                                'Atualizado': darkMode ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-100 text-blue-700 border border-blue-200',
+                                                'PDF': darkMode ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-100 text-red-700 border border-red-200',
+                                                'Em breve': darkMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-700 border border-amber-200',
+                                                'Site Externo': darkMode ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-200',
+                                            };
+                                            const BadgeChip = ({ badge }) => badge
+                                                ? <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide ${badgeColors[badge] || badgeColors['Site Externo']}`}>{badge}</span>
+                                                : null;
+
+                                            const LinkRow = ({ link, cat }) => {
+                                                const isPlaceholder = !link.href || link.href === '#';
+                                                return (
+                                                    <a
+                                                        href={isPlaceholder ? undefined : link.href}
+                                                        target={isPlaceholder ? undefined : '_blank'}
+                                                        rel="noopener noreferrer"
+                                                        onClick={isPlaceholder ? e => e.preventDefault() : undefined}
+                                                        className={`group flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${isPlaceholder ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md'} ${darkMode ? `bg-gradient-to-r ${cat.colorDark}` : `bg-gradient-to-r ${cat.colorLight}`}`}
+                                                    >
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? cat.iconDark : cat.iconLight}`}>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{link.label}</p>
+                                                                <BadgeChip badge={link.badge} />
+                                                            </div>
+                                                            <p className={`text-xs mt-0.5 truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{link.description}</p>
+                                                        </div>
+                                                        {!isPlaceholder && (
+                                                            <svg className={`w-4 h-4 flex-shrink-0 opacity-40 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                        )}
+                                                    </a>
+                                                );
+                                            };
+
+                                            // Estado de Busca Ativa: lista plana filtrada em todas as categorias
+                                            if (!categoriaAtual && bibliotecaSearch.trim()) {
+                                                const query = bibliotecaSearch.trim().toLowerCase();
+                                                const resultados = BIBLIOTECA_CATEGORIAS.flatMap(cat =>
+                                                    cat.links
+                                                        .filter(l => l.label.toLowerCase().includes(query) || l.description.toLowerCase().includes(query))
+                                                        .map(l => ({ link: l, cat }))
+                                                );
+                                                return (
+                                                    <div className="p-5 space-y-3 max-h-[340px] overflow-y-auto custom-scrollbar">
+                                                        {resultados.length > 0 ? resultados.map(({ link, cat }) => (
+                                                            <div key={link.id}>
+                                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{cat.label}</p>
+                                                                <LinkRow link={link} cat={cat} />
+                                                            </div>
+                                                        )) : (
+                                                            <div className={`flex flex-col items-center justify-center py-10 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                                <svg className="w-8 h-8 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                                <p className="text-sm font-medium">Nenhum resultado para "{bibliotecaSearch}"</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Estado A: Grid Bento Box
+                                            if (!categoriaAtual) {
+                                                return (
+                                                    <div className="p-5 grid grid-cols-2 gap-3" style={{ gridAutoRows: 'minmax(110px, auto)' }}>
+                                                        {BIBLIOTECA_CATEGORIAS.map(cat => (
+                                                            <button
+                                                                key={cat.id}
+                                                                onClick={() => setBibliotecaCategoria(cat.id)}
+                                                                className={`group relative flex flex-col items-start justify-between p-4 rounded-xl border bg-gradient-to-br text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] ${cat.size === 'wide' ? 'col-span-2' : ''} ${darkMode ? cat.colorDark : cat.colorLight}`}
+                                                            >
+                                                                <div className="flex items-start justify-between w-full gap-2">
+                                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? cat.iconDark : cat.iconLight}`}>
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={cat.icon} /></svg>
+                                                                    </div>
+                                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${darkMode ? 'bg-white/10 text-gray-300' : 'bg-white/60 text-gray-600'}`}>
+                                                                        {cat.links.length} {cat.links.length === 1 ? 'item' : 'itens'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="mt-2">
+                                                                    <p className={`text-sm font-bold leading-snug ${darkMode ? 'text-white' : 'text-gray-900'}`}>{cat.label}</p>
+                                                                    <p className={`text-xs mt-0.5 line-clamp-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{cat.description}</p>
+                                                                </div>
+                                                                <div className={`absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Estado B: Lista de Links da Categoria com Badges
+                                            return (
+                                                <div className="p-5 space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+                                                    {categoriaAtual.links.map(link => (
+                                                        <LinkRow key={link.id} link={link} cat={categoriaAtual} />
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Rodapé informativo quando há links placeholder */}
+                                        {categoriaAtual && categoriaAtual.links.some(l => !l.href || l.href === '#') && (
+                                            <p className={`pb-4 text-center text-xs ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                Links marcados como indisponíveis aguardam configuração.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {isLoading && (
                             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
