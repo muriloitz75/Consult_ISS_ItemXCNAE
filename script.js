@@ -3281,10 +3281,10 @@ function App() {
             <div className="flex-1 overflow-y-auto">
                 <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
                     <div className="container mx-auto px-4 py-8 max-w-6xl">
-                        <header className="mb-8">
-                            {/* Top Bar: Menu hamburger + Dark Mode + Ícone */}
-                            <div className="flex justify-between items-center bg-white/30 backdrop-blur-md rounded-3xl p-4 shadow-sm border border-white/20 dark:border-gray-700/30 dark:bg-gray-800/30 transition-colors">
-                                <div className="flex items-center gap-4">
+                        <header className="mb-10">
+                            {/* Top Bar: Minimalista e Clean */}
+                            <div className="flex justify-between items-center bg-white/5 dark:bg-gray-800/5 backdrop-blur-xl rounded-full px-6 py-3 transition-all border-none">
+                                <div className="flex items-center gap-6">
                                     <button
                                         type="button"
                                         onClick={() => setSidebarMobileOpen(true)}
@@ -3313,9 +3313,9 @@ function App() {
                                     ) : (
                                         currentUser && (
                                             <div className="flex items-center gap-3 ml-1">
-                                                <div className="relative">
-                                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md transform transition-transform hover:scale-105 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
-                                                        <span className="text-white font-bold text-sm tracking-widest">
+                                                <div className="relative group">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transform transition-all group-hover:scale-110 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+                                                        <span className="text-white font-bold text-xs tracking-widest">
                                                             {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
                                                         </span>
                                                     </div>
@@ -3323,11 +3323,11 @@ function App() {
                                                     </div>
                                                 </div>
                                                 <div className="hidden sm:block">
-                                                    <h2 className={`font-semibold text-lg tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                                                        Olá, {currentUser.name?.split(' ')[0] || currentUser.username} 👋
+                                                    <h2 className={`font-medium text-base tracking-tight ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                                        {currentUser.name?.split(' ')[0] || currentUser.username}
                                                     </h2>
-                                                    <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        Bem-vindo ao portal
+                                                    <p className={`text-[10px] uppercase font-bold tracking-widest opacity-60 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        Portal Ecossistema
                                                     </p>
                                                 </div>
                                             </div>
@@ -3335,7 +3335,7 @@ function App() {
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-3">
+                                <div className={`flex items-center gap-3 transition-all`}>
                                     {/* Botão de Dark Mode integrado */}
                                     <button
                                         onClick={() => setDarkMode(!darkMode)}
@@ -3435,11 +3435,22 @@ function App() {
                         )}
 
                         {currentView === 'home' && (
-                            <div className="animate-fadeInUp space-y-8">
+                            <div className="animate-fadeInUp space-y-10">
+                                {/* Faixada Central de Serviços */}
+                                <div className="text-center relative py-4">
+                                    <div className={`absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-24 h-24 blur-3xl rounded-full opacity-20 ${darkMode ? 'bg-blue-500' : 'bg-blue-400'}`}></div>
+                                    <h2 className={`relative text-xs md:text-sm font-black tracking-[0.3em] uppercase mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                        Central de Serviços
+                                    </h2>
+                                    <h1 className={`relative text-3xl md:text-4xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                        DIAAF
+                                    </h1>
+                                    <div className={`mt-4 mx-auto w-12 h-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                                </div>
+
                                 <div className={`grid gap-6 mt-2 ${bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
                                     bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
-                                        bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 3 ? 'grid-cols-1 md:grid-cols-3' :
-                                            'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                                        'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                                     }`}>
                                     {bannerConfig
                                         .filter(b => currentUser?.role === 'admin' || b.enabled)
@@ -3451,7 +3462,7 @@ function App() {
                                             const isFrozen = banner.isFrozen === true;
                                             const isEffectivelyFrozen = isFrozen && !isAdmin;
 
-                                            const cardClass = `flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
+                                            const cardClass = `flex flex-col items-center justify-center p-6 rounded-2xl border transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
@@ -3473,13 +3484,13 @@ function App() {
                                                     <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
                                                     <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
                                                     {s.comingSoon && !isFrozen && (
-                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}>
+                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700 font-bold'}`}>
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
                                                             Em Construção
                                                         </span>
                                                     )}
                                                     {isFrozen && (
-                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold pointer-events-none ${darkMode ? 'bg-red-900/40 text-red-500 border border-red-800' : 'bg-red-100 text-red-700 border border-red-300'}`}>
+                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold pointer-events-none ${darkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-700'}`}>
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
                                                             EM MANUTENÇÃO
                                                         </span>
