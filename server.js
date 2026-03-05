@@ -294,6 +294,7 @@ const connectDB = async () => {
 
     const bcrypt = require('bcrypt');
     const adminCheck = await db.query('SELECT * FROM "User" WHERE username = $1', ['admin']);
+    console.log(`[Diagnostic] Verificação do admin inicial: Encontrados ${adminCheck ? adminCheck.length : 0} usuários 'admin'.`);
     if (!adminCheck || adminCheck.length === 0) {
         const adminId = uuidv4(); // Use UUID dinâmico para evitar colisão de PK se o admin antigo foi renomeado
         const hashedAdminPass = await bcrypt.hash('Admin@123', 10);
@@ -304,9 +305,9 @@ const connectDB = async () => {
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                 [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
             );
-            console.log("Usuário admin padrão criado com sucesso (Fallback). Login: admin / Senha: Admin@123");
+            console.log("[Diagnostic] Usuário admin padrão criado com sucesso (Fallback). Login: admin / Senha: Admin@123");
         } catch (e) {
-            console.log("Aviso: Admin não pôde ser criado.", e.message);
+            console.log("[Diagnostic] Aviso: Admin não pôde ser criado.", e.message);
         }
     }
 
