@@ -281,10 +281,10 @@ class ApiService {
         });
     }
 
-    static async adminFreezeBanner(id, isFrozen) {
+    static async adminFreezeBanner(id, isFrozen, freezeReason) {
         return this.request(`/admin/banners/${id}/freeze`, {
             method: 'PUT',
-            body: JSON.stringify({ isFrozen })
+            body: JSON.stringify({ isFrozen, freezeReason })
         });
     }
 
@@ -1761,6 +1761,16 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
                 </svg>
             ),
             view: 'profile'
+        },
+        {
+            id: 'other-services',
+            label: 'Outros Serviços',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            ),
+            view: 'other-services'
         }
     ];
 
@@ -1943,9 +1953,10 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
 const BANNER_STATIC = {
     'iss-cnae': {
         label: 'Consultas Fiscais',
+        menu: 'home',
         description: 'Acesse os serviços de consulta fiscal',
         icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-        light: 'from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400',
+        light: 'from-blue-50 to-purple-50 border-blue-400 hover:border-blue-500',
         dark: 'from-blue-900/50 to-purple-900/50 border-blue-500/30 hover:border-blue-500',
         iconLight: 'bg-white text-blue-600 shadow-md',
         iconDark: 'bg-blue-500/20 text-blue-400',
@@ -1955,10 +1966,11 @@ const BANNER_STATIC = {
     },
     'pareceres': {
         label: 'Gerador de Pareceres',
+        menu: 'home',
         description: 'Gere pareceres fiscais automaticamente',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
         href: 'https://script.google.com/macros/s/AKfycbzL4QGjBggc_7QeV-RPrE25n6bYDkgUOQ36v1dmjyMJN_34YgYYsTuyg-SVe3tBA903Lg/exec',
-        light: 'from-emerald-50 to-teal-50 border-emerald-200 hover:border-emerald-400',
+        light: 'from-emerald-50 to-teal-50 border-emerald-400 hover:border-emerald-500',
         dark: 'from-emerald-900/50 to-teal-900/50 border-emerald-500/30 hover:border-emerald-500',
         iconLight: 'bg-white text-emerald-600 shadow-md',
         iconDark: 'bg-emerald-500/20 text-emerald-400',
@@ -1966,10 +1978,11 @@ const BANNER_STATIC = {
     },
     'incidencia': {
         label: 'Incidência do ISS',
+        menu: 'home',
         description: 'LC 116/2003 – Art. 3º',
         icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z',
         href: 'https://script.google.com/macros/s/AKfycbwFWD5zweoKS-WccLZJkH4KCVQSKcLR-guuITNhmOYg/dev',
-        light: 'from-orange-50 to-amber-50 border-orange-200 hover:border-orange-400',
+        light: 'from-orange-50 to-amber-50 border-orange-400 hover:border-orange-500',
         dark: 'from-orange-900/50 to-amber-900/50 border-orange-500/30 hover:border-orange-500',
         iconLight: 'bg-white text-orange-600 shadow-md',
         iconDark: 'bg-orange-500/20 text-orange-400',
@@ -1977,10 +1990,11 @@ const BANNER_STATIC = {
     },
     'processos': {
         label: 'Análise de Processos',
+        menu: 'home',
         description: 'Visualize e analise processos fiscais',
         icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
         href: 'https://reportterra-diaaf.up.railway.app/login',
-        light: 'from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-400',
+        light: 'from-violet-50 to-indigo-50 border-violet-400 hover:border-violet-500',
         dark: 'from-violet-900/50 to-indigo-900/50 border-violet-500/30 hover:border-violet-500',
         iconLight: 'bg-white text-violet-600 shadow-md',
         iconDark: 'bg-violet-500/20 text-violet-400',
@@ -1988,11 +2002,12 @@ const BANNER_STATIC = {
     },
     'nfse-nacional': {
         label: 'Gestão da NFS-e',
+        menu: 'home',
         description: 'Acesso exclusivo aos servidores para controle e painel do sistema nacional',
         imageIcon: 'image/nfs-e.png',
         imageClass: 'w-full h-full object-cover rounded-full',
         href: 'https://www.nfse.gov.br/PainelMunicipal/Login?ReturnUrl=%2fPainelMunicipal',
-        light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400',
+        light: 'from-cyan-50 to-sky-50 border-cyan-400 hover:border-cyan-500',
         dark: 'from-cyan-900/50 to-sky-900/50 border-cyan-500/30 hover:border-cyan-500',
         iconLight: 'bg-white text-cyan-600 shadow-md',
         iconDark: 'bg-cyan-500/20 text-cyan-400',
@@ -2000,11 +2015,12 @@ const BANNER_STATIC = {
     },
     'diario-oficial': {
         label: 'Diário Oficial',
+        menu: 'home',
         description: 'Publicações do Diário Oficial de Imperatriz',
         imageIcon: 'image/brasao.png',
         imageClass: 'w-full h-full object-cover rounded-full',
         href: 'https://diariooficial.imperatriz.ma.gov.br/publicacoes',
-        light: 'from-slate-50 to-gray-50 border-slate-200 hover:border-slate-400',
+        light: 'from-slate-50 to-gray-50 border-slate-400 hover:border-slate-500',
         dark: 'from-slate-900/50 to-gray-900/50 border-slate-500/30 hover:border-slate-500',
         iconLight: 'bg-white text-slate-600 shadow-md',
         iconDark: 'bg-slate-500/20 text-slate-400',
@@ -2012,13 +2028,14 @@ const BANNER_STATIC = {
     },
     'dte': {
         label: 'Prefeitura Moderna',
+        menu: 'home',
         description: 'O seu portal centralizado para serviços e tributos municipais',
         imageIcon: 'image/bauhaus.png',
         imageClass: 'w-full h-full object-cover rounded-full',
         isModal: true,
         modalId: 'dte',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/index.php?',
-        light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-400',
+        light: 'from-rose-50 to-pink-50 border-rose-400 hover:border-rose-500',
         dark: 'from-rose-900/50 to-pink-900/50 border-rose-500/30 hover:border-rose-500',
         iconLight: 'bg-white text-rose-600 shadow-md',
         iconDark: 'bg-rose-500/20 text-rose-400',
@@ -2026,11 +2043,12 @@ const BANNER_STATIC = {
     },
     'arrecadacao': {
         label: 'Transparência',
+        menu: 'home',
         description: 'Acompanhe as contas públicas do município',
         imageIcon: 'image/brasao.png',
         imageClass: 'w-full h-full object-cover rounded-full',
         href: 'http://scpi3.adtrcloud.com.br:8079/transparencia/',
-        light: 'from-fuchsia-50 to-pink-50 border-fuchsia-200 hover:border-fuchsia-400',
+        light: 'from-fuchsia-50 to-pink-50 border-fuchsia-400 hover:border-fuchsia-500',
         dark: 'from-fuchsia-900/50 to-pink-900/50 border-fuchsia-500/30 hover:border-fuchsia-500',
         iconLight: 'bg-white text-fuchsia-600 shadow-md',
         iconDark: 'bg-fuchsia-500/20 text-fuchsia-400',
@@ -2038,6 +2056,7 @@ const BANNER_STATIC = {
     },
     'receita': {
         label: 'Arrecadação',
+        menu: 'home',
         description: 'Painel gerencial de indicadores tributários',
         icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         href: 'https://lookerstudio.google.com/u/0/reporting/c62bd011-53f8-4195-8770-cd7e617aa0ac/page/RT8lD',
@@ -2049,6 +2068,7 @@ const BANNER_STATIC = {
     },
     'entes': {
         label: 'Entes Federados',
+        menu: 'home',
         description: 'Acesso aos Entes Federados',
         imageIcon: 'image/entes.png',
         imageClass: 'w-full h-full object-cover rounded-full',
@@ -2061,6 +2081,7 @@ const BANNER_STATIC = {
     },
     'empresa-facil': {
         label: 'Empresa Fácil',
+        menu: 'home',
         description: 'Acesso Rápido Empresa Fácil MA',
         imageIcon: 'image/ma.png',
         imageClass: 'w-full h-full object-cover rounded-full',
@@ -2073,6 +2094,7 @@ const BANNER_STATIC = {
     },
     'biblioteca': {
         label: 'Biblioteca',
+        menu: 'home',
         description: 'Acervo de legislação, normas e documentos municipais',
         icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
         light: 'from-amber-50 to-yellow-50 border-amber-200 hover:border-amber-300',
@@ -2082,6 +2104,40 @@ const BANNER_STATIC = {
         hoverBg: { light: 'bg-amber-500', dark: 'bg-white' },
         isModal: true,
         modalId: 'biblioteca'
+    },
+    // --- Outros Serviços ---
+    'sistema-ponto': {
+        label: 'Sistema de Ponto',
+        menu: 'outros',
+        description: 'Acesse o sistema de registro de ponto eletrônico',
+        href: 'https://imperatriz.ma.gov.br/sistema-de-ponto/entrar/',
+        icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+        light: 'from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500',
+        dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400',
+        iconLight: 'bg-blue-100 text-blue-600',
+        iconDark: 'bg-blue-500/20 text-blue-400'
+    },
+    'contra-cheque': {
+        label: 'Contra-cheque',
+        menu: 'outros',
+        description: 'Consulte e emita seus contra-cheques mensais',
+        href: 'https://servicos.imperatriz.ma.gov.br/portaldoservidor/login.php',
+        icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        light: 'from-emerald-50 to-teal-50 border-emerald-400 hover:border-emerald-500',
+        dark: 'from-emerald-900/40 to-teal-900/40 border-emerald-500/30 hover:border-emerald-400',
+        iconLight: 'bg-emerald-100 text-emerald-600',
+        iconDark: 'bg-emerald-500/20 text-emerald-400'
+    },
+    'justificativas-ponto': {
+        label: 'Justificativas de Ponto',
+        menu: 'outros',
+        description: 'Acesso via INTRANET sefazgo',
+        href: '#',
+        icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+        light: 'from-amber-50 to-orange-50 border-amber-400 hover:border-amber-500',
+        dark: 'from-amber-900/40 to-orange-900/40 border-amber-500/30 hover:border-amber-400',
+        iconLight: 'bg-amber-100 text-amber-600',
+        iconDark: 'bg-amber-500/20 text-amber-400'
     }
 };
 
@@ -2106,7 +2162,7 @@ const DTE_SUB_BANNERS = [
     {
         id: 'dte-nfe',
         label: 'NFS-e / Nota Fiscal',
-        description: 'Emissão e consulta de notas fiscais eletrônicas',
+        description: 'Consulta de notas fiscais eletrônicas',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiss_new/nfe/',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
         color: { light: 'from-fuchsia-50 to-purple-50 border-fuchsia-200 hover:border-fuchsia-300', dark: 'from-fuchsia-900/40 to-purple-900/40 border-fuchsia-500/30 hover:border-fuchsia-400', iconLight: 'bg-fuchsia-100 text-fuchsia-600', iconDark: 'bg-fuchsia-500/20 text-fuchsia-400' }
@@ -2146,7 +2202,7 @@ const CONSULTAS_FISCAIS_SUB_BANNERS = [
         isInternal: true,
         view: 'search',
         icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-        color: { light: 'from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300', dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400', iconLight: 'bg-blue-100 text-blue-600', iconDark: 'bg-blue-500/20 text-blue-400' }
+        color: { light: 'from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500', dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400', iconLight: 'bg-blue-100 text-blue-600', iconDark: 'bg-blue-500/20 text-blue-400' }
     },
     {
         id: 'consultas-nfse-nacional',
@@ -2155,9 +2211,10 @@ const CONSULTAS_FISCAIS_SUB_BANNERS = [
         isInternal: false,
         href: 'https://www.nfse.gov.br/consultapublica',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-        color: { light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-300', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400' }
+        color: { light: 'from-cyan-50 to-sky-50 border-cyan-400 hover:border-cyan-500', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400' }
     }
 ];
+
 
 // ==================== BIBLIOTECA: CATEGORIAS BENTO BOX ====================
 const BIBLIOTECA_CATEGORIAS = [
@@ -2167,7 +2224,7 @@ const BIBLIOTECA_CATEGORIAS = [
         description: 'Leis e decretos do município',
         icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
         size: 'wide',
-        colorLight: 'from-amber-50 to-orange-50 border-amber-200 hover:border-amber-400',
+        colorLight: 'from-amber-50 to-orange-50 border-amber-400 hover:border-amber-500',
         colorDark: 'from-amber-900/40 to-orange-900/40 border-amber-500/30 hover:border-amber-400',
         iconLight: 'bg-amber-100 text-amber-700',
         iconDark: 'bg-amber-500/20 text-amber-400',
@@ -2183,7 +2240,7 @@ const BIBLIOTECA_CATEGORIAS = [
         description: 'Guias operacionais e procedimentos internos',
         icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
         size: 'normal',
-        colorLight: 'from-orange-50 to-red-50 border-orange-200 hover:border-orange-400',
+        colorLight: 'from-orange-50 to-red-50 border-orange-400 hover:border-orange-500',
         colorDark: 'from-orange-900/40 to-red-900/40 border-orange-500/30 hover:border-orange-400',
         iconLight: 'bg-orange-100 text-orange-700',
         iconDark: 'bg-orange-500/20 text-orange-400',
@@ -2199,7 +2256,7 @@ const BIBLIOTECA_CATEGORIAS = [
         description: 'Material de apoio e capacitação',
         icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
         size: 'normal',
-        colorLight: 'from-yellow-50 to-amber-50 border-yellow-200 hover:border-yellow-400',
+        colorLight: 'from-yellow-50 to-amber-50 border-yellow-400 hover:border-yellow-500',
         colorDark: 'from-yellow-900/40 to-amber-900/40 border-yellow-500/30 hover:border-yellow-400',
         iconLight: 'bg-yellow-100 text-yellow-700',
         iconDark: 'bg-yellow-500/20 text-yellow-400',
@@ -2214,7 +2271,7 @@ const BIBLIOTECA_CATEGORIAS = [
         description: 'Resoluções, portarias e instruções normativas',
         icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
         size: 'normal',
-        colorLight: 'from-stone-50 to-amber-50 border-stone-200 hover:border-stone-400',
+        colorLight: 'from-stone-50 to-amber-50 border-stone-400 hover:border-stone-500',
         colorDark: 'from-stone-900/40 to-amber-900/40 border-stone-500/30 hover:border-stone-400',
         iconLight: 'bg-stone-100 text-stone-700',
         iconDark: 'bg-stone-500/20 text-stone-400',
@@ -2419,15 +2476,12 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
 // ==================== PAINEL DE CONTROLE DE BANNERS ====================
 function AdminBannersPanel({ darkMode }) {
     const [users, setUsers] = useState([]);
-    const [globalBanners, setGlobalBanners] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
-    const [loadingBanners, setLoadingBanners] = useState(true);
     const [toast, setToast] = useState(null);
     const [selectedUserModal, setSelectedUserModal] = useState(null); // {id, name}
 
     useEffect(() => {
         loadUsers();
-        loadGlobalBanners();
     }, []);
 
     const loadUsers = async () => {
@@ -2439,30 +2493,6 @@ function AdminBannersPanel({ darkMode }) {
             showToast('error', 'Erro ao carregar usuários.');
         } finally {
             setLoadingUsers(false);
-        }
-    };
-
-    const loadGlobalBanners = async () => {
-        setLoadingBanners(true);
-        try {
-            const data = await ApiService.getBanners();
-            setGlobalBanners(data);
-        } catch (e) {
-            showToast('error', 'Erro ao carregar banners globais.');
-        } finally {
-            setLoadingBanners(false);
-        }
-    };
-
-    const handleFreezeToggle = async (banner) => {
-        const newFrozen = !banner.isFrozen;
-        setGlobalBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: newFrozen } : b));
-        try {
-            await ApiService.adminFreezeBanner(banner.id, newFrozen);
-            showToast('success', `"${BANNER_STATIC[banner.key]?.label || banner.label}" ${newFrozen ? 'congelado' : 'descongelado'} globalmente.`);
-        } catch (e) {
-            setGlobalBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: banner.isFrozen } : b));
-            showToast('error', 'Erro ao alterar status do banner.');
         }
     };
 
@@ -2493,7 +2523,7 @@ function AdminBannersPanel({ darkMode }) {
                     </div>
                     <div>
                         <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Gerenciador de Banners</h2>
-                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Gerencie o status global e a visibilidade para cada usuário.</p>
+                        <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Personalize a visibilidade dos banners para cada usuário.</p>
                     </div>
                 </div>
             </div>
@@ -2507,50 +2537,6 @@ function AdminBannersPanel({ darkMode }) {
                     {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
                 </div>
             )}
-
-            {/* Banners Globais */}
-            <div className={`mb-8 p-5 rounded-xl border ${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
-                <h3 className={`font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Controle Global (Congelamento)</h3>
-
-                {loadingBanners ? (
-                    <div className="flex justify-center py-6">
-                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-blue-200 border-t-blue-600"></div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {globalBanners.map(banner => {
-                            const s = BANNER_STATIC[banner.key];
-                            if (!s) return null;
-                            return (
-                                <div key={banner.id} className={`flex items-center p-3 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} ${banner.isFrozen ? 'opacity-80' : ''}`}>
-                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mr-3 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden`}>
-                                        {s.imageIcon ? (
-                                            <img src={s.imageIcon} alt="" className="w-full h-full object-contain p-1" />
-                                        ) : (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon || 'M4 5h16'} />
-                                            </svg>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</p>
-                                        <p className={`text-[10px] ${banner.isFrozen ? 'text-red-500 font-bold' : (darkMode ? 'text-green-400' : 'text-green-600')}`}>
-                                            {banner.isFrozen ? '❄️ CONGELADO' : 'ATIVO'}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => handleFreezeToggle(banner)}
-                                        className={`relative flex-shrink-0 ml-2 inline-flex h-5 w-9 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 ${banner.isFrozen ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')}`}
-                                        title={banner.isFrozen ? "Descongelar" : "Congelar (Em Manutenção)"}
-                                    >
-                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${banner.isFrozen ? 'translate-x-4' : 'translate-x-0'}`}></span>
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
 
             {/* Titulo Usuários */}
             <h3 className={`font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Personalização de Usuários</h3>
@@ -2690,22 +2676,39 @@ function App() {
     const [isReorderingBanners, setIsReorderingBanners] = useState(false);
     const [isDraggingBanners, setIsDraggingBanners] = useState(false); // New state for global CSS
 
+    const [freezeModalBanner, setFreezeModalBanner] = useState(null);
+
     // Carregar/recarregar config de banners ao montar e sempre que voltar para Home
     useEffect(() => {
+        const defaultBanners = [
+            { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE', enabled: true },
+            { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres', enabled: true },
+            { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS', enabled: true },
+            { id: 'banner-processos', key: 'processos', label: 'Análise de Processos', enabled: true },
+            { id: 'banner-entes', key: 'entes', label: 'Entes Federados', enabled: true },
+            { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil', enabled: true },
+            { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca', enabled: true },
+            { id: 'banner-sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto', enabled: true },
+            { id: 'banner-justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto', enabled: true },
+            { id: 'banner-contra-cheque', key: 'contra-cheque', label: 'Contra-cheque', enabled: true },
+        ];
+
         const loadBanners = () => {
             // Passa o token para receber banners personalizados do usuário
             ApiService.getBanners()
-                .then(data => setBannerConfig(data))
+                .then(data => {
+                    // Mescla banners da API com os defaults para garantir que novos banners apareçam
+                    // mesmo se o backend estiver desatualizado (sem restart)
+                    const merged = [...data];
+                    defaultBanners.forEach(def => {
+                        if (!merged.find(b => b.key === def.key)) {
+                            merged.push(def);
+                        }
+                    });
+                    setBannerConfig(merged);
+                })
                 .catch(() => {
-                    setBannerConfig([
-                        { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE', enabled: true },
-                        { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres', enabled: true },
-                        { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS', enabled: true },
-                        { id: 'banner-processos', key: 'processos', label: 'Análise de Processos', enabled: true },
-                        { id: 'banner-entes', key: 'entes', label: 'Entes Federados', enabled: true },
-                        { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil', enabled: true },
-                        { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca', enabled: true },
-                    ]);
+                    setBannerConfig(defaultBanners);
                 });
         };
         loadBanners();
@@ -2744,6 +2747,29 @@ function App() {
             } catch (error) {
                 alert('Erro ao autorizar usuário: ' + error.message);
             }
+        }
+    };
+
+    const handleFreezeToggleGlobal = async (banner, reason = 'maintenance') => {
+        if (!currentUser || currentUser.role !== 'admin') return;
+
+        const newFrozen = !banner.isFrozen;
+        // Se estiver descongelando, o motivo não importa (será limpo ou ignorado)
+        // Se estiver congelando, usa o reason passado
+        const finalReason = newFrozen ? reason : 'maintenance';
+
+        // Atualização Otimista da UI
+        setBannerConfig(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: newFrozen, freezeReason: finalReason } : b));
+
+        try {
+            // Passa o motivo para a API (precisa atualizar ApiService.adminFreezeBanner para aceitar 2 args)
+            await ApiService.adminFreezeBanner(banner.id, newFrozen, finalReason);
+            // Sincroniza dashboard se estiver aberto
+            loadAuditData();
+        } catch (e) {
+            console.error("Erro ao congelar banner:", e);
+            // Reverte em caso de erro
+            setBannerConfig(prev => prev.map(b => b.id === banner.id ? { ...b, isFrozen: banner.isFrozen, freezeReason: banner.freezeReason } : b));
         }
     };
 
@@ -3278,8 +3304,63 @@ function App() {
                     aria-hidden="true"
                 />
             )}
+            {/* Modal de Escolha de Congelamento */}
+            {freezeModalBanner && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl transform transition-all scale-100 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-100'}`}>
+                        <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            Congelar Serviço
+                        </h3>
+                        <p className={`mb-6 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Selecione o motivo para suspender o acesso ao serviço <strong>{BANNER_STATIC[freezeModalBanner.key]?.label || freezeModalBanner.label}</strong>.
+                        </p>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <button
+                                onClick={() => {
+                                    handleFreezeToggleGlobal(freezeModalBanner, 'maintenance');
+                                    setFreezeModalBanner(null);
+                                }}
+                                className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all group text-left ${darkMode ? 'border-gray-700 hover:border-red-500 hover:bg-red-500/10' : 'border-gray-200 hover:border-red-500 hover:bg-red-50'}`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className={`font-bold ${darkMode ? 'text-white group-hover:text-red-400' : 'text-gray-900 group-hover:text-red-600'}`}>Em Manutenção</h4>
+                                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Indisponibilidade temporária técnica.</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    handleFreezeToggleGlobal(freezeModalBanner, 'construction');
+                                    setFreezeModalBanner(null);
+                                }}
+                                className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all group text-left ${darkMode ? 'border-gray-700 hover:border-amber-500 hover:bg-amber-500/10' : 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'}`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className={`font-bold ${darkMode ? 'text-white group-hover:text-amber-400' : 'text-gray-900 group-hover:text-amber-600'}`}>Em Construção</h4>
+                                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Funcionalidade em desenvolvimento.</p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => setFreezeModalBanner(null)}
+                            className={`mt-6 w-full py-3 rounded-xl font-semibold transition-colors ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto">
-                <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
+                <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100'}`}>
                     <div className="container mx-auto px-4 py-8 max-w-6xl">
                         <header className="mb-10">
                             {/* Top Bar: Minimalista e Clean */}
@@ -3314,8 +3395,29 @@ function App() {
                                         currentUser && (
                                             <div className="flex items-center gap-3 ml-1">
                                                 <div className="relative group">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transform transition-all group-hover:scale-110 ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
-                                                        <span className="text-white font-bold text-xs tracking-widest">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transform transition-all group-hover:scale-110 overflow-hidden ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+                                                        {(() => {
+                                                            const firstName = (currentUser.name?.split(' ')[0] || currentUser.username || '').toLowerCase();
+                                                            const femaleNames = ['maria', 'ana', 'julia', 'juliana', 'fernanda', 'patricia', 'aline', 'bruna', 'camila', 'jessica', 'amanda', 'leticia', 'beatriz', 'vanessa', 'mariana', 'gabriela', 'larissa', 'daniela', 'carla', 'renata'];
+                                                            const isFemale = femaleNames.includes(firstName) || firstName.endsWith('a') || firstName.endsWith('e'); 
+                                                            // Lógica simplificada: termina com 'a' ou 'e' ou está na lista -> Mulher, senão Homem. 
+                                                            // Ajuste conforme necessidade para maior precisão.
+                                                            
+                                                            const avatarSrc = isFemale ? 'image/mulher.png' : 'image/homem.png';
+
+                                                            return (
+                                                                <img 
+                                                                    src={avatarSrc} 
+                                                                    alt="Avatar" 
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = 'none'; // Esconde a imagem se falhar
+                                                                        e.target.nextSibling.style.display = 'block'; // Mostra as iniciais
+                                                                    }}
+                                                                />
+                                                            );
+                                                        })()}
+                                                        <span className="text-white font-bold text-xs tracking-widest absolute" style={{display: 'none'}}>
                                                             {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
                                                         </span>
                                                     </div>
@@ -3327,7 +3429,7 @@ function App() {
                                                         {currentUser.name?.split(' ')[0] || currentUser.username}
                                                     </h2>
                                                     <p className={`text-[10px] uppercase font-bold tracking-widest opacity-60 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        Portal Ecossistema
+                                                        {new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}, seja bem-vindo
                                                     </p>
                                                 </div>
                                             </div>
@@ -3353,24 +3455,25 @@ function App() {
                                         )}
                                     </button>
 
-                                    {/* Botão de Contato WhatsApp */}
+                                    {/* Botão de Suporte NextChat */}
                                     <div className="relative flex items-center">
                                         <a
-                                            href="https://web.whatsapp.com/send?phone=5599988114422" // Substitua pelo número real da prefeitura/suporte
+                                            href="https://chat.nextplan.tec.br/login"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`relative group p-2.5 rounded-full transition-all duration-300 flex items-center justify-center border shadow-sm focus:outline-none hover:scale-105 ${darkMode
-                                                ? 'bg-gray-700/80 text-green-400 border-gray-600 hover:bg-gray-600'
-                                                : 'bg-white text-green-600 border-gray-100 hover:bg-gray-50'
-                                                }`}
-                                            title="Suporte via WhatsApp"
+                                            className={`relative group p-1.5 rounded-full transition-all duration-300 flex items-center justify-center border shadow-sm focus:outline-none hover:scale-105 bg-white border-gray-100 hover:bg-gray-50`}
+                                            title="Call-Center Fiscal (NextChat)"
                                         >
-                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-                                            </svg>
-                                            <div className="absolute top-[52px] sm:top-[56px] right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg bg-green-600 text-white z-50">
-                                                <div className="absolute top-[-6px] right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-green-600"></div>
-                                                Falar com Suporte
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 overflow-hidden rounded-full flex items-center justify-center">
+                                                <img
+                                                    src="image/NextChat.png"
+                                                    alt="NextChat"
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                            <div className="absolute top-[52px] sm:top-[56px] right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg bg-blue-600 text-white z-50">
+                                                <div className="absolute top-[-6px] right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-blue-600"></div>
+                                                Atendimento Virtual
                                             </div>
                                         </a>
                                     </div>
@@ -3448,11 +3551,12 @@ function App() {
                                     <div className={`mt-4 mx-auto w-12 h-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
                                 </div>
 
-                                <div className={`grid gap-6 mt-2 ${bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
-                                    bannerConfig.filter(b => currentUser?.role === 'admin' || b.enabled).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                                <div className={`grid gap-6 mt-2 ${bannerConfig.filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home' && (currentUser?.role === 'admin' || b.enabled)).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
+                                    bannerConfig.filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home' && (currentUser?.role === 'admin' || b.enabled)).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
                                         'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                                     }`}>
                                     {bannerConfig
+                                        .filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home')
                                         .filter(b => currentUser?.role === 'admin' || b.enabled)
                                         .map((banner, index) => {
                                             const s = BANNER_STATIC[banner.key];
@@ -3462,7 +3566,7 @@ function App() {
                                             const isFrozen = banner.isFrozen === true;
                                             const isEffectivelyFrozen = isFrozen && !isAdmin;
 
-                                            const cardClass = `flex flex-col items-center justify-center p-6 rounded-2xl border transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
+                                            const cardClass = `flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
@@ -3471,10 +3575,32 @@ function App() {
 
                                             const content = (
                                                 <>
+                                                    {isAdmin && (
+                                                        <div className="absolute top-3 right-3 z-20 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                            <div className={`text-[9px] font-black uppercase tracking-tighter ${isFrozen ? (banner.freezeReason === 'construction' ? 'text-amber-500' : 'text-red-500 animate-pulse') : (darkMode ? 'text-green-400' : 'text-green-600')}`}>
+                                                                {isFrozen ? (banner.freezeReason === 'construction' ? 'EM OBRAS' : 'REVISÃO') : 'ATIVO'}
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    if (isFrozen) {
+                                                                        handleFreezeToggleGlobal(banner);
+                                                                    } else {
+                                                                        setFreezeModalBanner(banner);
+                                                                    }
+                                                                }}
+                                                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isFrozen ? (banner.freezeReason === 'construction' ? 'bg-amber-500' : 'bg-red-500') : (darkMode ? 'bg-gray-700' : 'bg-gray-200')}`}
+                                                                title={isFrozen ? "Descongelar serviço" : "Congelar serviço"}
+                                                            >
+                                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isFrozen ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <div className={`absolute inset-0 opacity-0 ${'group-hover:opacity-10'} transition-opacity duration-300 ${darkMode ? s.hoverBg?.dark || 'bg-white' : s.hoverBg?.light || 'bg-blue-600'}`}></div>
-                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden pointer-events-none`}>
+                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} shadow-inner pointer-events-none overflow-hidden`}>
                                                         {s.imageIcon ? (
-                                                            <img src={s.imageIcon} alt="" className={s.imageClass || "w-full h-full object-contain p-1.5"} />
+                                                            <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-cover'} />
                                                         ) : (
                                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
@@ -3482,19 +3608,33 @@ function App() {
                                                         )}
                                                     </div>
                                                     <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
-                                                    <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
                                                     {s.comingSoon && !isFrozen && (
-                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700 font-bold'}`}>
-                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-                                                            Em Construção
-                                                        </span>
+                                                        <div className="flex justify-center mb-2">
+                                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700 font-bold'}`}>
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                                                Em Construção
+                                                            </span>
+                                                        </div>
                                                     )}
-                                                    {isFrozen && (
-                                                        <span className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold pointer-events-none ${darkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-700'}`}>
-                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-                                                            EM MANUTENÇÃO
+                                                    {isFrozen && !isAdmin && (
+                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/10 dark:bg-black/30 backdrop-blur-[2px] rounded-3xl animate-fadeIn">
+                                                    <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${
+                                                        banner.freezeReason === 'construction' 
+                                                            ? 'bg-amber-500/90 border-amber-400 text-white' 
+                                                            : 'bg-red-500/90 border-red-400 text-white'
+                                                    }`}>
+                                                        {banner.freezeReason === 'construction' ? (
+                                                            <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+                                                        ) : (
+                                                            <svg className="w-5 h-5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                        )}
+                                                        <span className="font-bold text-sm tracking-wide">
+                                                            {banner.freezeReason === 'construction' ? 'EM CONSTRUÇÃO' : 'EM MANUTENÇÃO'}
                                                         </span>
-                                                    )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                                    <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
                                                     {isAdmin && (
                                                         <div className="absolute bottom-3 right-3 text-gray-400 opacity-0 group-hover:opacity-[0.8] transition-opacity cursor-grab active:cursor-grabbing pb-1 pr-1 pointer-events-none">
                                                             <svg className="w-6 h-6 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
@@ -3603,9 +3743,126 @@ function App() {
                                                     {content}
                                                 </a>
                                             );
-                                        })
-                                    }
+                                        })}
                                 </div>
+                            </div>
+                        )}
+
+                        {(currentView === 'outros' || currentView === 'other-services') && (
+                            <div className="animate-fadeInUp space-y-8">
+                                <section>
+                                    <div className="flex items-center gap-3 mb-8">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600 shadow-sm'}`}>
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                        </div>
+                                        <div>
+                                            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Outros Serviços</h2>
+                                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Acessos e utilitários adicionais</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {bannerConfig
+                                            .filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'outros')
+                                            .filter(b => currentUser?.role === 'admin' || b.enabled)
+                                            .map((banner, index) => {
+                                                const s = BANNER_STATIC[banner.key];
+                                                if (!s) return null;
+                                                const isAdmin = currentUser?.role === 'admin';
+                                                const isDisabledForUser = !banner.enabled && !isAdmin;
+                                                const isFrozen = banner.isFrozen === true;
+                                                const isEffectivelyFrozen = isFrozen && !isAdmin;
+
+                                                const cardClass = `flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
+                                                    ? `bg-gradient-to-br ${s.dark}`
+                                                    : `bg-gradient-to-br ${s.light}`
+                                                    } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
+                                                    } ${(s.comingSoon || isEffectivelyFrozen) ? 'cursor-default hover:translate-y-0 hover:shadow-none opactity-75' : ''
+                                                    }`;
+
+                                                const content = (
+                                                    <>
+                                                        {isAdmin && (
+                                                            <div className="absolute top-3 right-3 z-20 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                                <div className={`text-[9px] font-black uppercase tracking-tighter ${isFrozen ? (banner.freezeReason === 'construction' ? 'text-amber-500' : 'text-red-500 animate-pulse') : (darkMode ? 'text-green-400' : 'text-green-600')}`}>
+                                                                    {isFrozen ? (banner.freezeReason === 'construction' ? 'EM OBRAS' : 'REVISÃO') : 'ATIVO'}
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        if (isFrozen) {
+                                                                            handleFreezeToggleGlobal(banner);
+                                                                        } else {
+                                                                            setFreezeModalBanner(banner);
+                                                                        }
+                                                                    }}
+                                                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isFrozen ? (banner.freezeReason === 'construction' ? 'bg-amber-500' : 'bg-red-500') : (darkMode ? 'bg-gray-700' : 'bg-gray-200')}`}
+                                                                    title={isFrozen ? "Descongelar serviço" : "Congelar serviço"}
+                                                                >
+                                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isFrozen ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${darkMode ? (s.hoverBg?.dark || 'bg-white') : (s.hoverBg?.light || 'bg-blue-600')}`}></div>
+                                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} shadow-inner pointer-events-none overflow-hidden`}>
+                                                            {s.imageIcon ? (
+                                                                <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-cover'} />
+                                                            ) : (
+                                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                        <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
+                                                        <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                        {isFrozen && !isAdmin && (
+                                                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/10 dark:bg-black/30 backdrop-blur-[2px] rounded-3xl animate-fadeIn">
+                                                                <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${
+                                                                    banner.freezeReason === 'construction' 
+                                                                        ? 'bg-amber-500/90 border-amber-400 text-white' 
+                                                                        : 'bg-red-500/90 border-red-400 text-white'
+                                                                }`}>
+                                                                    {banner.freezeReason === 'construction' ? (
+                                                                        <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                                                    ) : (
+                                                                        <svg className="w-5 h-5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                    )}
+                                                                    <span className="font-bold text-sm tracking-wide">
+                                                                        {banner.freezeReason === 'construction' ? 'EM CONSTRUÇÃO' : 'EM MANUTENÇÃO'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+
+                                                return (
+                                                    <a
+                                                        key={banner.id}
+                                                        href={(isDisabledForUser || s.comingSoon || isEffectivelyFrozen) ? undefined : s.href}
+                                                        target={(isDisabledForUser || s.comingSoon || isEffectivelyFrozen) ? undefined : '_blank'}
+                                                        rel="noopener noreferrer"
+                                                        className={cardClass}
+                                                        onClick={(e) => {
+                                                            if (isEffectivelyFrozen) {
+                                                                e.preventDefault();
+                                                                alert('Este acesso está temporariamente indisponível. Em manutenção.');
+                                                            } else if (isDisabledForUser || s.comingSoon) {
+                                                                e.preventDefault();
+                                                            } else {
+                                                                updateStatistics('bannerClick', {
+                                                                    bannerLabel: s.label || banner.label,
+                                                                    user: currentUser ? currentUser.username : 'Visitante'
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {content}
+                                                    </a>
+                                                );
+                                            })}
+                                    </div>
+                                </section>
                             </div>
                         )}
 
@@ -4376,7 +4633,7 @@ function App() {
                                                             <button
                                                                 key={cat.id}
                                                                 onClick={() => setBibliotecaCategoria(cat.id)}
-                                                                className={`group relative flex flex-col items-start justify-between p-4 rounded-xl border bg-gradient-to-br text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] ${cat.size === 'wide' ? 'col-span-2' : ''} ${darkMode ? cat.colorDark : cat.colorLight}`}
+                                                                className={`group relative flex flex-col items-start justify-between p-4 rounded-xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] ${cat.size === 'wide' ? 'col-span-2' : ''} ${darkMode ? cat.colorDark : cat.colorLight}`}
                                                             >
                                                                 <div className="flex items-start justify-between w-full gap-2">
                                                                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? cat.iconDark : cat.iconLight}`}>

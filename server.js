@@ -127,6 +127,7 @@ const connectDB = async () => {
         const migrations = [
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "isFrozen" BOOLEAN DEFAULT false`,
+            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "freezeReason" TEXT DEFAULT 'maintenance'`,
             `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
             `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
@@ -142,18 +143,21 @@ const connectDB = async () => {
 
         // Seed dos banners padrão (PostgreSQL)
         const defaultBanners = [
-            { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
-            { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
-            { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS' },
-            { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
-            { id: 'banner-nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
-            { id: 'banner-diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
-            { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
-            { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
-            { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
-            { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
-            { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
-            { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+            { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+            { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+            { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+            { id: 'processos', key: 'processos', label: 'Análise de Processos' },
+            { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+            { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+            { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
+            { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+            { id: 'receita', key: 'receita', label: 'Arrecadação' },
+            { id: 'entes', key: 'entes', label: 'Entes Federados' },
+            { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+            { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+            { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
+            { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
+            { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
@@ -260,6 +264,10 @@ const connectDB = async () => {
             if (!hasIsFrozen) {
                 await db.run(`ALTER TABLE BannerConfig ADD COLUMN isFrozen INTEGER DEFAULT 0;`);
             }
+            const hasFreezeReason = columns.some(col => col.name === 'freezeReason');
+            if (!hasFreezeReason) {
+                await db.run(`ALTER TABLE BannerConfig ADD COLUMN freezeReason TEXT DEFAULT 'maintenance';`);
+            }
             const hasUpdatedAt = columns.some(col => col.name === 'updatedAt');
             if (!hasUpdatedAt) {
                 await db.run(`ALTER TABLE BannerConfig ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP;`);
@@ -270,18 +278,21 @@ const connectDB = async () => {
 
         // Seed dos banners padrão (SQLite)
         const defaultBanners = [
-            { id: 'banner-iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
-            { id: 'banner-pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
-            { id: 'banner-incidencia', key: 'incidencia', label: 'Incidência do ISS' },
-            { id: 'banner-processos', key: 'processos', label: 'Análise de Processos' },
-            { id: 'banner-nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
-            { id: 'banner-diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
-            { id: 'banner-dte', key: 'dte', label: 'Prefeitura Moderna' },
-            { id: 'banner-arrecadacao', key: 'arrecadacao', label: 'Transparência' },
-            { id: 'banner-receita', key: 'receita', label: 'Arrecadação' },
-            { id: 'banner-entes', key: 'entes', label: 'Entes Federados' },
-            { id: 'banner-empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
-            { id: 'banner-biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+            { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+            { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+            { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+            { id: 'processos', key: 'processos', label: 'Análise de Processos' },
+            { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+            { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+            { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
+            { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+            { id: 'receita', key: 'receita', label: 'Arrecadação' },
+            { id: 'entes', key: 'entes', label: 'Entes Federados' },
+            { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+            { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+            { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
+            { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
+            { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
@@ -730,11 +741,12 @@ app.delete('/api/auth/users/:id', authenticateToken, requireAdmin, async (req, r
 // Listar banners com status — com token opcional para personalização por usuário
 app.get('/api/banners', async (req, res) => {
     try {
-        const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex", "isFrozen" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
+        const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex", "isFrozen", "freezeReason" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
         const normalized = globalBanners.map(b => ({
             ...b,
             enabled: String(b.enabled).toLowerCase() === 'true' || b.enabled === true || b.enabled === 1 || b.enabled === 't',
-            isFrozen: String(b.isFrozen).toLowerCase() === 'true' || b.isFrozen === true || b.isFrozen === 1 || b.isFrozen === 't'
+            isFrozen: String(b.isFrozen).toLowerCase() === 'true' || b.isFrozen === true || b.isFrozen === 1 || b.isFrozen === 't',
+            freezeReason: b.freezeReason || 'maintenance'
         }));
 
         // Tenta extrair o userId do token JWT (se enviado)
@@ -764,12 +776,13 @@ app.get('/api/banners', async (req, res) => {
                     const merged = normalized.map(b => {
                         if (overrideMap[b.id] !== undefined) {
                             return {
-                                ...b,
-                                enabled: overrideMap[b.id].enabled,
-                                orderIndex: overrideMap[b.id].orderIndex,
-                                isFrozen: b.isFrozen,
-                                hasOverride: true
-                            };
+                        ...b,
+                        enabled: overrideMap[b.id].enabled,
+                        orderIndex: overrideMap[b.id].orderIndex,
+                        isFrozen: b.isFrozen,
+                        freezeReason: b.freezeReason,
+                        hasOverride: true
+                    };
                         }
                         return b;
                     });
@@ -856,7 +869,7 @@ app.put('/api/admin/banners/:id', authenticateToken, requireAdmin, async (req, r
 app.put('/api/admin/banners/:id/freeze', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { isFrozen } = req.body;
+        const { isFrozen, freezeReason } = req.body;
 
         if (typeof isFrozen === 'undefined') {
             return res.status(400).json({ error: 'Campo "isFrozen" é obrigatório.' });
@@ -866,17 +879,19 @@ app.put('/api/admin/banners/:id/freeze', authenticateToken, requireAdmin, async 
         if (banners.length === 0) return res.status(404).json({ error: 'Banner não encontrado.' });
 
         const frozenValue = db.isPg ? !!isFrozen : (isFrozen ? 1 : 0);
+        const reasonValue = freezeReason || 'maintenance';
+
         await db.run(
-            'UPDATE "BannerConfig" SET "isFrozen" = $1, "updatedAt" = $2 WHERE id = $3',
-            [frozenValue, new Date().toISOString(), id]
+            'UPDATE "BannerConfig" SET "isFrozen" = $1, "freezeReason" = $2, "updatedAt" = $3 WHERE id = $4',
+            [frozenValue, reasonValue, new Date().toISOString(), id]
         );
 
         await db.run(
             `INSERT INTO "AuditLog" (id, "userId", action, details) VALUES ($1, $2, $3, $4${db.isPg ? '::jsonb' : ''})`,
-            [uuidv4(), req.user.id, 'admin_freeze_banner', JSON.stringify({ bannerId: id, isFrozen })]
+            [uuidv4(), req.user.id, 'admin_freeze_banner', JSON.stringify({ bannerId: id, isFrozen, freezeReason: reasonValue })]
         );
 
-        res.json({ message: `Banner ${isFrozen ? 'congelado' : 'descongelado'} com sucesso.`, id, isFrozen });
+        res.json({ message: `Banner ${isFrozen ? 'congelado' : 'descongelado'} com sucesso.`, id, isFrozen, freezeReason: reasonValue });
     } catch (error) {
         console.error('Erro ao congelar/descongelar banner:', error);
         res.status(500).json({ error: 'Erro interno no servidor' });
