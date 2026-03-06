@@ -4,8 +4,7 @@
   "description": "Sistema de Consulta Fiscal - CNAE e LIST LC",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "serve-legacy": "serve -l 3000"
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "iss",

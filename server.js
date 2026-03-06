@@ -776,13 +776,13 @@ app.get('/api/banners', async (req, res) => {
                     const merged = normalized.map(b => {
                         if (overrideMap[b.id] !== undefined) {
                             return {
-                        ...b,
-                        enabled: overrideMap[b.id].enabled,
-                        orderIndex: overrideMap[b.id].orderIndex,
-                        isFrozen: b.isFrozen,
-                        freezeReason: b.freezeReason,
-                        hasOverride: true
-                    };
+                                ...b,
+                                enabled: overrideMap[b.id].enabled,
+                                orderIndex: overrideMap[b.id].orderIndex,
+                                isFrozen: b.isFrozen,
+                                freezeReason: b.freezeReason,
+                                hasOverride: true
+                            };
                         }
                         return b;
                     });
@@ -1154,7 +1154,13 @@ app.delete('/api/admin/audit', authenticateToken, requireAdmin, async (req, res)
 });
 
 // Servir arquivos estáticos da página inicial.
-app.use(express.static('.'));
+app.use(express.static(__dirname));
+
+// Rota catch-all para Single Page Application (SPA)
+// Isso garante que qualquer rota não encontrada pela API retorne o index.html do frontend
+app.get(/^(?!\/api).*/, (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 
 app.listen(PORT, () => {
     console.log(`\uD83D\uDE80 Servidor rodando na porta ${PORT}`);
