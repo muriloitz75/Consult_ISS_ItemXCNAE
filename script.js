@@ -475,16 +475,16 @@ function UserProfilePage({ user, onLogout, onCredentialsChanged, darkMode }) {
     return (
         <div className={`rounded-3xl overflow-hidden animate-fadeInUp shadow-2xl ${darkMode ? 'bg-gray-800 border-gray-700/50' : 'bg-white border-gray-100'} border`}>
             {/* Cabeçalho Premium com glassmorphism e glow */}
-            <div className={`relative py-12 px-8 overflow-hidden ${darkMode ? 'bg-gradient-to-r from-gray-900 via-blue-900/40 to-gray-900' : 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700'}`}>
+            <div className={`relative py-12 px-8 overflow-hidden ${darkMode ? 'bg-gradient-to-r from-gray-900 via-blue-900/40 to-gray-900' : 'bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-700'}`}>
                 <div className="absolute inset-0 bg-white opacity-5 mix-blend-overlay pointer-events-none"></div>
                 {/* Glow effects */}
                 <div className="absolute top-0 left-1/4 w-64 h-64 bg-blue-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse"></div>
-                <div className="absolute top-0 right-1/4 w-64 h-64 bg-purple-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" style={{ animationDelay: '2s' }}></div>
+                <div className="absolute top-0 right-1/4 w-64 h-64 bg-cyan-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
                 <div className="relative flex flex-col md:flex-row items-center gap-8 z-10 max-w-5xl mx-auto">
                     <div className="relative group">
-                        <div className={`absolute -inset-0.5 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500 ${darkMode ? 'bg-gradient-to-r from-blue-400 to-purple-500' : 'bg-gradient-to-r from-white/50 to-white/30'}`}></div>
-                        <div className={`relative w-28 h-28 rounded-full flex items-center justify-center text-5xl font-extrabold shadow-2xl ring-4 ${darkMode ? 'ring-gray-800 bg-gray-900 text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-400' : 'ring-white/40 bg-white/20 backdrop-blur-md text-white'}`}>
+                        <div className={`absolute -inset-0.5 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500 ${darkMode ? 'bg-gradient-to-r from-blue-400 to-cyan-500' : 'bg-gradient-to-r from-white/50 to-white/30'}`}></div>
+                        <div className={`relative w-28 h-28 rounded-full flex items-center justify-center text-5xl font-extrabold shadow-2xl ring-4 ${darkMode ? 'ring-gray-800 bg-gray-900 text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-cyan-400' : 'ring-white/40 bg-white/20 backdrop-blur-md text-white'}`}>
                             {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                         </div>
                     </div>
@@ -858,80 +858,117 @@ function LoginForm({ onLogin, darkMode }) {
     };
 
     return (
-        <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-            <div className={`max-w-md w-full space-y-8 p-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
-                <div>
-                    <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="min-h-screen flex items-center justify-center p-4 transition-all duration-700 animate-fadeIn relative overflow-hidden"
+            style={{
+                backgroundImage: "url('image/fundo.jpg')",
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                perspective: '1200px'
+            }}>
+            {/* Overlay sutil para garantir legibilidade e profundidade */}
+            <div className={`absolute inset-0 ${darkMode ? 'bg-black/40' : 'bg-blue-900/15'} backdrop-blur-[4px]`}></div>
+            <div
+                className={`relative max-w-md w-full p-8 card-modern glass ${darkMode ? 'dark border-blue-500/30 bg-gray-900/40 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6),0_30px_60px_-30px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)]' : 'bg-white/75 border-white/60 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.5)]'} animate-fadeInUp backdrop-blur-2xl rounded-[2.5rem]`}
+                style={{
+                    transform: 'rotateX(3deg) rotateY(-2deg) translateZ(30px)',
+                    transformStyle: 'preserve-3d'
+                }}
+            >
+                <div className="text-center mb-6">
+                    <div className="relative inline-block mb-4 group transition-all duration-500 hover:scale-110">
+                        {/* Glow de Fundo para efeito 'Pleno' */}
+                        <div className={`absolute inset-0 blur-2xl rounded-full opacity-30 animate-pulse ${darkMode ? 'bg-blue-500' : 'bg-blue-400'}`}></div>
+                        <img
+                            src="image/ecossistema3.png"
+                            alt="Logo Ecossistema DIAAF"
+                            className="relative h-14 w-auto object-contain drop-shadow-2xl"
+                        />
+                    </div>
+                    <h2
+                        className={`text-xl font-black tracking-tighter ${darkMode ? 'text-white' : 'text-gray-900'} uppercase`}
+                        style={{ fontFamily: "'Montserrat', sans-serif", letterSpacing: '-0.02em' }}
+                    >
                         {isForgotPassword ? 'Recuperar Senha' : (isRegistering ? 'Criar Nova Conta' : 'Ecossistema DIAAF')}
                     </h2>
-                    <p className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <p className={`mt-3 text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         {isForgotPassword ? 'Informe seu usuário para solicitar o desbloqueio' : (isRegistering ? 'Preencha os dados abaixo para se cadastrar' : 'Faça login para acessar o sistema')}
                     </p>
                 </div>
 
                 {isForgotPassword ? (
-                    <form className="mt-8 space-y-4 animate-fadeIn" onSubmit={handleForgotPasswordSubmit}>
-                        <div>
-                            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
+                    <form className="space-y-6 animate-fadeIn" onSubmit={handleForgotPasswordSubmit}>
+                        <div className="space-y-2">
+                            <label htmlFor="forgot-username" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
                             <input
+                                id="forgot-username"
+                                name="username"
                                 type="text"
                                 required
-                                className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                placeholder="Seu nome de usuário cadastrado"
+                                autoComplete="username"
+                                className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                placeholder="Seu nome de usuário cadastrado&hellip;"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                             />
                         </div>
 
                         {forgotPasswordMsg.text && (
-                            <div className={`text-sm text-center p-3 rounded border animate-fadeIn ${forgotPasswordMsg.type === 'success' ? (darkMode ? 'bg-green-900/40 border-green-700 text-green-300' : 'bg-green-100 border-green-200 text-green-700') : (darkMode ? 'bg-red-900/40 border-red-700 text-red-300' : 'bg-red-100 border-red-200 text-red-700')}`}>
-                                {forgotPasswordMsg.text}
+                            <div className={`text-sm text-center p-4 rounded-xl border animate-fadeIn ${forgotPasswordMsg.type === 'success' ? (darkMode ? 'bg-green-900/30 border-green-700 text-green-300' : 'bg-green-50 border-green-200 text-green-700') : (darkMode ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700')}`}>
+                                <div className="flex items-center justify-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={forgotPasswordMsg.type === 'success' ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} /></svg>
+                                    <span className="font-semibold">{forgotPasswordMsg.text}</span>
+                                </div>
                             </div>
                         )}
 
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50"
-                            >
-                                {isLoading ? 'Enviando Solicitação...' : 'Solicitar Redefinição de Senha'}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="btn-modern gradient-primary w-full py-3 text-white shadow-blue-500/25 disabled:opacity-50"
+                        >
+                            {isLoading ? 'Enviando Solicitação&hellip;' : 'Solicitar Redefinição'}
+                        </button>
 
-                        <div className="text-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-center pt-4 border-t border-gray-100 dark:border-gray-700/50">
                             <button
                                 type="button"
                                 onClick={toggleForgotPassword}
-                                className={`text-sm font-medium hover:underline transition-colors ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+                                className={`text-sm font-bold transition-all hover:opacity-80 scale-100 hover:scale-105 active:scale-95 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}
                             >
                                 Voltar para o Login Seguro
                             </button>
                         </div>
                     </form>
                 ) : (
-                    <form className="mt-8 space-y-4 animate-fadeIn" onSubmit={handleSubmit}>
-                        <div className={`rounded-md shadow-sm ${isRegistering ? 'space-y-4' : '-space-y-px'}`}>
+                    <form className="space-y-5 animate-fadeIn" onSubmit={handleSubmit}>
+                        <div className="space-y-4">
                             {isRegistering && (
                                 <>
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
+                                    <div className="space-y-2">
+                                        <label htmlFor="reg-name" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome Completo</label>
                                         <input
+                                            id="reg-name"
+                                            name="name"
                                             type="text"
                                             required
-                                            className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                            placeholder="Seu nome completo"
+                                            autoComplete="name"
+                                            className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                            placeholder="Seu nome completo&hellip;"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
                                         />
                                     </div>
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                                    <div className="space-y-2">
+                                        <label htmlFor="reg-email" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
                                         <input
+                                            id="reg-email"
+                                            name="email"
                                             type="email"
                                             required
-                                            className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                            placeholder="seu@email.com"
+                                            autoComplete="email"
+                                            className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                            placeholder="seu@email.com&hellip;"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                         />
@@ -939,38 +976,47 @@ function LoginForm({ onLogin, darkMode }) {
                                 </>
                             )}
 
-                            <div>
-                                <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
+                            <div className="space-y-2">
+                                <label htmlFor="login-username" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Usuário</label>
                                 <input
+                                    id="login-username"
+                                    name="username"
                                     type="text"
                                     required
-                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                                    placeholder="Usuário"
+                                    autoComplete="username"
+                                    className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                    placeholder="Nome de usuário&hellip;"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                 />
                             </div>
 
-                            <div>
-                                <label className={`${isRegistering ? 'block text-sm font-medium mb-1' : 'sr-only'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
+                            <div className="space-y-2">
+                                <label htmlFor="login-password" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
                                 <input
+                                    id="login-password"
+                                    name="password"
                                     type="password"
                                     required
-                                    className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} ${isRegistering ? 'rounded-md' : 'rounded-b-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                                    placeholder="Senha"
+                                    autoComplete={isRegistering ? "new-password" : "current-password"}
+                                    className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                    placeholder="Sua senha secreta&hellip;"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
 
                             {isRegistering && (
-                                <div>
-                                    <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+                                <div className="space-y-2">
+                                    <label htmlFor="reg-confirm" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
                                     <input
+                                        id="reg-confirm"
+                                        name="confirmPassword"
                                         type="password"
                                         required
-                                        className={`appearance-none relative block w-full px-3 py-2 border ${darkMode ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-300 placeholder-gray-500 text-gray-900'} rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                                        placeholder="Confirme sua senha"
+                                        autoComplete="new-password"
+                                        className={`input-modern w-full ${darkMode ? 'dark' : ''}`}
+                                        placeholder="Repita a nova senha&hellip;"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                     />
@@ -979,24 +1025,30 @@ function LoginForm({ onLogin, darkMode }) {
                         </div>
 
                         {error && (
-                            <div className={`text-sm text-center p-3 rounded border animate-pulse ${error.includes('bloqueada') || error.includes('Restam') ? (darkMode ? 'bg-orange-900/40 border-orange-700 text-orange-300' : 'bg-orange-100 border-orange-200 text-orange-800') : (darkMode ? 'bg-red-900/40 border-red-700 text-red-300' : 'bg-red-100 border-red-200 text-red-800')}`}>
-                                {error}
+                            <div className={`p-4 rounded-xl border animate-pulse ${error.includes('bloqueada') || error.includes('Restam') ? (darkMode ? 'bg-amber-900/30 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800') : (darkMode ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800')}`}>
+                                <p className="text-sm font-semibold text-center">{error}</p>
                             </div>
                         )}
 
-                        <div>
+                        <div className="pt-2">
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${isRegistering ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50`}
+                                className={`btn-modern w-full py-3.5 text-white text-base shadow-lg transition-all active:scale-95 disabled:opacity-50 ${isRegistering ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/25' : 'gradient-primary shadow-blue-500/25'}`}
                             >
-                                {isLoading ? 'Processando...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                        <span>Processando&hellip;</span>
+                                    </div>
+                                ) : (isRegistering ? 'Criar Minha Conta' : 'Acessar Sistema')}
                             </button>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-between text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0">
+                        <div className="flex flex-col gap-4 text-center pt-6 border-t border-gray-100 dark:border-gray-700/50">
                             {!isRegistering && (
                                 <button
+                                    id="forgot-password-link"
                                     type="button"
                                     onClick={toggleForgotPassword}
                                     className={`font-medium transition-colors hover:underline ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
@@ -1764,7 +1816,7 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
         },
         {
             id: 'other-services',
-            label: 'Outros Serviços',
+            label: 'Serviços Internos',
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -1826,7 +1878,7 @@ function Sidebar({ darkMode, currentView, setCurrentView, currentUser, onLogout,
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
                         ${darkMode ? 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white shadow-md'} 
                         overflow-hidden p-1.5 border ${darkMode ? 'border-blue-500' : 'border-gray-100'}`}>
-                        <img src="image/ecossistema-digital.png" alt="DIAAF Logo" className="w-full h-full object-contain" />
+                        <img src="image/ecossistema3.png" alt="DIAAF Logo" className="w-full h-full object-contain" />
                     </div>
                     {isExpanded && (
                         <div className="overflow-hidden animate-fadeInLeft">
@@ -2138,81 +2190,100 @@ const BANNER_STATIC = {
         dark: 'from-amber-900/40 to-orange-900/40 border-amber-500/30 hover:border-amber-400',
         iconLight: 'bg-amber-100 text-amber-600',
         iconDark: 'bg-amber-500/20 text-amber-400'
-    }
-};
-
-// ==================== SUB-BANNERS DA PREFEITURA MODERNA ====================
-const DTE_SUB_BANNERS = [
-    {
-        id: 'dte-portal',
+    },
+    // --- Sub-Banners DTE ---
+    'dte-portal': {
         label: 'Terra Cloud',
+        menu: 'dte-sub',
         description: 'Acesse o portal central de serviços municipais',
         href: 'https://imperatriz-ma.prefeituramoderna.cloud/#/',
         icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-        color: { light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-300', dark: 'from-rose-900/40 to-pink-900/40 border-rose-500/30 hover:border-rose-400', iconLight: 'bg-rose-100 text-rose-600', iconDark: 'bg-rose-500/20 text-rose-400' }
+        light: 'from-rose-50 to-pink-50 border-rose-200 hover:border-rose-300', dark: 'from-rose-900/40 to-pink-900/40 border-rose-500/30 hover:border-rose-400', iconLight: 'bg-rose-100 text-rose-600', iconDark: 'bg-rose-500/20 text-rose-400'
     },
-    {
-        id: 'dte-meuiss',
+    'dte-meuiss': {
         label: 'Meu ISS',
+        menu: 'dte-sub',
         description: 'Portal do contribuinte para serviços de ISS',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiss_new/',
         icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5',
-        color: { light: 'from-pink-50 to-fuchsia-50 border-pink-200 hover:border-pink-300', dark: 'from-pink-900/40 to-fuchsia-900/40 border-pink-500/30 hover:border-pink-400', iconLight: 'bg-pink-100 text-pink-600', iconDark: 'bg-pink-500/20 text-pink-400' }
+        light: 'from-pink-50 to-fuchsia-50 border-pink-200 hover:border-pink-300', dark: 'from-pink-900/40 to-fuchsia-900/40 border-pink-500/30 hover:border-pink-400', iconLight: 'bg-pink-100 text-pink-600', iconDark: 'bg-pink-500/20 text-pink-400'
     },
-    {
-        id: 'dte-nfe',
+    'dte-nfe': {
         label: 'NFS-e / Nota Fiscal',
+        menu: 'dte-sub',
         description: 'Consulta de notas fiscais eletrônicas',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiss_new/nfe/',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-        color: { light: 'from-fuchsia-50 to-purple-50 border-fuchsia-200 hover:border-fuchsia-300', dark: 'from-fuchsia-900/40 to-purple-900/40 border-fuchsia-500/30 hover:border-fuchsia-400', iconLight: 'bg-fuchsia-100 text-fuchsia-600', iconDark: 'bg-fuchsia-500/20 text-fuchsia-400' }
+        light: 'from-fuchsia-50 to-purple-50 border-fuchsia-200 hover:border-fuchsia-300', dark: 'from-fuchsia-900/40 to-purple-900/40 border-fuchsia-500/30 hover:border-fuchsia-400', iconLight: 'bg-fuchsia-100 text-fuchsia-600', iconDark: 'bg-fuchsia-500/20 text-fuchsia-400'
     },
-    {
-        id: 'dte-iptu',
+    'dte-iptu': {
         label: 'Protocolo',
+        menu: 'dte-sub',
         description: 'Acompanhe e gerencie processos administrativos',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiptu/protocolo-servidor/index.php',
         icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m-4 0h6',
-        color: { light: 'from-purple-50 to-violet-50 border-purple-200 hover:border-purple-300', dark: 'from-purple-900/40 to-violet-900/40 border-purple-500/30 hover:border-purple-400', iconLight: 'bg-purple-100 text-purple-600', iconDark: 'bg-purple-500/20 text-purple-400' }
+        light: 'from-purple-50 to-violet-50 border-purple-200 hover:border-purple-300', dark: 'from-purple-900/40 to-violet-900/40 border-purple-500/30 hover:border-purple-400', iconLight: 'bg-purple-100 text-purple-600', iconDark: 'bg-purple-500/20 text-purple-400'
     },
-    {
-        id: 'dte-meuiptu',
+    'dte-meuiptu': {
         label: 'Meu IPTU',
+        menu: 'dte-sub',
         description: 'Consulte e gerencie o seu IPTU municipal',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/meuiptu/',
         icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-        color: { light: 'from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-300', dark: 'from-violet-900/40 to-indigo-900/40 border-violet-500/30 hover:border-violet-400', iconLight: 'bg-violet-100 text-violet-600', iconDark: 'bg-violet-500/20 text-violet-400' }
+        light: 'from-violet-50 to-indigo-50 border-violet-200 hover:border-violet-300', dark: 'from-violet-900/40 to-indigo-900/40 border-violet-500/30 hover:border-violet-400', iconLight: 'bg-violet-100 text-violet-600', iconDark: 'bg-violet-500/20 text-violet-400'
     },
-    {
-        id: 'dte-login',
+    'dte-login': {
         label: 'DTE - Domicílio Tributário',
+        menu: 'dte-sub',
         description: 'Acesse seu domicílio tributário eletrônico',
         href: 'https://imperatriz-ma.prefeituramoderna.com.br/dte/?route=login-main',
         icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-        color: { light: 'from-indigo-50 to-blue-50 border-indigo-200 hover:border-indigo-300', dark: 'from-indigo-900/40 to-blue-900/40 border-indigo-500/30 hover:border-indigo-400', iconLight: 'bg-indigo-100 text-indigo-600', iconDark: 'bg-indigo-500/20 text-indigo-400' }
+        light: 'from-indigo-50 to-blue-50 border-indigo-200 hover:border-indigo-300', dark: 'from-indigo-900/40 to-blue-900/40 border-indigo-500/30 hover:border-indigo-400', iconLight: 'bg-indigo-100 text-indigo-600', iconDark: 'bg-indigo-400/20 text-indigo-400'
     },
-];
-
-// ==================== SUB-BANNERS DE CONSULTAS FISCAIS ====================
-const CONSULTAS_FISCAIS_SUB_BANNERS = [
-    {
-        id: 'consultas-iss-cnae',
+    'dte-simples-fiscal': {
+        label: 'Simples Fiscal',
+        menu: 'dte-sub',
+        description: 'Gestão simplificada de tributos e obrigações fiscais',
+        href: 'https://simplesfiscal.prefeituramoderna.com.br/',
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        light: 'from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300', dark: 'from-emerald-900/40 to-green-900/40 border-emerald-500/30 hover:border-emerald-400', iconLight: 'bg-emerald-100 text-emerald-600', iconDark: 'bg-emerald-500/20 text-emerald-400'
+    },
+    'dte-helpdesk': {
+        label: 'HelpDesk Tickets',
+        menu: 'dte-sub',
+        description: 'Suporte técnico e abertura de chamados OTOBO',
+        href: 'https://www.sistematerra.com.br/otobo/customer.pl',
+        icon: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 12.728l-3.536-3.536M12 3v4m0 10v4m9-9h-4M7 12H3m8 0a1 1 0 102 0 1 1 0 00-2-2 0z',
+        light: 'from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-300', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400'
+    },
+    // --- Sub-Banners Consultas Fiscais ---
+    'consultas-iss-cnae': {
         label: 'Consulta ISS / CNAE',
+        menu: 'consultas-sub',
         description: 'Pesquise alíquotas e códigos de serviço rapidamente',
         isInternal: true,
         view: 'search',
         icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-        color: { light: 'from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500', dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400', iconLight: 'bg-blue-100 text-blue-600', iconDark: 'bg-blue-500/20 text-blue-400' }
+        light: 'from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500', dark: 'from-blue-900/40 to-indigo-900/40 border-blue-500/30 hover:border-blue-400', iconLight: 'bg-blue-100 text-blue-600', iconDark: 'bg-blue-500/20 text-blue-400'
     },
-    {
-        id: 'consultas-nfse-nacional',
+    'consultas-nfse-nacional': {
         label: 'Consulta NFS-e Nacional',
+        menu: 'consultas-sub',
         description: 'Consulta Pública de NFS-e (Nota Fiscal de Serviços Eletrônica)',
         isInternal: false,
         href: 'https://www.nfse.gov.br/consultapublica',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-        color: { light: 'from-cyan-50 to-sky-50 border-cyan-400 hover:border-cyan-500', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400' }
+        light: 'from-cyan-50 to-sky-50 border-cyan-400 hover:border-cyan-500', dark: 'from-cyan-900/40 to-sky-900/40 border-cyan-500/30 hover:border-cyan-400', iconLight: 'bg-cyan-100 text-cyan-600', iconDark: 'bg-cyan-500/20 text-cyan-400'
     }
+};
+
+// ==================== LISTAS AUXILIARES DE SUB-BANNERS ====================
+const DTE_SUB_BANNERS_KEYS = [
+    'dte-portal', 'dte-meuiss', 'dte-nfe', 'dte-iptu', 'dte-meuiptu', 'dte-login', 'dte-simples-fiscal', 'dte-helpdesk'
+];
+
+const CONSULTAS_FISCAIS_SUB_BANNERS_KEYS = [
+    'consultas-iss-cnae', 'consultas-nfse-nacional'
 ];
 
 
@@ -2300,7 +2371,32 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
         setLoading(true);
         try {
             const data = await ApiService.adminGetUserBanners(userId);
-            setBanners(data);
+
+            const allKeys = Object.keys(BANNER_STATIC);
+            const merged = [...data];
+
+            allKeys.forEach(key => {
+                if (!merged.find(b => b.key === key)) {
+                    const mapped = BANNER_STATIC[key];
+                    if (['home', 'dte-sub', 'consultas-sub', 'outros'].includes(mapped.menu)) {
+                        merged.push({
+                            id: key,
+                            key: key,
+                            label: mapped.label,
+                            enabled: !mapped.adminOnly,
+                            hasOverride: false
+                        });
+                    }
+                }
+            });
+
+            const menuOrder = { 'home': 1, 'outros': 2, 'dte-sub': 3, 'consultas-sub': 4 };
+            setBanners(merged.sort((a, b) => {
+                const ma = BANNER_STATIC[a.key]?.menu || 'home';
+                const mb = BANNER_STATIC[b.key]?.menu || 'home';
+                if (ma !== mb) return menuOrder[ma] - menuOrder[mb];
+                return (a.orderIndex ?? 99) - (b.orderIndex ?? 99);
+            }));
         } catch (e) {
             setToast({ type: 'error', msg: 'Erro ao carregar banners do usuário.' });
         } finally {
@@ -2408,53 +2504,71 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
                                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"></div>
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-2">
                                 {banners.map((banner, index) => {
                                     const s = BANNER_STATIC[banner.key];
                                     if (!s) return null;
                                     const isSaving = savingId === banner.id;
 
+                                    const prevS = index > 0 ? BANNER_STATIC[banners[index - 1].key] : null;
+                                    const isNewGroup = !prevS || s.menu !== prevS.menu;
+
+                                    const groupTitles = {
+                                        'home': 'Banners Principais',
+                                        'outros': 'Serviços Adicionais',
+                                        'dte-sub': 'Sub-itens: Prefeitura Moderna',
+                                        'consultas-sub': 'Sub-itens: Consultas Fiscais'
+                                    };
+
                                     return (
-                                        <div
-                                            key={banner.id}
-                                            draggable
-                                            onDragStart={() => dragItem.current = index}
-                                            onDragEnter={() => dragOverItem.current = index}
-                                            onDragEnd={handleSort}
-                                            onDragOver={e => e.preventDefault()}
-                                            className={`flex items-center p-3.5 rounded-xl border transition-all duration-200 cursor-move ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'} ${!banner.enabled ? 'opacity-60' : ''}`}
-                                        >
-                                            <div className="text-gray-400 px-1.5 mr-1 cursor-grab">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
-                                            </div>
-
-                                            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mr-3 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden shadow-inner pointer-events-none`}>
-                                                {s.imageIcon ? (
-                                                    <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-contain p-1.5'} />
-                                                ) : (
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon || 'M4 5h16'} />
-                                                    </svg>
-                                                )}
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <span className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</span>
-                                                <p className={`text-[10px] mt-0.5 ${banner.enabled ? (darkMode ? 'text-green-400' : 'text-green-600') : (darkMode ? 'text-gray-500' : 'text-gray-400')}`}>
-                                                    {banner.enabled ? '● Visível' : '● Oculto'}
-                                                </p>
-                                            </div>
-
-                                            <button
-                                                onClick={() => handleToggle(banner)}
-                                                disabled={isSaving}
-                                                className={`relative flex-shrink-0 ml-3 inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 ${banner.enabled ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')} ${isSaving ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                        <React.Fragment key={banner.id}>
+                                            {isNewGroup && (
+                                                <div className={`text-[10px] font-bold uppercase tracking-widest mt-4 mb-2 px-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {groupTitles[s.menu] || 'Geral'}
+                                                </div>
+                                            )}
+                                            <div
+                                                draggable
+                                                onDragStart={() => dragItem.current = index}
+                                                onDragEnter={() => dragOverItem.current = index}
+                                                onDragEnd={handleSort}
+                                                onDragOver={e => e.preventDefault()}
+                                                className={`flex items-center p-3.5 rounded-xl border transition-all duration-200 cursor-move ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'} ${!banner.enabled ? 'opacity-60' : ''}`}
                                             >
-                                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out flex items-center justify-center ${banner.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                                                    {isSaving && <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>}
-                                                </span>
-                                            </button>
-                                        </div>
+                                                <div className="text-gray-400 px-1.5 mr-1 cursor-grab">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+                                                </div>
+
+                                                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mr-3 ${darkMode ? s.iconDark : s.iconLight} overflow-hidden shadow-inner pointer-events-none`}>
+                                                    {s.imageIcon ? (
+                                                        <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-contain p-1.5'} />
+                                                    ) : (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon || 'M4 5h16'} />
+                                                        </svg>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-semibold text-sm truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</span>
+                                                    </div>
+                                                    <p className={`text-[10px] mt-0.5 ${banner.enabled ? (darkMode ? 'text-green-400' : 'text-green-600') : (darkMode ? 'text-gray-500' : 'text-gray-400')}`}>
+                                                        {banner.enabled ? '● Visível' : '● Oculto'}
+                                                    </p>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => handleToggle(banner)}
+                                                    disabled={isSaving}
+                                                    className={`relative flex-shrink-0 ml-3 inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 ${banner.enabled ? 'bg-blue-600' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')} ${isSaving ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                >
+                                                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out flex items-center justify-center ${banner.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                                        {isSaving && <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>}
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </React.Fragment>
                                     );
                                 })}
                             </div>
@@ -2637,6 +2751,7 @@ function App() {
     const [bibliotecaModalOpen, setBibliotecaModalOpen] = useState(false);
     const [bibliotecaCategoria, setBibliotecaCategoria] = useState(null);
     const [bibliotecaSearch, setBibliotecaSearch] = useState('');
+    const [expandedBanner, setExpandedBanner] = useState(null); // ID do banner atualmente expandido (accordion)
 
     const handleSortBanners = async () => {
         if (!currentUser || currentUser.role !== 'admin') return;
@@ -2691,6 +2806,18 @@ function App() {
             { id: 'banner-sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto', enabled: true },
             { id: 'banner-justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto', enabled: true },
             { id: 'banner-contra-cheque', key: 'contra-cheque', label: 'Contra-cheque', enabled: true },
+            // Sub-Banners DTE
+            { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)', enabled: true },
+            { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)', enabled: true },
+            { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)', enabled: true },
+            { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)', enabled: true },
+            { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)', enabled: true },
+            { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário', enabled: true },
+            { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)', enabled: true },
+            { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)', enabled: true },
+            // Sub-Banners Consultas Fiscais
+            { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)', enabled: true },
+            { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)', enabled: true },
         ];
 
         const loadBanners = () => {
@@ -3362,14 +3489,16 @@ function App() {
             <div className="flex-1 overflow-y-auto">
                 <div className={`min-h-screen transition-all duration-500 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100'}`}>
                     <div className="container mx-auto px-4 py-8 max-w-6xl">
-                        <header className="mb-10">
-                            {/* Top Bar: Minimalista e Clean */}
-                            <div className="flex justify-between items-center bg-white/5 dark:bg-gray-800/5 backdrop-blur-xl rounded-full px-6 py-3 transition-all border-none">
-                                <div className="flex items-center gap-6">
+                        <header className="mb-10 relative z-[20]">
+                            {/* Header Desconstruída: Elementos nos cantos superiores */}
+                            <div className="flex justify-between items-start pt-2 px-2 transition-all duration-500">
+
+                                {/* Grupo Esquerdo: Menu Mobile e Perfil/Saudação */}
+                                <div className="flex items-center gap-4 animate-fadeInLeft">
                                     <button
                                         type="button"
                                         onClick={() => setSidebarMobileOpen(true)}
-                                        className={`sidebar-toggle-mobile md:hidden flex items-center justify-center p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-700 border border-gray-200'}`}
+                                        className={`sidebar-toggle-mobile md:hidden flex items-center justify-center p-3 rounded-2xl shadow-lg backdrop-blur-md transition-all active:scale-95 ${darkMode ? 'bg-gray-800/80 text-white' : 'bg-white/80 text-gray-700'}`}
                                         aria-label="Abrir menu"
                                     >
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3377,138 +3506,121 @@ function App() {
                                         </svg>
                                     </button>
 
-                                    {/* Botão Voltar (fora da Home) ou Saudação (na Home) */}
+                                    {/* Botão Voltar ou Perfil */}
                                     {currentView !== 'home' ? (
                                         <button
                                             onClick={() => setCurrentView('home')}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 hover:-translate-x-0.5 ${darkMode
-                                                ? 'bg-gray-700/60 text-gray-200 hover:bg-gray-700 border border-gray-600'
-                                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                                                } shadow-sm`}
+                                            className={`glass-card-header flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95 ${darkMode
+                                                ? 'text-gray-200'
+                                                : 'text-gray-700'
+                                                } shadow-xl`}
                                         >
                                             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                             </svg>
-                                            <span className="hidden sm:inline">Início</span>
+                                            <span>Início</span>
                                         </button>
                                     ) : (
                                         currentUser && (
-                                            <div className="flex items-center gap-3 ml-1">
-                                                <div className="relative group">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transform transition-all group-hover:scale-110 overflow-hidden ${darkMode ? 'bg-gradient-to-tr from-blue-600 to-purple-600' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
-                                                        {(() => {
-                                                            const firstName = (currentUser.name?.split(' ')[0] || currentUser.username || '').toLowerCase();
-                                                            const femaleNames = ['maria', 'ana', 'julia', 'juliana', 'fernanda', 'patricia', 'aline', 'bruna', 'camila', 'jessica', 'amanda', 'leticia', 'beatriz', 'vanessa', 'mariana', 'gabriela', 'larissa', 'daniela', 'carla', 'renata'];
-                                                            const isFemale = femaleNames.includes(firstName) || firstName.endsWith('a') || firstName.endsWith('e'); 
-                                                            // Lógica simplificada: termina com 'a' ou 'e' ou está na lista -> Mulher, senão Homem. 
-                                                            // Ajuste conforme necessidade para maior precisão.
-                                                            
-                                                            const avatarSrc = isFemale ? 'image/mulher.png' : 'image/homem.png';
-
-                                                            return (
-                                                                <img 
-                                                                    src={avatarSrc} 
-                                                                    alt="Avatar" 
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => {
-                                                                        e.target.style.display = 'none'; // Esconde a imagem se falhar
-                                                                        e.target.nextSibling.style.display = 'block'; // Mostra as iniciais
-                                                                    }}
-                                                                />
-                                                            );
-                                                        })()}
-                                                        <span className="text-white font-bold text-xs tracking-widest absolute" style={{display: 'none'}}>
-                                                            {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
-                                                        </span>
-                                                    </div>
-                                                    <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800 ${darkMode ? 'bg-green-500' : 'bg-green-400'}`}>
-                                                    </div>
+                                            <div className="flex items-center gap-3">
+                                                {/* Seletor de Tema (Reposicionado como solicitado) */}
+                                                <div className="glass-card-header flex items-center p-1.5 rounded-2xl shadow-xl">
+                                                    <button
+                                                        onClick={() => setDarkMode(!darkMode)}
+                                                        className={`p-2.5 rounded-xl transition-all duration-300 active:scale-95 ${darkMode ? 'bg-blue-600/20 text-yellow-400 hover:bg-blue-600/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                                                        title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                                                    >
+                                                        {darkMode ? (
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                                            </svg>
+                                                        ) : (
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
                                                 </div>
-                                                <div className="hidden sm:block">
-                                                    <h2 className={`font-medium text-base tracking-tight ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                                                        {currentUser.name?.split(' ')[0] || currentUser.username}
-                                                    </h2>
-                                                    <p className={`text-[10px] uppercase font-bold tracking-widest opacity-60 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        {new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}, seja bem-vindo
-                                                    </p>
+
+                                                <div className="glass-card-header flex items-center gap-4 px-5 py-3 rounded-2xl shadow-xl transition-all duration-300 hover:translate-y-[-2px]">
+                                                    <div className="relative group">
+                                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transform transition-all group-hover:scale-110 overflow-hidden ring-2 ${darkMode ? 'ring-blue-500/30' : 'ring-cyan-500/20'} bg-gradient-to-tr from-blue-600 to-cyan-600`}>
+                                                            {(() => {
+                                                                const firstName = (currentUser.name?.split(' ')[0] || currentUser.username || '').toLowerCase();
+                                                                const femaleNames = ['maria', 'ana', 'julia', 'juliana', 'fernanda', 'patricia', 'aline', 'bruna', 'camila', 'jessica', 'amanda', 'leticia', 'beatriz', 'vanessa', 'mariana', 'gabriela', 'larissa', 'daniela', 'carla', 'renata'];
+                                                                const isFemale = femaleNames.includes(firstName) || firstName.endsWith('a') || firstName.endsWith('e');
+                                                                const avatarSrc = isFemale ? 'image/mulher.png' : 'image/homem.png';
+
+                                                                return (
+                                                                    <img
+                                                                        src={avatarSrc}
+                                                                        alt="Avatar"
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => {
+                                                                            e.target.style.display = 'none';
+                                                                            e.target.nextSibling.style.display = 'block';
+                                                                        }}
+                                                                    />
+                                                                );
+                                                            })()}
+                                                            <span className="text-white font-bold text-xs tracking-widest absolute" style={{ display: 'none' }}>
+                                                                {currentUser?.name?.substring(0, 2).toUpperCase() || currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
+                                                            </span>
+                                                        </div>
+                                                        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800 ${darkMode ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-green-400'}`}>
+                                                        </div>
+                                                    </div>
+                                                    <div className="hidden sm:block">
+                                                        <h2 className={`font-bold text-base tracking-tight leading-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                            {currentUser.name?.split(' ')[0] || currentUser.username}
+                                                        </h2>
+                                                        <p className={`text-[10px] uppercase font-black tracking-widest mt-1.5 opacity-70 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                            {new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )
                                     )}
                                 </div>
 
-                                <div className={`flex items-center gap-3 transition-all`}>
-                                    {/* Botão de Dark Mode integrado */}
-                                    <button
-                                        onClick={() => setDarkMode(!darkMode)}
-                                        className={`p-2.5 rounded-full transition-all duration-300 ${darkMode ? 'bg-gray-700/80 text-yellow-400 hover:bg-gray-600' : 'bg-white text-gray-600 hover:bg-gray-100'} shadow-sm flex items-center justify-center border ${darkMode ? 'border-gray-600' : 'border-gray-100'}`}
-                                        title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
-                                    >
-                                        {darkMode ? (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                            </svg>
-                                        )}
-                                    </button>
+                                {/* Grupo Direito: Controles (NextChat com Destaque) */}
+                                <div className="flex items-center gap-3 animate-fadeInRight">
+                                    {currentView === 'home' && (
+                                        <div className="glass-card-header flex items-center gap-2 p-1 rounded-2xl shadow-xl">
+                                            <div className="relative flex items-center">
+                                                <a
+                                                    href="https://chat.nextplan.tec.br/login"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="relative group p-0.5 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 ring-2 ring-blue-500/20 bg-blue-500/5 shadow-inner"
+                                                    title="NextChat"
+                                                >
+                                                    <div className="w-12 h-12 overflow-hidden rounded-xl shadow-lg border-2 border-white/40 ring-4 ring-blue-400/10 animate-pulse-subtle bg-white flex items-center justify-center p-1">
+                                                        <img
+                                                            src="image/NextChat.png"
+                                                            alt="NextChat"
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    </div>
+                                                    {/* Badge de Destaque */}
+                                                    <div className={`absolute top-0 -right-1 w-4 h-4 rounded-full border-2 border-white bg-blue-500 ${darkMode ? 'shadow-[0_0_10px_rgba(59,130,246,0.6)]' : ''}`}></div>
 
-                                    {/* Botão de Suporte NextChat */}
-                                    <div className="relative flex items-center">
-                                        <a
-                                            href="https://chat.nextplan.tec.br/login"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`relative group p-1.5 rounded-full transition-all duration-300 flex items-center justify-center border shadow-sm focus:outline-none hover:scale-105 bg-white border-gray-100 hover:bg-gray-50`}
-                                            title="Call-Center Fiscal (NextChat)"
-                                        >
-                                            <div className="w-8 h-8 sm:w-9 sm:h-9 overflow-hidden rounded-full flex items-center justify-center">
-                                                <img
-                                                    src="image/NextChat.png"
-                                                    alt="NextChat"
-                                                    className="w-full h-full object-contain"
-                                                />
+                                                    <div className="absolute top-[60px] right-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none shadow-2xl bg-blue-600 text-white z-50">
+                                                        <div className="absolute top-[-6px] right-4 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-blue-600"></div>
+                                                        Atendimento Virtual
+                                                    </div>
+                                                </a>
                                             </div>
-                                            <div className="absolute top-[52px] sm:top-[56px] right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg bg-blue-600 text-white z-50">
-                                                <div className="absolute top-[-6px] right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-blue-600"></div>
-                                                Atendimento Virtual
-                                            </div>
-                                        </a>
-                                    </div>
-
-                                    {/* Botão Menor da IA ao lado do perfil */}
-                                    <div className="relative flex items-center ml-2">
-                                        <a
-                                            href="https://gemini.google.com/app"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`relative group p-2.5 rounded-full transition-all duration-300 flex items-center justify-center border shadow-sm focus:outline-none hover:scale-105 ${darkMode
-                                                ? 'bg-gray-700/80 text-blue-400 border-gray-600 hover:bg-gray-600'
-                                                : 'bg-white text-blue-600 border-gray-100 hover:bg-gray-50'
-                                                }`}
-                                            title="Assistente IA"
-                                        >
-                                            {/* Ícone Solto Reduzido (SVG Sparkles Clean) */}
-                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-                                            </svg>
-
-                                            {/* Tooltip com novo texto alinhado */}
-                                            <div className="absolute top-[52px] sm:top-[56px] right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg bg-blue-600 text-white z-50">
-                                                <div className="absolute top-[-6px] right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-blue-600"></div>
-                                                Dúvidas? Pergunte a IA
-                                            </div>
-                                        </a>
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Cabeçalho de Consulta Exclusivo da página Buscar */}
                             {currentView === 'search' && (
                                 <div className="text-center animate-fadeInDown mt-10 mb-2">
-                                    <h1 className={`text-4xl md:text-5xl font-extrabold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent`}>
+                                    <h1 className={`text-4xl md:text-5xl font-extrabold mb-4 bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 bg-clip-text text-transparent`}>
                                         Consulta Lista/Cnae/Alíquota
                                     </h1>
                                     <p className={`text-lg md:text-xl mb-6 font-light ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -3538,20 +3650,30 @@ function App() {
                         )}
 
                         {currentView === 'home' && (
-                            <div className="animate-fadeInUp space-y-10">
+                            <div className="animate-fadeInUp space-y-4">
                                 {/* Faixada Central de Serviços */}
-                                <div className="text-center relative py-4">
-                                    <div className={`absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-24 h-24 blur-3xl rounded-full opacity-20 ${darkMode ? 'bg-blue-500' : 'bg-blue-400'}`}></div>
-                                    <h2 className={`relative text-xs md:text-sm font-black tracking-[0.3em] uppercase mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                <div className="text-center relative py-1 flex flex-col items-center">
+                                    <div className={`absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-20 h-20 blur-3xl rounded-full opacity-20 ${darkMode ? 'bg-blue-500' : 'bg-blue-400'}`}></div>
+
+                                    {/* Logo Branding Dashboard */}
+                                    <div className="relative mb-1 animate-fadeInDown">
+                                        <img
+                                            src="image/ecossistema3.png"
+                                            alt="EcoSistema Logo"
+                                            className="h-14 md:h-16 w-auto object-contain drop-shadow-xl"
+                                        />
+                                    </div>
+
+                                    <h2 className={`relative text-[9px] md:text-[10px] font-black tracking-[0.4em] uppercase mb-0.5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
                                         Central de Serviços
                                     </h2>
-                                    <h1 className={`relative text-3xl md:text-4xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    <h1 className={`relative text-2xl md:text-3xl font-black tracking-tighter ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                                         DIAAF
                                     </h1>
-                                    <div className={`mt-4 mx-auto w-12 h-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                                    <div className={`mt-2 mx-auto w-10 h-0.5 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
                                 </div>
 
-                                <div className={`grid gap-6 mt-2 ${bannerConfig.filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home' && (currentUser?.role === 'admin' || b.enabled)).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
+                                <div className={`grid gap-4 mt-1 ${bannerConfig.filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home' && (currentUser?.role === 'admin' || b.enabled)).length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
                                     bannerConfig.filter(b => (BANNER_STATIC[b.key]?.menu || 'home') === 'home' && (currentUser?.role === 'admin' || b.enabled)).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
                                         'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                                     }`}>
@@ -3566,7 +3688,7 @@ function App() {
                                             const isFrozen = banner.isFrozen === true;
                                             const isEffectivelyFrozen = isFrozen && !isAdmin;
 
-                                            const cardClass = `flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all transform hover:-translate-y-2 hover:shadow-2xl ${darkMode
+                                            const cardClass = `flex flex-col items-center justify-center p-4 md:p-5 rounded-2xl border-2 transition-all transform hover:-translate-y-1 hover:shadow-2xl ${darkMode
                                                 ? `bg-gradient-to-br ${s.dark}`
                                                 : `bg-gradient-to-br ${s.light}`
                                                 } group relative overflow-hidden ${isDisabledForUser ? 'opacity-40 cursor-default hover:translate-y-0 hover:shadow-none' : ''
@@ -3598,16 +3720,16 @@ function App() {
                                                         </div>
                                                     )}
                                                     <div className={`absolute inset-0 opacity-0 ${'group-hover:opacity-10'} transition-opacity duration-300 ${darkMode ? s.hoverBg?.dark || 'bg-white' : s.hoverBg?.light || 'bg-blue-600'}`}></div>
-                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${darkMode ? s.iconDark : s.iconLight} shadow-inner pointer-events-none overflow-hidden`}>
+                                                    <div className={`w-12 h-12 md:h-14 md:w-14 rounded-full flex items-center justify-center mb-3 ${darkMode ? s.iconDark : s.iconLight} shadow-inner pointer-events-none overflow-hidden`}>
                                                         {s.imageIcon ? (
                                                             <img src={s.imageIcon} alt="" className={s.imageClass || 'w-full h-full object-cover'} />
                                                         ) : (
-                                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <svg className="w-6 h-6 md:w-7 md:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
                                                             </svg>
                                                         )}
                                                     </div>
-                                                    <h3 className={`text-xl font-bold mb-2 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
+                                                    <h3 className={`text-lg md:text-xl font-bold mb-1 text-center pointer-events-none ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label || banner.label}</h3>
                                                     {s.comingSoon && !isFrozen && (
                                                         <div className="flex justify-center mb-2">
                                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold pointer-events-none ${darkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700 font-bold'}`}>
@@ -3617,24 +3739,43 @@ function App() {
                                                         </div>
                                                     )}
                                                     {isFrozen && !isAdmin && (
-                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/10 dark:bg-black/30 backdrop-blur-[2px] rounded-3xl animate-fadeIn">
-                                                    <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${
-                                                        banner.freezeReason === 'construction' 
-                                                            ? 'bg-amber-500/90 border-amber-400 text-white' 
-                                                            : 'bg-red-500/90 border-red-400 text-white'
-                                                    }`}>
-                                                        {banner.freezeReason === 'construction' ? (
-                                                            <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
-                                                        ) : (
-                                                            <svg className="w-5 h-5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                        )}
-                                                        <span className="font-bold text-sm tracking-wide">
-                                                            {banner.freezeReason === 'construction' ? 'EM CONSTRUÇÃO' : 'EM MANUTENÇÃO'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                                    <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+                                                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/10 dark:bg-black/30 backdrop-blur-[2px] rounded-3xl animate-fadeIn">
+                                                            <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${banner.freezeReason === 'construction'
+                                                                ? 'bg-amber-500/90 border-amber-400 text-white'
+                                                                : 'bg-red-500/90 border-red-400 text-white'
+                                                                }`}>
+                                                                {banner.freezeReason === 'construction' ? (
+                                                                    <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+                                                                ) : (
+                                                                    <svg className="w-5 h-5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                )}
+                                                                <span className="font-bold text-sm tracking-wide">
+                                                                    {banner.freezeReason === 'construction' ? 'EM CONSTRUÇÃO' : 'EM MANUTENÇÃO'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <p className={`text-[10px] md:text-xs text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
+
+                                                    {/* Contador de Sub-banners */}
+                                                    {(() => {
+                                                        let count = 0;
+                                                        if (banner.key === 'dte') {
+                                                            count = DTE_SUB_BANNERS_KEYS.filter(k => bannerConfig.find(bc => bc.key === k)?.enabled !== false).length;
+                                                        } else if (banner.key === 'iss-cnae') {
+                                                            count = CONSULTAS_FISCAIS_SUB_BANNERS_KEYS.filter(k => bannerConfig.find(bc => bc.key === k)?.enabled !== false).length;
+                                                        }
+
+                                                        if (count > 0) {
+                                                            return (
+                                                                <div className={`mt-2 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${darkMode ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
+                                                                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${darkMode ? 'bg-blue-400' : 'bg-blue-600'}`}></div>
+                                                                    {count} {count === 1 ? 'serviço disponível' : 'serviços disponíveis'}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                     {isAdmin && (
                                                         <div className="absolute bottom-3 right-3 text-gray-400 opacity-0 group-hover:opacity-[0.8] transition-opacity cursor-grab active:cursor-grabbing pb-1 pr-1 pointer-events-none">
                                                             <svg className="w-6 h-6 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
@@ -3661,35 +3802,131 @@ function App() {
 
                                             if (s.isModal) {
                                                 return (
-                                                    <button
-                                                        key={banner.id}
-                                                        onClick={(e) => {
-                                                            if (isEffectivelyFrozen) {
-                                                                e.preventDefault();
-                                                                alert('Este acesso está temporariamente indisponível. Em manutenção.');
-                                                                return;
-                                                            }
-                                                            if (!isDisabledForUser) {
-                                                                updateStatistics('bannerClick', {
-                                                                    bannerLabel: s.label || banner.label,
-                                                                    user: currentUser ? currentUser.username : 'Visitante'
-                                                                });
-                                                                if (s.modalId === 'consultas-fiscais') {
-                                                                    setConsultasModalOpen(true);
-                                                                } else if (s.modalId === 'biblioteca') {
-                                                                    setBibliotecaCategoria(null);
-                                                                    setBibliotecaModalOpen(true);
-                                                                } else {
-                                                                    setDteModalOpen(true);
+                                                    <React.Fragment key={banner.id}>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                if (isEffectivelyFrozen) {
+                                                                    e.preventDefault();
+                                                                    const isConstruction = s.label.toLowerCase().includes('biblioteca') || s.description?.toLowerCase().includes('construção');
+                                                                    const msg = isConstruction
+                                                                        ? 'Este acesso está em desenvolvimento (EM CONSTRUÇÃO). Em breve disponível.'
+                                                                        : 'Este acesso está temporariamente indisponível. Em manutenção.';
+                                                                    alert(msg);
+                                                                    return;
                                                                 }
-                                                            }
-                                                        }}
-                                                        disabled={isDisabledForUser}
-                                                        className={cardClass}
-                                                        {...dragProps}
-                                                    >
-                                                        {content}
-                                                    </button>
+                                                                if (!isDisabledForUser) {
+                                                                    // Toggle do Accordion
+                                                                    if (expandedBanner === banner.id) {
+                                                                        setExpandedBanner(null);
+                                                                    } else {
+                                                                        setExpandedBanner(banner.id);
+                                                                        updateStatistics('bannerExpand', {
+                                                                            bannerLabel: s.label || banner.label,
+                                                                            user: currentUser ? currentUser.username : 'Visitante'
+                                                                        });
+                                                                    }
+                                                                }
+                                                            }}
+                                                            disabled={isDisabledForUser}
+                                                            className={cardClass}
+                                                            {...dragProps}
+                                                        >
+                                                            {content}
+                                                        </button>
+
+                                                        {/* Accordion Content */}
+                                                        {expandedBanner === banner.id && (
+                                                            <div className="col-span-full animate-fadeInDown mt-2 mb-6">
+                                                                <div className={`p-6 rounded-3xl border-2 ${darkMode ? 'bg-gray-800/40 border-gray-700/50' : 'bg-white border-gray-100'} shadow-xl backdrop-blur-sm relative overflow-hidden`}>
+                                                                    {/* Header do Accordion */}
+                                                                    <div className="flex items-center justify-between mb-6">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? s.iconDark : s.iconLight}`}>
+                                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} /></svg>
+                                                                            </div>
+                                                                            <div>
+                                                                                <h4 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{s.label}</h4>
+                                                                                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Selecione o serviço desejado</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button onClick={() => setExpandedBanner(null)} className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+                                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                        </button>
+                                                                    </div>
+
+                                                                    {/* Grid de Sub-banners */}
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                        {(() => {
+                                                                            let subKeys = [];
+                                                                            if (s.modalId === 'dte') subKeys = DTE_SUB_BANNERS_KEYS;
+                                                                            else if (s.modalId === 'consultas-fiscais') subKeys = CONSULTAS_FISCAIS_SUB_BANNERS_KEYS;
+
+                                                                            if (subKeys.length > 0) {
+                                                                                return subKeys.map(key => {
+                                                                                    const sub = BANNER_STATIC[key];
+                                                                                    const cfg = bannerConfig.find(bc => bc.key === key);
+                                                                                    const isSubEnabled = cfg?.enabled !== false;
+
+                                                                                    if (!isSubEnabled && currentUser?.role !== 'admin') return null;
+
+                                                                                    return (
+                                                                                        <a
+                                                                                            key={key}
+                                                                                            href={sub.href || '#'}
+                                                                                            target={sub.href ? '_blank' : '_self'}
+                                                                                            rel="noopener noreferrer"
+                                                                                            onClick={(e) => {
+                                                                                                if (sub.isInternal) {
+                                                                                                    e.preventDefault();
+                                                                                                    setCurrentView(sub.view);
+                                                                                                    setExpandedBanner(null);
+                                                                                                }
+                                                                                                updateStatistics('bannerClick', { bannerLabel: sub.label, user: currentUser?.username || 'Visitante' });
+                                                                                            }}
+                                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-lg ${darkMode ? `bg-gradient-to-br ${sub.dark} border-gray-700/50 hover:border-blue-500/50` : `bg-gradient-to-br ${sub.light} border-gray-100 hover:border-blue-300`} ${!isSubEnabled ? 'opacity-40 grayscale' : ''}`}
+                                                                                        >
+                                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? sub.iconDark : sub.iconLight}`}>
+                                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sub.icon} /></svg>
+                                                                                            </div>
+                                                                                            <div className="min-w-0">
+                                                                                                <p className={`text-xs font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</p>
+                                                                                                <p className={`text-[10px] truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{sub.description}</p>
+                                                                                            </div>
+                                                                                        </a>
+                                                                                    );
+                                                                                });
+                                                                            }
+
+                                                                            // Especial para Biblioteca
+                                                                            if (s.modalId === 'biblioteca') {
+                                                                                return BIBLIOTECA_CATEGORIAS.map(cat => (
+                                                                                    <button
+                                                                                        key={cat.id}
+                                                                                        onClick={() => {
+                                                                                            setBibliotecaCategoria(cat.id);
+                                                                                            setBibliotecaModalOpen(true);
+                                                                                            setExpandedBanner(null);
+                                                                                        }}
+                                                                                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-lg text-left ${darkMode ? `bg-gradient-to-br ${cat.colorDark} border-gray-700/50` : `bg-gradient-to-br ${cat.colorLight} border-gray-100`}`}
+                                                                                    >
+                                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${darkMode ? cat.iconDark : cat.iconLight}`}>
+                                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cat.icon} /></svg>
+                                                                                        </div>
+                                                                                        <div className="min-w-0">
+                                                                                            <p className={`text-xs font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{cat.label}</p>
+                                                                                            <p className={`text-[10px] truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{cat.description}</p>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                ));
+                                                                            }
+
+                                                                            return null;
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
                                                 );
                                             }
                                             if (s.isInternal) {
@@ -3751,14 +3988,22 @@ function App() {
                         {(currentView === 'outros' || currentView === 'other-services') && (
                             <div className="animate-fadeInUp space-y-8">
                                 <section>
-                                    <div className="flex items-center gap-3 mb-8">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600 shadow-sm'}`}>
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    <div className="text-center relative py-4 flex flex-col items-center mb-8">
+                                        <div className={`absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-24 h-24 blur-3xl rounded-full opacity-25 ${darkMode ? 'bg-blue-500' : 'bg-blue-400'}`}></div>
+
+                                        {/* Logo Branding Outros Serviços */}
+                                        <div className="relative mb-4 animate-fadeInDown">
+                                            <img
+                                                src="image/ecossistema3.png"
+                                                alt="EcoSistema Logo"
+                                                className="h-14 md:h-16 w-auto object-contain drop-shadow-xl"
+                                            />
                                         </div>
-                                        <div>
-                                            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Outros Serviços</h2>
-                                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Acessos e utilitários adicionais</p>
-                                        </div>
+
+                                        <h2 className={`relative text-[10px] md:text-xs font-black tracking-[0.4em] uppercase mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                            Central de Serviços Internos
+                                        </h2>
+                                        <div className={`mt-4 mx-auto w-12 h-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {bannerConfig
@@ -3780,7 +4025,25 @@ function App() {
                                                     }`;
 
                                                 const content = (
-                                                    <>
+                                                    <div
+                                                        style={{
+                                                            transform: 'rotateX(2deg) rotateY(-1deg) translateZ(0)',
+                                                            transformStyle: 'preserve-3d',
+                                                            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                            width: '100%',
+                                                            height: '100%',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = 'rotateX(4deg) rotateY(-2deg) translateZ(40px)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = 'rotateX(2deg) rotateY(-1deg) translateZ(0)';
+                                                        }}
+                                                    >
                                                         {isAdmin && (
                                                             <div className="absolute top-3 right-3 z-20 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                                 <div className={`text-[9px] font-black uppercase tracking-tighter ${isFrozen ? (banner.freezeReason === 'construction' ? 'text-amber-500' : 'text-red-500 animate-pulse') : (darkMode ? 'text-green-400' : 'text-green-600')}`}>
@@ -3817,11 +4080,10 @@ function App() {
                                                         <p className={`text-sm text-center leading-relaxed pointer-events-none ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.description}</p>
                                                         {isFrozen && !isAdmin && (
                                                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900/10 dark:bg-black/30 backdrop-blur-[2px] rounded-3xl animate-fadeIn">
-                                                                <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${
-                                                                    banner.freezeReason === 'construction' 
-                                                                        ? 'bg-amber-500/90 border-amber-400 text-white' 
-                                                                        : 'bg-red-500/90 border-red-400 text-white'
-                                                                }`}>
+                                                                <div className={`px-4 py-2 rounded-xl shadow-lg border backdrop-blur-md flex items-center gap-2 ${banner.freezeReason === 'construction'
+                                                                    ? 'bg-amber-500/90 border-amber-400 text-white'
+                                                                    : 'bg-red-500/90 border-red-400 text-white'
+                                                                    }`}>
                                                                     {banner.freezeReason === 'construction' ? (
                                                                         <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                                                                     ) : (
@@ -3833,7 +4095,7 @@ function App() {
                                                                 </div>
                                                             </div>
                                                         )}
-                                                    </>
+                                                    </div>
                                                 );
 
                                                 return (
@@ -4376,25 +4638,40 @@ function App() {
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     </div>
-                                    {/* Sub-banners grid */}
                                     <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {DTE_SUB_BANNERS.map(sub => {
+                                        {DTE_SUB_BANNERS_KEYS.map(key => {
+                                            const sub = BANNER_STATIC[key];
+                                            const config = bannerConfig.find(b => b.key === key);
+                                            const isEnabled = config ? config.enabled : !sub.adminOnly;
+                                            const isAdmin = currentUser?.role === 'admin';
+
+                                            if (!isEnabled && !isAdmin) return null;
+
                                             const isPlaceholder = sub.href === '#';
                                             return (
                                                 <a
-                                                    key={sub.id}
+                                                    key={key}
                                                     href={isPlaceholder ? undefined : sub.href}
                                                     target={isPlaceholder ? undefined : '_blank'}
                                                     rel="noopener noreferrer"
-                                                    onClick={isPlaceholder ? e => e.preventDefault() : undefined}
-                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.color.dark : sub.color.light}`}
+                                                    onClick={isPlaceholder ? e => e.preventDefault() : (e) => {
+                                                        updateStatistics('banner_clicked', {
+                                                            bannerKey: key,
+                                                            bannerLabel: sub.label,
+                                                            user: currentUser?.username || 'unknown',
+                                                            menu: 'dte-sub'
+                                                        });
+                                                    }}
+                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.dark : sub.light}`}
                                                 >
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.color.iconDark : sub.color.iconLight}`}>
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.iconDark : sub.iconLight}`}>
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sub.icon} /></svg>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            </div>
                                                             {!isPlaceholder && (
                                                                 <svg className={`w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                                             )}
@@ -4405,11 +4682,6 @@ function App() {
                                             );
                                         })}
                                     </div>
-                                    {DTE_SUB_BANNERS.some(s => s.href === '#') && (
-                                        <p className={`pb-5 text-center text-xs ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-                                            Serviços indisponíveis aguardam configuração de link.
-                                        </p>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -4443,13 +4715,27 @@ function App() {
                                         </button>
                                     </div>
                                     <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {CONSULTAS_FISCAIS_SUB_BANNERS.map(sub => {
+                                        {CONSULTAS_FISCAIS_SUB_BANNERS_KEYS.map(key => {
+                                            const sub = BANNER_STATIC[key];
+                                            const config = bannerConfig.find(b => b.key === key);
+                                            const isEnabled = config ? config.enabled : !sub.adminOnly;
+                                            const isAdmin = currentUser?.role === 'admin';
+
+                                            if (!isEnabled && !isAdmin) return null;
+
                                             const isPlaceholder = sub.href && sub.href === '#';
                                             const clickHandler = (e) => {
                                                 if (isPlaceholder) {
                                                     e.preventDefault();
                                                     return;
                                                 }
+                                                // Log access
+                                                updateStatistics('banner_clicked', {
+                                                    bannerKey: key,
+                                                    bannerLabel: sub.label,
+                                                    user: currentUser?.username || 'unknown',
+                                                    menu: 'consultas-sub'
+                                                });
                                                 if (sub.isInternal) {
                                                     e.preventDefault();
                                                     setConsultasModalOpen(false);
@@ -4458,19 +4744,21 @@ function App() {
                                             };
                                             return (
                                                 <a
-                                                    key={sub.id}
+                                                    key={key}
                                                     href={sub.isInternal ? '#' : (isPlaceholder ? undefined : sub.href)}
                                                     target={sub.isInternal || isPlaceholder ? undefined : '_blank'}
                                                     rel="noopener noreferrer"
                                                     onClick={clickHandler}
-                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.color.dark : sub.color.light}`}
+                                                    className={`group flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br transition-all duration-200 ${isPlaceholder ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${darkMode ? sub.dark : sub.light}`}
                                                 >
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.color.iconDark : sub.color.iconLight}`}>
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${darkMode ? sub.iconDark : sub.iconLight}`}>
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sub.icon} /></svg>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sub.label}</span>
+                                                            </div>
                                                             {!isPlaceholder && !sub.isInternal && (
                                                                 <svg className={`w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                                             )}

@@ -11,8 +11,9 @@ Uma plataforma digital completa e integrada, desenvolvida para unificar consulta
 - **Prevenção de Ataques**: Bloqueio de conta após múltiplas tentativas de login falhas.
 
 ### 🎛️ Gestão Dinâmica de Banners (Módulos)
-- **Controle Global**: Administradores podem ocultar ou habilitar módulos (`Consulta ISS`, `Análise de Processos`, etc.) globalmente.
-- **Controle por Usuário**: O administrador pode sobrepor a configuração global, determinando módulos específicos que cada usuário pode acessar, reorganizando a visualização de Banners em um modal Drag & Drop individualizado.
+- **Accordion Inline (Novo)**: Banners que atuam como containers ("Prefeitura Moderna", "Consultas Fiscais" e "Biblioteca") agora se expandem diretamente na Home, revelando sub-serviços sem a necessidade de modais sobrepostos.
+- **Contagem de Serviços**: Exibição dinâmica da quantidade de sub-itens ativos em cada categoria (ex: "8 serviços disponíveis").
+- **Controle Global e por Usuário**: Administradores podem ocultar ou habilitar módulos (`Consulta ISS`, `Análise de Processos`, etc.) globalmente ou de forma individualizada via Drag & Drop.
 
 ### 🔍 Motor de Consultas (ISS / CNAE)
 - Busca Universal e Avançada combinando descrições, códigos LC e CNAEs.
@@ -67,9 +68,10 @@ Consult_ItemXCNAE/
 5. Acesse na máquina `http://localhost:3001`
    - O primeiro usuário cadastrado que coincida com a regra de admin (ex. nome admin/Admin@123) possuirá os direitos máximos.
 
-### Tipos de Bancos
-O projeto faz a migração automática das tabelas.
-Caso você forneça uma string `DATABASE_URL` no seu arquivo `.env`, o servidor conectará a sua nuvem PostgreSQL, abstraindo diferenças booleanas (`db.isPg`) magicamente. Caso contrário, criará um `dev.sqlite3` na pasta para funcionar de ponta a ponta offline.
+### Gestão de Custos e Infraestrutura (Railway)
+O projeto é otimizado para custo zero/mínimo:
+- **Fallback Inteligente**: Utiliza `SQLite` local por padrão, migrando para PostgreSQL apenas se detectada a `DATABASE_URL`.
+- **Stateless**: Projetado para rodar em instâncias eficientes da Railway sem necessidade de volumes caros.
 
 ## 📱 Compatibilidade & Performance
 - Suporte Full PWA Concept: Interface adaptativa aos cartões mobile, scrollbar customizado e modais dinâmicos com limite de viewport.

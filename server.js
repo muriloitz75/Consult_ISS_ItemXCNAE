@@ -158,10 +158,19 @@ const connectDB = async () => {
             { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
             { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
             { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
+            { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
+            { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
+            { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
+            { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
+            { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
+            { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
+            { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
+            { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
+            { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
+            { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
-            // Utilizando UPSERT real do Postgres para inicializar as ordens na primeira carga
             await pool.query(
                 `INSERT INTO "BannerConfig" (id, key, label, enabled, "orderIndex") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO NOTHING`,
                 [b.id, b.key, b.label, true, i]
@@ -293,6 +302,16 @@ const connectDB = async () => {
             { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
             { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
             { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
+            { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
+            { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
+            { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
+            { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
+            { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
+            { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
+            { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
+            { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
+            { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
+            { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
         ];
         for (let i = 0; i < defaultBanners.length; i++) {
             const b = defaultBanners[i];
