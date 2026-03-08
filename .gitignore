@@ -7,3 +7,8 @@ node_modules
 # SQLite database - nunca commitar, pois sobrescreve o banco em produção a cada deploy
 dev.sqlite3
 *.sqlite3
+
+# Agent & AI config
+.agent/
+.gemini/
+.env

@@ -136,9 +136,7 @@ class CredentialValidator {
 
 // Gerenciador de Usuários
 // API Service para comunicar com o backend Node.js
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3001/api'
-    : '/api'; // Para quando for deployado junto no Railway
+const API_BASE_URL = `${window.location.origin}/api`;
 
 class ApiService {
     static async request(endpoint, options = {}) {
@@ -2720,16 +2718,11 @@ function App() {
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [itemCode, setItemCode] = useState('');
-    const [serviceDescription, setServiceDescription] = useState('');
-    const [cnaeCode, setCnaeCode] = useState('');
-    const [cnaeDescription, setCnaeDescription] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [darkMode, setDarkMode] = useState(() => {
         const saved = localStorage.getItem('darkMode');
         return saved ? JSON.parse(saved) : false;
     });
-    const [searchMode, setSearchMode] = useState('universal'); // 'universal' ou 'advanced'
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
@@ -2746,6 +2739,7 @@ function App() {
     // Força re-render da lista de usuários na view admin após bloqueio/delete/reset
     const [adminUsersListKey, setAdminUsersListKey] = useState(0);
     const [auditUserFilter, setAuditUserFilter] = useState('');
+    const [auditTypeFilter, setAuditTypeFilter] = useState(''); // 'banner', 'login_failure', etc.
     const [dteModalOpen, setDteModalOpen] = useState(false);
     const [consultasModalOpen, setConsultasModalOpen] = useState(false);
     const [bibliotecaModalOpen, setBibliotecaModalOpen] = useState(false);
@@ -2903,10 +2897,8 @@ function App() {
     // Estados para estatísticas de uso backend
     const [statistics, setStatistics] = useState({
         totalAccesses: 0,
-        totalSearches: 0,
-        universalSearches: 0,
-        advancedSearches: 0,
         totalBannerClicks: 0,
+        totalRegisteredUsers: 0, // Novo
         lastAccess: null,
         dailyAccesses: {},
         searchHistory: [],
@@ -2929,10 +2921,8 @@ function App() {
             const data = await ApiService.getAuditStats();
             setStatistics({
                 totalAccesses: data.totalAccesses,
-                totalSearches: 0, // Legacy, manter zero
-                universalSearches: 0,
-                advancedSearches: 0,
                 totalBannerClicks: data.totalBannerClicks,
+                totalRegisteredUsers: data.totalRegisteredUsers || 0,
                 lastAccess: null,
                 dailyAccesses: { [new Date().toDateString()]: data.sessionsToday },
                 searchHistory: data.searchHistory,
@@ -3055,58 +3045,17 @@ function App() {
     }, []);
 
     useEffect(() => {
-        console.log('Carregando dados Markdown...');
-        fetch('dados.md')
+        console.log('Carregando dados JSON...');
+        fetch('dados.json')
             .then(response => {
                 console.log('Resposta recebida:', response.status);
-                return response.text();
+                if (!response.ok) throw new Error('Falha ao carregar dados.json');
+                return response.json();
             })
-            .then(mdText => {
-                console.log('Markdown carregado, tamanho:', mdText.length);
-
-                // Parse do Markdown
-                const lines = mdText.split('\n');
-                const dataRows = lines.filter(line => line.trim().startsWith('|'));
-
-                // Remover cabeçalho e separador (primeiras 2 linhas da tabela)
-                // Assumindo que o arquivo começa com título e depois a tabela
-                // Vamos encontrar onde começa a tabela
-                const startIndex = dataRows.findIndex(row => row.includes('LIST LC'));
-
-                // Pegar apenas as linhas de dados (pular header e separador)
-                const contentRows = dataRows.slice(startIndex + 2);
-
-                console.log('Número de linhas de dados encontradas:', contentRows.length);
-
-                const parsedData = contentRows.map(row => {
-                    // Dividir por pipe e limpar espaços
-                    // Ex: | 01.01 | Desc | ... |
-                    // split('|') gera ['', '01.01', 'Desc', ..., '']
-                    const cols = row.split('|').map(col => col.trim());
-
-                    // Colunas esperadas:
-                    // 1: LIST LC
-                    // 2: Descrição LC
-                    // 3: CNAE
-                    // 4: Descrição CNAE
-                    // 5: Alíquota
-
-                    return {
-                        "LIST LC": cols[1] || '',
-                        "Descrição item da lista da Lei Complementar nº 001/2003 - CTM": cols[2] || '',
-                        "CNAE": cols[3] || '',
-                        "Descrição do CNAE": cols[4] || '',
-                        "Alíquota": cols[5] || ''
-                    };
-                }).filter(item => item["LIST LC"] && item["LIST LC"] !== '---'); // Filtrar linhas inválidas/separadores
-
-                console.log('Dados processados:', parsedData.length, 'itens');
-                if (parsedData.length > 0) {
-                    console.log('Primeiro item:', parsedData[0]);
-                }
-
-                setData(parsedData);
-                setFilteredData(parsedData);
+            .then(jsonData => {
+                console.log('JSON carregado, número de itens:', jsonData.length);
+                setData(jsonData);
+                setFilteredData(jsonData);
             })
             .catch(error => {
                 console.error('Erro ao carregar dados:', error);
@@ -3244,47 +3193,21 @@ function App() {
             return [];
         }
 
-        let filtered = [];
+        let filtered = data;
 
-        if (searchMode === 'universal') {
-            console.log('Modo Universal - Termo:', searchTerm); // Debug
-            // Modo Universal: busca em todos os campos com o termo geral
-            if (searchTerm.trim()) {
-                filtered = data.filter(item => {
-                    const match = assertiveSearch(item['LIST LC'], searchTerm, 'listlc') ||
-                        assertiveSearch(item['Descrição item da lista da Lei Complementar nº 001/2003 - CTM'], searchTerm, 'description') ||
-                        assertiveSearch(item['CNAE'], searchTerm, 'cnae') ||
-                        assertiveSearch(item['Descrição do CNAE'], searchTerm, 'description');
+        if (searchTerm.trim()) {
+            console.log('Filtrando por termo geral:', searchTerm); // Debug
+            filtered = filtered.filter(item => {
+                const match = assertiveSearch(item['LIST LC'], searchTerm, 'listlc') ||
+                    assertiveSearch(item['Descrição item da lista da Lei Complementar nº 001/2003 - CTM'], searchTerm, 'description') ||
+                    assertiveSearch(item['CNAE'], searchTerm, 'cnae') ||
+                    assertiveSearch(item['Descrição do CNAE'], searchTerm, 'description');
 
-                    if (match) {
-                        console.log('Item encontrado:', item['LIST LC']); // Debug
-                    }
-                    return match;
-                });
-            } else {
-                filtered = data; // Se não há termo, mostra todos
-            }
-        } else {
-            console.log('Modo Especial'); // Debug
-            // Modo Especial: aplica filtros específicos
-            filtered = data;
-
-            if (itemCode.trim()) {
-                console.log('Filtrando por código do item:', itemCode); // Debug
-                filtered = filtered.filter(item => assertiveSearch(item['LIST LC'], itemCode, 'listlc'));
-            }
-            if (serviceDescription.trim()) {
-                console.log('Filtrando por descrição do serviço:', serviceDescription); // Debug
-                filtered = filtered.filter(item => assertiveSearch(item['Descrição item da lista da Lei Complementar nº 001/2003 - CTM'], serviceDescription, 'description'));
-            }
-            if (cnaeCode.trim()) {
-                console.log('Filtrando por código CNAE:', cnaeCode); // Debug
-                filtered = filtered.filter(item => assertiveSearch(item['CNAE'], cnaeCode, 'cnae'));
-            }
-            if (cnaeDescription.trim()) {
-                console.log('Filtrando por descrição CNAE:', cnaeDescription); // Debug
-                filtered = filtered.filter(item => assertiveSearch(item['Descrição do CNAE'], cnaeDescription, 'description'));
-            }
+                if (match) {
+                    console.log('Item encontrado:', item['LIST LC']); // Debug
+                }
+                return match;
+            });
         }
 
         console.log('Resultados filtrados:', filtered.length); // Debug
@@ -3298,11 +3221,7 @@ function App() {
 
         // Preparar dados da consulta para estatísticas
         const queryData = {
-            searchTerm: searchTerm.trim(),
-            itemCode: itemCode.trim(),
-            serviceDescription: serviceDescription.trim(),
-            cnaeCode: cnaeCode.trim(),
-            cnaeDescription: cnaeDescription.trim()
+            searchTerm: searchTerm.trim()
         };
 
         const queryString = Object.values(queryData).filter(v => v).join(' | ');
@@ -3316,7 +3235,7 @@ function App() {
 
             // Registrar pesquisa nas estatísticas
             updateStatistics('search', {
-                searchMode: searchMode,
+                searchMode: 'combined',
                 user: currentUser?.username || 'unknown',
                 query: queryString || 'consulta vazia',
                 results: results.length
@@ -3324,19 +3243,16 @@ function App() {
         }, 500);
     };
 
+    const handleSearchKeyDown = (e) => {
+        if (e.key !== 'Enter' || e.nativeEvent?.isComposing || isLoading) return;
+        e.preventDefault();
+        handleSearch();
+    };
+
     const closeModal = () => {
         setIsModalOpen(false);
         setModalResults([]);
         setNoResults(false);
-    };
-
-    const clearFilters = () => {
-        setSearchTerm('');
-        setItemCode('');
-        setServiceDescription('');
-        setCnaeCode('');
-        setCnaeDescription('');
-        setFilteredData(data);
     };
 
     // Renderização condicional baseada na autenticação
@@ -4130,145 +4046,30 @@ function App() {
 
                         {currentView === 'search' && (
                             <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border backdrop-blur-sm p-8 mb-8 animate-fadeInUp`} style={{ animationDelay: '0.2s' }}>
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center`}>
-                                        Pesquisa Assertiva
-                                    </h2>
-                                    <button
-                                        onClick={clearFilters}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} flex items-center gap-2`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        Limpar Filtros
-                                    </button>
+                                <div className="mb-8 text-center">
+                                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                        Use a busca geral para encontrar por código do item, descrição do serviço, CNAE e descrição CNAE.
+                                    </p>
                                 </div>
 
-                                {/* Toggle de Modo de Pesquisa */}
-                                <div className="flex justify-center mb-8">
-                                    <div className={`inline-flex rounded-xl p-1 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                                        <button
-                                            onClick={() => setSearchMode('universal')}
-                                            className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'universal'
-                                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                                : darkMode
-                                                    ? 'text-gray-300 hover:text-white hover:bg-gray-600'
-                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
-                                                }`}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                            </svg>
-                                            Universal
-                                        </button>
-                                        <button
-                                            onClick={() => setSearchMode('advanced')}
-                                            className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${searchMode === 'advanced'
-                                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                                                : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} hover:shadow-md`
-                                                }`}
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                                            </svg>
-                                            Especial
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className={`grid gap-6 mb-6 transition-all duration-500 ${searchMode === 'universal' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2'}`}>
-                                    {/* Campo de Pesquisa Universal - Mostrar apenas no modo universal */}
-                                    {searchMode === 'universal' && (
-                                        <div className="space-y-2">
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                    placeholder="Digite qualquer termo para buscar em todos os campos..."
-                                                    className={`w-full pl-4 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                                />
-                                            </div>
+                                <div
+                                    onKeyDown={handleSearchKeyDown}
+                                    className="mb-6 transition-all duration-500"
+                                >
+                                    <div className="space-y-2">
+                                        <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            Pesquisa Geral
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                placeholder="Digite qualquer termo para buscar em todos os campos..."
+                                                className={`w-full pl-4 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                                            />
                                         </div>
-                                    )}
-
-                                    {/* Campos Especiais - Mostrar apenas no modo especial */}
-                                    {searchMode === 'advanced' && (
-                                        <>
-                                            <div className="space-y-2 animate-fadeInUp">
-                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    Código do Item
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        value={itemCode}
-                                                        onChange={(e) => setItemCode(e.target.value)}
-                                                        placeholder="Ex: 01.01, 02.05..."
-                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                                    />
-                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    Descrição do Serviço
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        value={serviceDescription}
-                                                        onChange={(e) => setServiceDescription(e.target.value)}
-                                                        placeholder="Ex: análise, desenvolvimento..."
-                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                                    />
-                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
-                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    Código CNAE
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        value={cnaeCode}
-                                                        onChange={(e) => setCnaeCode(e.target.value)}
-                                                        placeholder="Ex: 6201, 6201-5, 620150, 7020..."
-                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                                    />
-                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
-                                                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    Descrição CNAE
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        value={cnaeDescription}
-                                                        onChange={(e) => setCnaeDescription(e.target.value)}
-                                                        placeholder="Ex: desenvolvimento de programas..."
-                                                        className={`w-full pl-10 pr-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                                                    />
-                                                    <svg className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-center">
@@ -4384,10 +4185,55 @@ function App() {
                                                 Monitoramento Ativo
                                             </div>
                                             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                                                {(statistics?.searchHistory || []).filter(a => a.type === 'banner').length} acessos a serviços registrados
+                                                {(statistics?.searchHistory || []).length} eventos totais registrados
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* Alertas de Segurança Proativos */}
+                                    {(() => {
+                                        const alerts = [];
+                                        const history = statistics?.searchHistory || [];
+
+                                        // Detectar 3+ falhas seguidas de login por Usuário ou IP
+                                        const failureGroups = {};
+                                        history.filter(a => a.action === 'login_failure' || a.action === 'login_failed').forEach(a => {
+                                            const key = a.user || a.ipAddress || 'unknown';
+                                            if (!failureGroups[key]) failureGroups[key] = [];
+                                            failureGroups[key].push(a);
+                                        });
+
+                                        Object.entries(failureGroups).forEach(([key, items]) => {
+                                            if (items.length >= 3) {
+                                                alerts.push({
+                                                    title: `Múltiplas falhas de login: ${key}`,
+                                                    desc: `${items.length} tentativas malsucedidas detectadas.`,
+                                                    severity: items.length >= 5 ? 'critical' : 'warning'
+                                                });
+                                            }
+                                        });
+
+                                        if (alerts.length === 0) return null;
+
+                                        return (
+                                            <div className="flex-1 max-w-md w-full">
+                                                <div className={`p-4 rounded-xl border-2 animate-pulse shadow-lg ${darkMode ? 'bg-red-900/20 border-red-500/50' : 'bg-red-50 border-red-200'}`}>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                        <h4 className={`text-sm font-bold ${darkMode ? 'text-red-400' : 'text-red-700'}`}>Alertas de Segurança ({alerts.length})</h4>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {alerts.slice(0, 2).map((alert, idx) => (
+                                                            <div key={idx} className="text-xs">
+                                                                <p className={`font-bold ${darkMode ? 'text-red-300' : 'text-red-800'}`}>{alert.title}</p>
+                                                                <p className={`${darkMode ? 'text-red-400/70' : 'text-red-600'}`}>{alert.desc}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                     <div className="flex gap-3 flex-shrink-0">
                                         <button
                                             onClick={() => {
@@ -4442,12 +4288,13 @@ function App() {
                                 </div>
 
                                 {/* KPIs */}
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                                     {[
                                         { title: 'Acessos à Aplicação', value: statistics?.totalAccesses || 0, desc: 'Aberturas da plataforma', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', colors: darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600' },
                                         { title: 'Acessos a Serviços', value: statistics?.totalBannerClicks || 0, desc: 'Cliques em banners', icon: 'M13 10V3L4 14h7v7l9-11h-7z', colors: darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
-                                        { title: 'Usuários Únicos', value: Object.keys(statistics?.userSessions || {}).length || 0, desc: 'Contas distintas', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', colors: darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600' },
-                                        { title: 'Sessões Hoje', value: statistics?.dailyAccesses?.[new Date().toDateString()] || 0, desc: 'Acessos na data atual', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', colors: darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600' }
+                                        { title: 'Usuários Únicos', value: statistics?.userSessions?.['Usuários Únicos'] || 0, desc: 'Contas que já logaram', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', colors: darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600' },
+                                        { title: 'Total de Usuários', value: statistics?.totalRegisteredUsers || 0, desc: 'Contas cadastradas', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z', colors: darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600' },
+                                        { title: 'Sessões Hoje', value: statistics?.dailyAccesses?.[new Date().toDateString()] || 0, desc: 'Logins na data atual', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', colors: darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600' }
                                     ].map((kpi, idx) => (
                                         <div key={idx} className={`p-5 rounded-2xl flex items-start justify-between gap-3 ${darkMode ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-white border border-gray-100'} shadow-sm`}>
                                             <div className="min-w-0">
@@ -4548,30 +4395,51 @@ function App() {
                                                 {(statistics?.searchHistory || []).filter(a => a.type === 'banner').filter(a => auditUserFilter === '' || a.user === auditUserFilter).length} registros
                                             </span>
                                         </div>
-                                        <select
-                                            value={auditUserFilter}
-                                            onChange={e => setAuditUserFilter(e.target.value)}
-                                            className={`text-xs font-semibold rounded-xl px-3 py-1.5 border outline-none transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}
-                                        >
-                                            <option value="">Todos os usuários</option>
-                                            {[...new Set((statistics?.searchHistory || []).filter(a => a.type === 'banner').map(a => a.user).filter(Boolean))].map(u => (
-                                                <option key={u} value={u}>{u}</option>
-                                            ))}
-                                        </select>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <select
+                                                value={auditUserFilter}
+                                                onChange={e => setAuditUserFilter(e.target.value)}
+                                                className={`text-xs font-semibold rounded-xl px-3 py-1.5 border outline-none transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}
+                                            >
+                                                <option value="">Todos os usuários</option>
+                                                {[...new Set((statistics?.searchHistory || []).map(a => a.user).filter(Boolean))].map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                            </select>
+
+                                            <select
+                                                value={auditTypeFilter}
+                                                onChange={e => setAuditTypeFilter(e.target.value)}
+                                                className={`text-xs font-semibold rounded-xl px-3 py-1.5 border outline-none transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}
+                                            >
+                                                <option value="">Todos os eventos</option>
+                                                <option value="banner">Acessos a Serviços</option>
+                                                <option value="login_failure">Falhas de Login</option>
+                                                <option value="login">Logins com Sucesso</option>
+                                                <option value="admin">Ações Administrativas</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     {/* Table */}
                                     <div className="overflow-x-auto">
                                         <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
                                             {(() => {
                                                 const filtered = (statistics?.searchHistory || [])
-                                                    .filter(a => a.type === 'banner')
                                                     .filter(a => auditUserFilter === '' || a.user === auditUserFilter)
+                                                    .filter(a => {
+                                                        if (auditTypeFilter === '') return true;
+                                                        if (auditTypeFilter === 'banner') return a.type === 'banner' || a.action === 'banner_clicked';
+                                                        if (auditTypeFilter === 'login_failure') return a.action === 'login_failure' || a.action === 'login_failed' || a.action === 'login_failed_password';
+                                                        if (auditTypeFilter === 'login') return a.action === 'login_success' || (a.type === 'access' && a.success !== false);
+                                                        if (auditTypeFilter === 'admin') return a.action?.startsWith('admin_') || a.action?.includes('user_');
+                                                        return true;
+                                                    })
                                                     .slice().reverse();
                                                 return filtered.length > 0 ? (
                                                     <table className="w-full text-sm">
                                                         <thead className={`sticky top-0 z-10 ${darkMode ? 'bg-gray-800/95 border-b border-gray-700/50' : 'bg-gray-50 border-b border-gray-100'}`}>
                                                             <tr>
-                                                                {['Timestamp', 'Usuário', 'Serviço Acessado'].map(h => (
+                                                                {['Timestamp', 'Usuário', 'Ação / Evento', 'Detalhes'].map(h => (
                                                                     <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
                                                                 ))}
                                                             </tr>
@@ -4585,11 +4453,17 @@ function App() {
                                                                     <td className={`px-4 py-3 whitespace-nowrap text-xs font-bold ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                                                                         {a.user || 'Visitante'}
                                                                     </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${darkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                                                                            {a.bannerLabel || '—'}
+                                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${a.success === false || a.action?.includes('failure') ? (darkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700') : (darkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')}`}>
+                                                                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${a.success === false || a.action?.includes('failure') ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                                                                            {a.action === 'banner_clicked' || a.type === 'banner' ? 'Acesso Serviço' :
+                                                                                a.action === 'login_failure' ? 'Falha Login' :
+                                                                                    a.action === 'login_success' ? 'Login' :
+                                                                                        a.action || a.type}
                                                                         </span>
+                                                                    </td>
+                                                                    <td className={`px-4 py-3 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                                                        {a.bannerLabel || a.details?.reason || a.details?.username || (typeof a.details === 'string' ? a.details : JSON.stringify(a.details)) || '—'}
                                                                     </td>
                                                                 </tr>
                                                             ))}

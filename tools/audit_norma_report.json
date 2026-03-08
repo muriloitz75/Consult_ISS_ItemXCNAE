@@ -1,0 +1,17 @@
+{
+    "total_json_pairs": 1091,
+    "total_pdf_pairs_extraidos": 1089,
+    "missing_in_json_count": 0,
+    "extra_in_json_count": 2,
+    "missing_in_json_sample": [],
+    "extra_in_json_sample": [
+        [
+            "07.02",
+            "4311-8/01"
+        ],
+        [
+            "07.03",
+            "7111-1/00"
+        ]
+    ]
+}

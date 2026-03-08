@@ -1,0 +1,610 @@
+SECRETARIA DE PLANEJAMENTO, FAZENDA E GESTÃO ORÇAMENTARIA - 
+SEFAZGO 
+ 
+RESOLUÇÃO Nº 01 DE 07/07/2021 - SEFAZGO 
+ 
+Dispõe sobre a correspondência entre itens da lista de 
+serviços ANEXO ÚNICO da Lei Complementar 
+Municipal nº 001/2003 com a  Classificação Nacional de 
+Atividade Econômica – CNAE e demais providências. 
+ 
+A Secretaria Municipal de Planejamento, Fazenda e Gestão Orçamentaria, no uso de suas 
+atribuições e com fundamento na Lei Complementar 001/2011 e Decreto nº 17 de 29 de 
+março de 2019, 
+CONSIDERANDO que a Lei Complementar Municipal nº 001/2003, Código Tributário 
+Municipal, elenca as atividades classificadas como prestação de serviço sujeitas ao 
+Imposto Sobre Serviço de Qualquer Natureza – ISSQN, na denominada Lista de Serviços 
+Anexa a Lei supracitada e nos incisos do art. 47 da referida Lei traz as hipóteses em que 
+o referido imposto é devido no município do tomador ou da efetiva prestação de serviço, 
+CONSIDERANDO que a Nota Fiscal de Serviço Eletrônica (NFS-e) traz os campos 
+“serviços do município”, Item da LC 001/2003 e “cód. Nacional atividade econômica” 
+para evidenciar o tipo de prestação de serviço com sua consequente inserção da alíquota 
+definida para o serviço, bem como o reflexo na liberação ou não do campo “Natureza da 
+Operação” nas opções “tributado no município” ou a depender do serviço “tributado fora 
+do município” e ainda nos serviços imunes ou isentos, 
+CONSIDERANDO que a parametrização da correspondência é salutar para evitar evasão 
+fiscal ou informações divergentes entre o que é p reenchido nos campos acima citados 
+com potencial efeito de permitir alíquotas equivocadas ou natureza de operação que vá 
+de encontro com o permitido no art. 47 da LC nº 001/2003. 
+ 
+RESOLVE: 
+ 
+Art. 1º Fica aprovado, na forma do Anexo Único desta Resolu ção, a tabela de correspondência 
+dos códigos da Classificação Nacional de Atividades Econômicas – CNAE com os itens da Lista 
+de Serviço anexa a LC 001/2003. 
+Parágrafo Único: A correspondência será padronizada de forma automatizada no sistema, não 
+permitindo ao usuário modificação ou intervenção. 
+Art. 2º A secretaria Municipal de Planejamento, Fazenda e Gestão Orçamentaria, sempre que 
+possível, buscará a correspondência dos códigos da Atividades do Município com o do CNAE na 
+emissão do documento fiscal. 
+Parágrafo Único: Caso o contribuinte informe uma atividade CNAE que não encontre o código 
+correspondente no item de serviço, deverá  dirigir-se à Diretoria de Inteligência Fiscal para 
+solicitar o enquadramento do CNAE entre os liberados no Cadastro Mobiliário do  contribuinte 
+que reflita corretamente os itens de serviços do município. 
+Art. 3º O sistema emissor de documento fiscal desta Secretaria, a partir da inserção pelo usuário 
+nos campos de identificação do serviço prestado, irá identificar de forma automática os campos 
+de natureza da operação, alíquota, dedução da base de cálculo, entre outros. 
+Parágrafo Único: Fica ressalvado os casos das empresas  optantes de regimes especiais ou 
+beneficiárias de incentivos fiscais que possuem alíquotas regidas por legislações especificas. 
+Art. 4º A tabela de correspondência constante do Anexo Único poderá ser atualizada pelo setor 
+de Inteligência Fiscal sempre que houver inconsistências, omissões e criação de novos itens ou 
+CNAE. 
+Art. 5º Não obstante o caráter vinculante da súmula de nº 31 do STF, a incidên cia do ISS só 
+deverá alcançar os atos e fatos que se possam qualificar, juridicamente, como serviços. 
+Art. 6º. Casos omissos serão dirimidos junto à Diretoria de Inteligência fiscal. 
+Art. 7º Esta Resolução entra em vigor na data de sua publicação. 
+ 
+LEGENDAS: 
+LIST - Subitem da Lista de Serviços de ISSQN - Lei 001/2003 
+CNAE – Código Nacional de Atividade Econômica 
+ 
+LIST LC Descrição item da lista da Lei Complementar 
+nº 001/2003 - CTM CNAE Descrição do CNAE 
+01.01 Analise e desenvolvimento de sistema 619060100 Provedores de acesso as redes de comunicações 
+01.01 Analise e desenvolvimento de sistema 62015.0100 Desenvolvimento de programas de computador sob 
+encomenda 
+01.01 Analise e desenvolvimento de sistema 620230000 Desenvolvimento e licenciamento de programas de 
+computador customizáveis 
+01.01 Analise e desenvolvimento de sistema 631190000 Tratamento de dados, provedores de serviços de aplicação e 
+serviços de hospedagem na internet 
+01.01 Analise e desenvolvimento de sistema 631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+01.02 Programação 619060100 Provedores de acesso as redes de comunicações 
+01.02 Programação 62015.0100 Desenvolvimento de programas de computador sob 
+encomenda 
+01.02 Programação 620230000 Desenvolvimento e licenciamento de programas de 
+computador customizáveis 
+01.02 Programação 620310000 Desenvolvimento e licenciamento de programas de 
+computador não-customizáveis 
+01.02 Programação 631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+01.03 
+Processamento, armazenamento ou hospedagem 
+de dados, textos, imagens, vídeos, páginas 
+eletrônicas, aplicativos e sistemas de informação 
+entre outros formatos, e congêneres 
+619060100 Provedores de acesso as redes de comunicações 
+01.03 
+Processamento, armazenamento ou hospedagem 
+de dados, textos, imagens, vídeos, páginas 
+eletrônicas, aplicativos e sistemas de i nformação 
+entre outros formatos, e congêneres 
+619060200 Provedores de voz sobre protocolo internet - voip 
+01.03 
+Processamento, armazenamento ou hospedagem 
+de dados, textos, imagens, vídeos, páginas 
+eletrônicas, aplicativos e sistemas de informação 
+entre outros formatos, e congêneres 
+620910000 Suporte técnico, manutenção e outros serviços em tecnologia 
+da informação 
+01.03 
+Processamento, armazenamento ou hospedagem 
+de dados, textos, imagens, v ídeos, páginas 
+eletrônicas, aplicativos e sistemas de informação 
+entre outros formatos, e congêneres 
+631190000 Tratamento de dados, provedores de serviços de aplicação e 
+serviços de hospedagem na internet 
+    
+01.04 
+Elaboração de programas de computadores, 
+inclusive de jogos eletrônicos, 
+independentemente de arquitetur a construtiva da 
+máquina em que o programa será executado, 
+incluindo tablets, smartphones e congêneres. 
+619060100 Provedores de acesso as redes de comunicações 
+01.04 
+Elaboração de programas de computadores, 
+inclusive de jogos eletrônicos, 
+independentemente de arquitetura construtiva da 
+máquina em que o programa será executado, 
+incluindo tablets, smartphones e congêneres. 
+620150000 Desenvolvimento de programas de computador sob 
+encomenda 
+01.04 
+Elaboração de programas de computadores, 
+inclusive de jogos ele trônicos, 
+independentemente de arquitetura construtiva da 
+máquina em que o programa será executado, 
+incluindo tablets, smartphones e congêneres. 
+620230000 Desenvolvimento e licenciamento de programas de 
+computador customizáveis 
+01.04 
+Elaboração de program as de computadores, 
+inclusive de jogos eletrônicos, 
+independentemente de arquitetura construtiva da 
+máquina em que o programa será executado, 
+incluindo tablets, smartphones e congêneres. 
+620310000 Desenvolvimento e licenciamento de programas de 
+computador não-customizáveis 
+01.05 Licenciamento ou cessão de direito de uso de 
+programas de computação 62015.0100 Desenvolvimento de programas de computador sob 
+encomenda 
+01.05 Licenciamento ou cessão de direito de uso de 
+programas de computação 620230000 Desenvolvimento e licenciamento de programas de 
+computador customizáveis 
+01.05 Licenciamento ou cessão de direito de uso de 
+programas de computação 620310000 Desenvolvimento e licenciamento de programas de 
+computador não-customizáveis 
+01.06 Assessoria e consultoria em informática 62015.0100 Desenvolvimento de programas de computador sob 
+encomenda 
+01.06 Assessoria e consultoria em informática 620400000 Consultoria em tecnologia da informação 
+01.06 Assessoria e consultoria em informática 631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+01.07 
+Suporte técnico em informática, inclusive 
+instalação, configuração e manutenção de 
+programas de computação e bancos de dados 
+183000300 Reprodução de software em qualquer suporte 
+01.07 
+Suporte técnico em informática, inclusive 
+instalação, configuração e manutenção de 
+programas de computação e bancos de dados 
+620400000 Consultoria em tecnologia da informação 
+01.07 
+Suporte técnico em informática, inclusive 
+instalação, configuração e manutenç ão de 
+programas de computação e bancos de dados 
+620910000 Suporte técnico, manutenção e outros serviços em tecnologia 
+da informação 
+01.07 
+Suporte técnico em informática, inclusive 
+instalação, configuração e manutenção de 
+programas de computação e bancos de dados 
+631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+01.07 
+Suporte técnico em informática, inclusive 
+instalação, configuração e manutenção de 
+programas de computação e bancos de dados 
+951180000 Reparação e manutenção de computadores e de equipamentos 
+periféricos 
+01.08 Planejamento, confecção, manutenção e 
+atualização de páginas eletrônica 619060100 Provedores de acesso as redes de comunicações 
+01.08 Planejamento, confecção, manutenção e 
+atualização de páginas eletrônica 62015.0100 Desenvolvimento de programas de computador sob 
+encomenda 
+01.08 Planejamento, confecção, manutenção e 
+atualização de páginas eletrônica 62015.0200 Web design 
+01.08 Planejamento, confecção, manutenção e 
+atualização de páginas eletrônica 631190000 Tratamento de dados, provedores de serviços de aplicação e 
+serviços de hospedagem na internet 
+01.08 Planejamento, confecção, manutenção e 
+atualização de páginas eletrônica 631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+01.09 
+Disponibilização sem cessão definitiva, de  
+conteúdo de áudio, vídeo, imagem e texto por 
+meio da internet, respeitada a imunidade de 
+livros, jornais e periódicos (exceto a distribuição 
+de conteúdos pelas prestadoras de Serviço de 
+Acesso c ondicionado, de que trata a Lei nº 
+12.485, de 12 de setembro de 2011, sujeita a 
+ICMS. 
+631940000 Portais, provedores de conteúdo e outros serviços de 
+informação na internet 
+02.01 Serviços de pesquisas e desenvolvimento de 
+qualquer natureza 712010000 Testes e análises técnicas 
+02.01 Serviços de pesquisas e desenvolvimento de 
+qualquer natureza 721000000 Pesquisa e desenvolvimento experimental em ciências físicas 
+e naturais 
+02.01 Serviços de pesquisas e desenvolvimento de 
+qualquer natureza 722070000 Pesquisa e desenvolvimento experimental em ciências sociais 
+e humanas 
+02.01 Serviços de pesquisas e desenvolvimento de 
+qualquer natureza 732030000 Pesquisas de mercado e de opinião publica 
+03.01 (VETADO) **** ***** 
+03.02 Cessão de direito de uso de marcas e de sinais de 
+propaganda 774030000 Gestão de ativos intangíveis não-financeiros 
+03.02 Cessão de direito de uso de marcas e de sinais de 
+propaganda 829970700 Salas de acesso a internet 
+03.02 Cessão de direito de uso de marcas e de sinais de 
+propaganda 829979900 Outras atividades de serviços prestados principalmente as 
+empresas não especificadas anteriormente 
+    
+03.03 
+Exploração de salões de festas, centro de 
+convenções, escritórios virtuais, stands, quadra 
+esportivas, estádios, ginásios, auditórios, casas de 
+espetáculos, parques de diversões, canchas e 
+congêneres, para realização de eventos ou 
+negócios de Qualquer Natureza 
+823000100 Serviços de organização de feiras, congressos, exposições e 
+festas 
+03.03 
+Exploração de salões de festas, centro de 
+convenções, escritórios virtuais, stands, quadra 
+esportivas, estádios, ginásios, auditórios, casas de 
+espetáculos, parques de diversões, canchas e 
+congêneres, para realização de eventos ou 
+negócios de Qualquer Natureza 
+823000200 Casas de festas e eventos 
+03.03 
+Exploração de salões de festas, centro de 
+convenções, escritórios virtuais, stands, quadra 
+esportivas, estádios, ginásios, auditórios, casas de 
+espetáculos, parques de diversões, canchas e 
+congêneres, para realização de eventos ou 
+negócios de Qualquer Natureza 
+900350000 Gestão de espaços para artes cênicas, espetáculos e outras 
+atividades artísticas 
+03.04 
+Locação, sublocação, arrendamento, direito de 
+passagem ou permissão de uso, compartilhado ou 
+não, de ferrovia, rodovia, postes, cabos, dutos e 
+condutos de Qualquer Natureza 
+439910400 Serviços de operação e fornecimento de equipamentos para 
+transporte e elevação de cargas e pessoas para uso em obras 
+03.05 Cessão de andaimes, palcos, coberturas e outras 
+estruturas de uso temporário 773220200 Aluguel de andaimes 
+03.05 Cessão de andaimes, palcos, coberturas e outras 
+estruturas de uso temporário 773900300 Aluguel de palcos, coberturas e outras estruturas de uso 
+temporário, exceto andaimes 
+04.01 Medicina e biomedicina. 861010200 Atividades de atendimento em pronto-socorro e unidades 
+hospitalares para atendimento a urgências 
+04.01 Medicina e biomedicina. 863050100 Atividade medica ambulatorial com recursos para realização 
+de procedimentos cirúrgicos 
+04.01 Medicina e biomedicina. 863050200 Atividade medica ambulatorial com recursos para realização 
+de exames complementares 
+04.01 Medicina e biomedicina. 863050300 Atividade medica ambulatorial restrita a consultas 
+04.01 Medicina e biomedicina. 863059900 Atividades de atenção ambulatorial não especificadas 
+anteriormente 
+04.01 Medicina e biomedicina. 865000200 Atividades de profissionais da nutrição 
+04.01 Medicina e biomedicina. 865000300 Atividades de psicologia e psicanalise 
+04.01 Medicina e biomedicina. 86909.0100 Atividades de práticas integrativas e complementares em 
+saúde humana 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864021300 Serviços de litotripsia 
+04.02 
+Analises clinicas, patologia, el etricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864021200 Serviços de hemoterapia 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020700 Serviços de diagnóstico por imagem sem uso de radiação 
+ionizante, exceto ressonância magnética 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimiotera pia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020600 Serviços de ressonância magnética 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, r adiologia, tomografia e 
+congêneres. 
+864020900 Serviços de diagnostico por métodos óticos - endoscopia e 
+outros exames análogos 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, r adiologia, tomografia e 
+congêneres. 
+864020200 Laboratórios clínicos 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020100 Laboratórios de anatomia patológica e citológica 
+04.02 
+Analises clinicas, patologia, el etricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020300 Serviços de dialise e nefrologia 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864029900 Atividades de serviços de complementação diagnostica e 
+terapêutica não especificadas anteriormente 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020400 Serviços de tomografia 
+04.02 
+Analises clinicas, patologia, eletricidade me dica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864020500 Serviços de diagnóstico por imagem com uso de radiação 
+ionizante, exceto tomografia 
+04.02 
+Analises clinicas, patologia, eletricidade  medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864021000 Serviços de quimioterapia 
+04.02 
+Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+864021100 Serviços de radioterapia 
+04.02 Analises clinicas, patologia, eletricidade medica, 
+radioterapia, quimioterapia, ultrassonografia, 864020800 Serviços de diagnostico por registro gráfico - ecg, eeg e 
+outros exames análogos 
+ressonância magnética, radiologia, tomografia e 
+congêneres. 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+863050600 Serviços de vacinação e imunização humana 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+864020100 Laboratórios de anatomia patológica e citológica 
+04.03 
+Hospitais, clinicas, laboratórios, sanatório s, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+864020200 Laboratórios clínicos 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+864020300 Serviços de dialise e nefrologia 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+87115.0500 Condomínios residenciais para idosos 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+87115.0100 Clinicas e residências geriátricas 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+869099900 Outras atividades de atenção a saúde humana não 
+especificadas anteriormente 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+863050100 Atividade medica ambulatorial com recursos para realização 
+de procedimentos cirúrgicos 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+861010100 Atividades de atendimento hospitalar, exceto pronto-socorro 
+e unidades para atendimento a urgências 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+861010200 Atividades de atendimento em pronto-socorro e unidades 
+hospitalares para atendimento a urgências 
+04.03 
+Hospitais, clinicas, laboratórios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+863050200 Atividade medica ambulatorial com recursos para realização 
+de exames complementares 
+04.03 
+Hospitais, clinicas, laboratór ios, sanatórios, 
+manicômios, casas de saúde, prontos -socorros, 
+ambulatórios e congêneres. 
+863059900 Atividades de atenção ambulatorial não especificadas 
+anteriormente 
+04.04 Instrumentação cirúrgica 865009900 Atividades de profissionais da área de saúde não 
+especificadas anteriormente 
+04.05 Acupuntura 86909.0100 Atividades de práticas integrativas e complementares em 
+saúde humana 
+04.06 Enfermagem, inclusive serviços auxiliares 865000100 Atividades de enfermagem 
+04.07 Serviços farmacêuticos. 47717.0200 Comercio varejista de produtos farmacêuticos, com 
+manipulação de formulas 
+04.07 Serviços farmacêuticos. 865009900 Atividades de profissionais da área de saúde não 
+especificadas anteriormente 
+04.07 Serviços farmacêuticos. 477170300 Comercio varejista de produtos farmacêuticos homeopáticos 
+04.08 Terapia ocupacional, fisioterapia e 
+fonoaudiologia 865000400 Atividades de fisioterapia 
+04.08 Terapia ocupacional, fisioterapia e 
+fonoaudiologia 865000500 Atividades de terapia ocupacional 
+04.08 Terapia ocupacional , fisioterapia e 
+fonoaudiologia 865000600 Atividades de fonoaudiologia 
+04.08 Terapia ocupacional, fisioterapia e 
+fonoaudiologia 863050300 Atividade medica ambulatorial restrita a consultas 
+04.08 Terapia ocupacional, fisioterapia e 
+fonoaudiologia 865009900 Atividades de profissionais da área de saúde não 
+especificadas anteriormente 
+04.09 Terapias de qualquer espécie destinadas ao 
+tratamento físico, orgânico e mental 87115.0400 Centros de apoio a pacientes com câncer e com aids 
+04.09 Terapias de qualquer espécie destinadas ao 
+tratamento físico, orgânico e mental 865000700 Atividades de terapia de nutrição enteral e parenteral 
+04.09 Terapias de qualquer espécie destinadas ao 
+tratamento físico, orgânico e mental 87115.0300 Atividades de assistência a deficientes físicos, 
+imunodeprimidos e convalescentes 
+04.09 Terapias de qualquer espécie destinadas ao 
+tratamento físico, orgânico e mental 869099900 Outras atividades de atenção à saúde humana não 
+especificadas anteriormente 
+04.10 Nutrição. 863050302 Nutricionista autônomo estabelecido 
+04.10 Nutrição. 865000200 Atividades de profissionais da nutrição 
+04.11 Obstetrícia 863050100 Atividade medica ambulatorial com recursos para realização 
+de procedimentos cirúrgicos 
+04.12 Odontologia 863050400 Atividade odontológica com recursos para realização de 
+procedimentos cirúrgicos 
+04.12 Odontologia 863050500 Atividade odontológica sem recursos para realização de 
+procedimentos cirúrgicos 
+04.12 Odontologia 960929900 Outras atividades de serviços pessoais não especificadas 
+anteriormente 
+04.12 Odontologia 325070600 Serviços de prótese dentaria 
+04.13 Ortoptica 865009900 Atividades de profissionais da área de saúde não  
+especificadas anteriormente 
+04.14 Próteses sob encomenda 325070600 Serviços de prótese dentaria 
+04.14 Próteses sob encomenda 325070900 Serviço de laboratório óptico 
+04.14 Próteses sob encomenda 863050400 Atividade odontológica com recursos para realização de 
+procedimentos cirúrgicos 
+04.15 Psicanálise 865000300 Atividades de psicologia e psicanalise 
+04.15 Psicanálise 865000320 Atividades de psicanalise 
+04.16 Psicologia 865000300 Atividades de psicologia e psicanalise 
+04.16 Psicologia 865000310 Atividades de psicologia 
+04.16 Psicologia 872040100 Atividades de centros de assistência psicossocial 
+04.16 Psicologia 864029900 Atividades de serviços de complementação diagnostica e 
+terapêutica não especificadas anteriormente 
+04.17 Casas de repousos e recuperação, creches, asilos 
+e congêneres. 87115.0200 Instituições de longa permanência para idosos 
+04.17 Casas de repousos e recuperação, creches, asilos 
+e congêneres. 87115.0500 Condomínios residenciais para idosos 
+04.17 Casas de repousos e recuperação, creches, asilos 
+e congêneres. 873010100 Orfanatos 
+04.17 Casas de repousos e recuperação, creches, asilos 
+e congêneres. 873010200 Albergues assistenciais 
+04.17 Casas de repousos e recuperação, creches, asilos 
+e congêneres. 873019900 Atividades de assistência social prestadas em residências 
+coletivas e particulares não especificadas anteriormente 
+04.18 Inseminação artificial, fertilização in vitro e 
+congêneres 16280100 Serviço de inseminação artificial em animais 
+04.18 Inseminação artificial, fertilização in vitro e 
+congêneres 863050700 Atividades de reprodução humana assistida 
+04.19 Bancos de sangue, leite, pele, olhos, óvulos, 
+sêmen e congêneres. 864021400 Serviços de bancos de células e tecidos humanos 
+04.19 Bancos de sangue, leite, pele, olhos, óvulos, 
+sêmen e congêneres. 86909.0200 Atividades de bancos de leite humano 
+04.20 Coleta de sangue, leite, tecidos, sêmen, órgãos e 
+materiais biológicos de qualquer espécie 864020200 Laboratórios clínicos 
+04.20 Coleta de sangue, leite, tecidos, sêmen, órgãos e 
+materiais biológicos de qualquer espécie 864021200 Serviços de hemoterapia 
+04.21 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 871230000 Atividades de fornecimento de infraestrutura de apoio e 
+assistência a paciente no domicilio 
+04.21 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 86216.0100 Uti móvel 
+04.21 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 86216.0200 Serviços moveis de atendimento a urgências, exceto por uti 
+móvel 
+04.21 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 862240000 Serviços de remoção de pacientes, exceto os serviços moveis 
+de atendimento a urgências 
+04.22 
+Planos de medicina de grupo ou individual e 
+convênios para prestação de assistência medica, 
+hospitalar, odontológica e congêneres. 
+655020000 Planos de saúde 
+04.23 
+Outros planos de saúde que s e cumpram através 
+de serviços de terceiros contratados, 
+credenciados, cooperados ou apenas pagos pelo 
+operador do plano mediante indicação do 
+beneficiário. 
+652010000 Seguros-saúde 
+04.23 
+Outros planos de saúde que se cumpram através 
+de serviços de terceiro s contratados, 
+credenciados, cooperados ou apenas pagos pelo 
+operador do plano mediante indicação do 
+beneficiário. 
+655020000 Planos de saúde 
+05.01 Medicina veterinária e zootecnia 750010000 Atividades veterinárias 
+05.02 Hospitais, clinicas, ambulatórios,  prontos-
+socorros e congêneres, na área veterinária 750010000 Atividades veterinárias 
+05.03 Laboratórios de análises na área veterinária 750010000 Atividades veterinárias 
+05.04 Inseminação artificial, fertilização in  vitro e 
+congêneres. 16280100 Serviço de inseminação artificial em animais 
+05.05 Bancos de sangue e de órgãos e congêneres. 750010000 Atividades veterinárias 
+05.06 Coleta de sangue, leite, tecidos, sêmen órgãos e 
+materiais biológicos de qualquer espécie. 750010000 Atividades veterinárias 
+05.07 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 750010000 Atividades veterinárias 
+05.07 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 86216.0100 Uti móvel 
+05.07 Unidade de atendimento, assistência ou 
+tratamento móvel e congêneres 86216.0200 Serviços moveis de atendimento a urgências, exceto por uti 
+móvel 
+05.08 Guarda, tratamento, amestramento, 
+embelezamento, alojamento e congêneres. 960920700 Alojamento de animais domésticos 
+05.08 Guarda, tratamento, amest ramento, 
+embelezamento, alojamento e congêneres. 016280200 Serviço de tosquiamento de ovinos 
+05.08 Guarda, tratamento, amestramento, 
+embelezamento, alojamento e congêneres. 016280300 Serviço de manejo de animais 
+05.08 Guarda, tratamento, amestramento, 
+embelezamento, alojamento e congêneres. 801110200 Serviços de adestramento de cães de guarda 
+05.08 Guarda, tratamento, amestramento, 
+embelezamento, alojamento e congêneres. 960920300 Alojamento, higiene e embelezamento de animais 
+05.08 Guarda, tratamento, amestramento, 
+embelezamento, alojamento e congêneres. 960920800 Higiene e embelezamento de animais domésticos 
+05.09 Planos de atendimento e assistência médico -
+veterinária. 655020000 Planos de saúde 
+05.09 Planos de atendimento e assistência médico -
+veterinária. 750010000 Atividades veterinárias 
+06.01 Barbearia, cabeleireiros, manicuros, pedicuros e 
+congêneres. 869090400 Atividades de podologia 
+06.01 Barbearia, cabeleireiros, manicuros, pedicuros e 
+congêneres. 960250100 Cabeleireiros, manicure e pedicure 
+06.01 Barbearia, cabeleireiros, manicuros, pedicuros e 
+congêneres. 960250200 Atividades de estética e outros serviços de cuidados com a 
+beleza 
+06.01 Barbearia, cabeleireiros, manicuros, pedicuros e 
+congêneres. 960920600 Serviços de tatuagem e colocação de piercing 
+06.02 Esteticistas, tratamento de pele, depilação e 
+congêneres. 869090400 Atividades de podologia 
+06.02 Esteticistas, tratamento de pele, depilação e 
+congêneres. 960920100 Clinicas de estética e similares 
+06.02 Esteticistas, tratamento de pele , depilação e 
+congêneres. 960250200 Atividades de estética e outros serviços de cuidados com a 
+beleza 
+06.03 Banhos, duchas, sauna, massagens e congêneres. 960920400 Exploração de maquinas de serviços pessoais acionadas por 
+moeda 
+06.03 Banhos, duchas, sauna, massagens e congêneres. 960929900 Outras atividades de serviços pessoais não especificadas 
+anteriormente 
+06.03 Banhos, duchas, sauna, massagens e congêneres. 960920500 Atividades de sauna e banhos 
+06.04 Ginastica, dança, esportes, natação, artes marciais 
+e demais atividades físicas. 859290100 Ensino de dança 
+06.04 Ginastica, dança, esportes, natação, artes marciais 
+e demais atividades físicas. 931310000 Atividades de condicionamento físico 
+06.04 Ginastica, dança, esportes, natação, artes marciais 
+e demais atividades físicas. 931919900 Outras atividades esportivas não especificadas anteriormente 
+06.04 Ginastica, dança, esportes, natação, artes marciais 
+e demais atividades físicas. 859110000 Ensino de esportes 
+06.05 Centros de emagrecimento, spar e congêneres. 960250200 Atividades de estética e outros serviços de cuidados com a 
+beleza 
+06.05 Centros de emagrecimento, spar e congêneres. 960920500 Atividades de sauna e banhos 
+06.05 Centros de emagrecimento, spar e congêneres. 960920100 Clinicas de estética e similares 
+06.06 Aplicação de tatuagens, piercings e congêneres. 960920600 Serviços de tatuagem e colocação de piercing 
+07.01 Engenharia, agronomia, agrimensura, arquitetura, 
+geologia, urbanismo, paisagem e congêneres. 711970100 Serviços de cartografia, topografia e geodesia 
+07.01 Engenharia, agronomia, agrimensura, arquitetura, 
+geologia, urbanismo, paisagem e congêneres. 749010300 Serviços de agronomia e de consultoria as atividades 
+agrícolas e pecuárias 
+07.01 Engenharia, agronomia, agrimensura, arquitetura, 
+geologia, urbanismo, paisagem e congêneres. 711970200 Atividades de estudos geológicos 
+07.01 Engenharia, agronomia, agrimensura, arquitetura, 
+geologia, urbanismo, paisagem e congêner

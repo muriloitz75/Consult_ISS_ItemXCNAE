@@ -4,7 +4,9 @@
   "description": "Sistema de Consulta Fiscal - CNAE e LIST LC",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "dados:normalize": "python tools/normalize_textual_consistency.py",
+    "dados:sync": "python tools/sync_norma_to_dados.py"
   },
   "keywords": [
     "iss",

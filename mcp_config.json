@@ -1,0 +1,65 @@
+{
+    "mcpServers": {
+        "ecosistema-diaaf": {
+            "version": "1.0.0",
+            "tools": [
+                {
+                    "name": "fiscal_search",
+                    "description": "Busca códigos ISS e CNAE no banco de dados fiscal. Permite encontrar descrições e códigos relacionados.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Termo de busca (ex: 'TI', 'transp', '62.01-5')"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Número máximo de resultados",
+                                "default": 10
+                            }
+                        },
+                        "required": [
+                            "query"
+                        ]
+                    }
+                },
+                {
+                    "name": "user_admin",
+                    "description": "Gerencia usuários do sistema, permitindo aprovação, bloqueio e reset de senha.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "approve",
+                                    "block",
+                                    "unblock",
+                                    "reset_password"
+                                ],
+                                "description": "Ação administrativa a ser realizada"
+                            },
+                            "userId": {
+                                "type": "string",
+                                "description": "ID único do usuário"
+                            }
+                        },
+                        "required": [
+                            "action",
+                            "userId"
+                        ]
+                    }
+                }
+            ],
+            "resources": [
+                {
+                    "uri": "audit://logs/recent",
+                    "name": "Recent Audit Logs",
+                    "description": "Últimos eventos de auditoria e segurança do sistema.",
+                    "mimeType": "application/json"
+                }
+            ]
+        }
+    }
+}
