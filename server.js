@@ -303,12 +303,35 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// Middleware de Verificação de Banco de Dados
+const requireDB = (req, res, next) => {
+    if (!db) {
+        return res.status(503).json({
+            error: "Banco de dados temporariamente indisponível. Verifique se o banco no Railway não está em modo 'sleeping'.",
+            status: "offline"
+        });
+    }
+    next();
+};
+
+// Health Check Endpoint
+app.get('/api/health', async (req, res) => {
+    try {
+        if (!db) throw new Error("Database not initialized");
+        await db.query('SELECT 1');
+        res.json({ status: "ok", database: "connected", engine: db.isPg ? "PostgreSQL" : "SQLite" });
+    } catch (err) {
+        res.status(503).json({ status: "error", database: "disconnected", message: err.message });
+    }
+});
+
 /* --- Rotas de Autenticação (Agnósticas - Sem ORM) --- */
 
 // Registro de Usuário
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', requireDB, async (req, res) => {
     try {
         const { username, password, name, email } = req.body;
+        // ... resta da rota
 
         if (!username || !password || !name) {
             return res.status(400).json({ error: "Todos os campos obrigatórios precisam ser preenchidos" });
@@ -346,7 +369,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', requireDB, async (req, res) => {
     try {
         const { username, password } = req.body;
 
@@ -454,7 +477,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Recuperação de Senha (Esqueci minha Senha)
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', requireDB, async (req, res) => {
     try {
         const { username } = req.body;
         if (!username) return res.status(400).json({ error: "Nome de usuário é obrigatório." });
@@ -480,7 +503,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Atualizar o perfil do próprio usuário (Exige Token JWT válido)
-app.put('/api/auth/profile', authenticateToken, async (req, res) => {
+app.put('/api/auth/profile', authenticateToken, requireDB, async (req, res) => {
     try {
         const userId = req.user.id;
         const { name, email, username, currentPassword, newPassword } = req.body;
@@ -578,7 +601,7 @@ const requireAdmin = (req, res, next) => {
 // ================= ROTAS DE ADMINISTRAÇÃO =================
 
 // 1. Listar todos os usuários (Apenas Admin)
-app.get('/api/auth/users', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/auth/users', authenticateToken, requireAdmin, requireDB, async (req, res) => {
     try {
         const users = await db.query('SELECT id, username, name, email, role, "isAuthorized", "isBlockedByAdmin", "accountLocked", "createdAt" FROM "User"');
         res.json(users);
@@ -707,7 +730,7 @@ app.get('/api/admin/audit-detailed', authenticateToken, requireAdmin, async (req
 // ================= ROTAS DE BANNERS =================
 
 // Listar banners com status — com token opcional para personalização por usuário
-app.get('/api/banners', async (req, res) => {
+app.get('/api/banners', requireDB, async (req, res) => {
     try {
         const globalBanners = await db.query('SELECT id, key, label, enabled, "orderIndex", "isFrozen", "freezeReason" FROM "BannerConfig" ORDER BY "orderIndex" ASC, id ASC');
         const normalized = globalBanners.map(b => ({
