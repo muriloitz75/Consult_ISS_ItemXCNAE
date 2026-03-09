@@ -26,331 +26,253 @@ const connectDB = async () => {
     console.log(`[DB] PGHOST presente: ${!!process.env.PGHOST}`);
     console.log(`[DB] Connection via: ${dbUrl ? 'PostgreSQL' : 'SQLite (fallback)'}`);
 
-    if (dbUrl) {
-        console.log("Conectando ao PostgreSQL...");
-        const { Pool } = require('pg');
-        const pool = new Pool({
-            connectionString: dbUrl,
-            ssl: { rejectUnauthorized: false }
+    const maxRetries = 5;
+    let retries = 0;
+
+    // Diagnóstico de DNS para o hostname do banco
+    const dns = require('dns');
+    const hostname = dbUrl ? new URL(dbUrl).hostname : null;
+    if (hostname) {
+        dns.lookup(hostname, (err, address, family) => {
+            if (err) console.error(`[DNS Diagnostic] Falha ao resolver ${hostname}:`, err.message);
+            else console.log(`[DNS Diagnostic] ${hostname} resolvido para ${address} (v${family})`);
         });
-
-        db = {
-            isPg: true,
-            query: async (text, params) => {
-                const { rows } = await pool.query(text, params);
-                return rows;
-            },
-            run: async (text, params) => {
-                const res = await pool.query(text, params);
-                return { lastID: res.insertId, changes: res.rowCount };
-            }
-        };
-
-        // Criar tabelas se PostgreSQL
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS "User" (
-                id TEXT PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT DEFAULT 'user',
-                name TEXT NOT NULL,
-                email TEXT,
-                "firstLogin" BOOLEAN DEFAULT true,
-                "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                "passwordHistory" JSONB DEFAULT '[]'::jsonb,
-                "accountLocked" BOOLEAN DEFAULT false,
-                "failedAttempts" INTEGER DEFAULT 0,
-                "isAuthorized" BOOLEAN DEFAULT false,
-                "isBlockedByAdmin" BOOLEAN DEFAULT false,
-                "lockUntil" TIMESTAMP,
-                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS "AuditLog" (
-                id TEXT PRIMARY KEY,
-                "userId" TEXT,
-                action TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                "ipAddress" TEXT,
-                "userAgent" TEXT,
-                success BOOLEAN DEFAULT true,
-                details JSONB
-            );
-
-            CREATE TABLE IF NOT EXISTS "BannerConfig" (
-                id TEXT PRIMARY KEY,
-                key TEXT UNIQUE NOT NULL,
-                label TEXT NOT NULL,
-                enabled BOOLEAN DEFAULT true,
-                "orderIndex" INTEGER DEFAULT 0,
-                "isFrozen" BOOLEAN DEFAULT false,
-                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS "UserBannerConfig" (
-                id TEXT PRIMARY KEY,
-                "userId" TEXT NOT NULL,
-                "bannerId" TEXT NOT NULL,
-                enabled BOOLEAN DEFAULT true,
-                "orderIndex" INTEGER DEFAULT 0,
-                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE("userId", "bannerId")
-            );
-        `);
-
-        // Migração: renomear colunas lowercase para camelCase (seguro re-executar)
-        const colMigrations = [
-            { table: 'User', from: 'firstlogin', to: 'firstLogin' },
-            { table: 'User', from: 'lastpasswordchange', to: 'lastPasswordChange' },
-            { table: 'User', from: 'passwordhistory', to: 'passwordHistory' },
-            { table: 'User', from: 'accountlocked', to: 'accountLocked' },
-            { table: 'User', from: 'failedattempts', to: 'failedAttempts' },
-            { table: 'User', from: 'isauthorized', to: 'isAuthorized' },
-            { table: 'User', from: 'isblockedbyadmin', to: 'isBlockedByAdmin' },
-            { table: 'User', from: 'lockuntil', to: 'lockUntil' },
-            { table: 'User', from: 'createdat', to: 'createdAt' },
-            { table: 'User', from: 'updatedat', to: 'updatedAt' },
-            { table: 'AuditLog', from: 'ipaddress', to: 'ipAddress' },
-            { table: 'AuditLog', from: 'useragent', to: 'userAgent' },
-        ];
-        for (const m of colMigrations) {
-            try {
-                await pool.query(`ALTER TABLE "${m.table}" RENAME COLUMN ${m.from} TO "${m.to}"`);
-                console.log(`[Migration] Coluna renomeada: ${m.table}.${m.from} → ${m.to}`);
-            } catch (e) {
-                // Ignora silenciosamente — coluna já tem nome correto ou não existe
-            }
-        }
-
-        // Migration para bancos já existentes
-        const migrations = [
-            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
-            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "isFrozen" BOOLEAN DEFAULT false`,
-            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "freezeReason" TEXT DEFAULT 'maintenance'`,
-            `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lockUntil" TIMESTAMP`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firstLogin" BOOLEAN DEFAULT true`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordHistory" JSONB DEFAULT '[]'::jsonb`,
-            `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isBlockedByAdmin" BOOLEAN DEFAULT false`,
-        ];
-        for (const mig of migrations) {
-            try { await pool.query(mig); } catch (e) { console.log("Migration info:", e.message); }
-        }
-
-        // Seed dos banners padrão (PostgreSQL)
-        const defaultBanners = [
-            { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
-            { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
-            { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
-            { id: 'processos', key: 'processos', label: 'Análise de Processos' },
-            { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
-            { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
-            { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
-            { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
-            { id: 'receita', key: 'receita', label: 'Arrecadação' },
-            { id: 'entes', key: 'entes', label: 'Entes Federados' },
-            { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
-            { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
-            { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
-            { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
-            { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
-            { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
-            { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
-            { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
-            { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
-            { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
-            { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
-            { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
-            { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
-            { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
-            { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
-        ];
-        for (let i = 0; i < defaultBanners.length; i++) {
-            const b = defaultBanners[i];
-            await pool.query(
-                `INSERT INTO "BannerConfig" (id, key, label, enabled, "orderIndex") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO NOTHING`,
-                [b.id, b.key, b.label, true, i]
-            );
-        }
-    } else {
-        console.log("Nenhuma configuração de PostgreSQL encontrada (DATABASE_URL ou PGHOST). Usando SQLite Local...");
-        const sqlite3 = require('sqlite3').verbose();
-        const dbPath = process.env.SQLITE_PATH || './dev.sqlite3';
-        const sqldb = new sqlite3.Database(dbPath);
-
-        db = {
-            isPg: false,
-            query: (text, params) => new Promise((resolve, reject) => {
-                const formattedText = text.replace(/\$\d+/g, '?');
-                sqldb.all(formattedText, params, (err, rows) => {
-                    if (err) {
-                        console.error("SQL_QUERY_ERR", text, err);
-                        reject(err);
-                    } else resolve(rows);
-                });
-            }),
-            run: (text, params) => new Promise((resolve, reject) => {
-                const formattedText = text.replace(/\$\d+/g, '?');
-                sqldb.run(formattedText, params, function (err) {
-                    if (err) {
-                        console.error("SQL_RUN_ERR", text, err);
-                        reject(err);
-                    } else resolve({ lastID: this.lastID, changes: this.changes });
-                });
-            })
-        };
-
-        // Criar tabelas se SQLite
-        await db.run(`
-            CREATE TABLE IF NOT EXISTS User (
-                id TEXT PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT DEFAULT 'user',
-                name TEXT NOT NULL,
-                email TEXT,
-                firstLogin INTEGER DEFAULT 1,
-                lastPasswordChange TEXT DEFAULT CURRENT_TIMESTAMP,
-                passwordHistory TEXT DEFAULT '[]',
-                accountLocked INTEGER DEFAULT 0,
-                failedAttempts INTEGER DEFAULT 0,
-                isAuthorized INTEGER DEFAULT 0,
-                isBlockedByAdmin INTEGER DEFAULT 0,
-                lockUntil TEXT,
-                createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-                updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        await db.run(`
-            CREATE TABLE IF NOT EXISTS AuditLog (
-                id TEXT PRIMARY KEY,
-                userId TEXT,
-                action TEXT NOT NULL,
-                timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                ipAddress TEXT,
-                userAgent TEXT,
-                success INTEGER DEFAULT 1,
-                details TEXT
-            );
-        `);
-
-        await db.run(`
-            CREATE TABLE IF NOT EXISTS BannerConfig (
-                id TEXT PRIMARY KEY,
-                key TEXT UNIQUE NOT NULL,
-                label TEXT NOT NULL,
-                enabled INTEGER DEFAULT 1,
-                orderIndex INTEGER DEFAULT 0,
-                isFrozen INTEGER DEFAULT 0,
-                updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        await db.run(`
-            CREATE TABLE IF NOT EXISTS UserBannerConfig (
-                id TEXT PRIMARY KEY,
-                userId TEXT NOT NULL,
-                bannerId TEXT NOT NULL,
-                enabled INTEGER DEFAULT 1,
-                orderIndex INTEGER DEFAULT 0,
-                updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(userId, bannerId)
-            );
-        `);
-
-        try {
-            const columns = await db.query("PRAGMA table_info(BannerConfig)");
-            const hasOrderIndex = columns.some(col => col.name === 'orderIndex');
-            if (!hasOrderIndex) {
-                await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
-            }
-            const hasIsFrozen = columns.some(col => col.name === 'isFrozen');
-            if (!hasIsFrozen) {
-                await db.run(`ALTER TABLE BannerConfig ADD COLUMN isFrozen INTEGER DEFAULT 0;`);
-            }
-            const hasFreezeReason = columns.some(col => col.name === 'freezeReason');
-            if (!hasFreezeReason) {
-                await db.run(`ALTER TABLE BannerConfig ADD COLUMN freezeReason TEXT DEFAULT 'maintenance';`);
-            }
-            const hasUpdatedAt = columns.some(col => col.name === 'updatedAt');
-            if (!hasUpdatedAt) {
-                await db.run(`ALTER TABLE BannerConfig ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP;`);
-            }
-        } catch (e) {
-            // Se já existir a coluna (ou dependendo da versão SQLite), pode dar erro ignorável na migração
-        }
-
-        // Seed dos banners padrão (SQLite)
-        const defaultBanners = [
-            { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
-            { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
-            { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
-            { id: 'processos', key: 'processos', label: 'Análise de Processos' },
-            { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
-            { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
-            { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
-            { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
-            { id: 'receita', key: 'receita', label: 'Arrecadação' },
-            { id: 'entes', key: 'entes', label: 'Entes Federados' },
-            { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
-            { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
-            { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
-            { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
-            { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
-            { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
-            { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
-            { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
-            { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
-            { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
-            { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
-            { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
-            { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
-            { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
-            { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
-        ];
-        for (let i = 0; i < defaultBanners.length; i++) {
-            const b = defaultBanners[i];
-            await db.run(
-                `INSERT OR IGNORE INTO BannerConfig (id, key, label, enabled, orderIndex) VALUES ($1, $2, $3, $4, $5)`,
-                [b.id, b.key, b.label, 1, i]
-            );
-        }
     }
+
+    const tryConnect = async () => {
+        if (dbUrl) {
+            console.log(`Conectando ao PostgreSQL... (Tentativa ${retries + 1}/${maxRetries})`);
+            const { Pool } = require('pg');
+            const pool = new Pool({
+                connectionString: dbUrl,
+                ssl: { rejectUnauthorized: false },
+                connectionTimeoutMillis: 10000,
+                idleTimeoutMillis: 30000,
+                max: 20
+            });
+
+            try {
+                await pool.query('SELECT 1');
+                console.log("[DB] Conexão com PostgreSQL estabelecida com sucesso.");
+
+                db = {
+                    isPg: true,
+                    query: async (text, params) => {
+                        const { rows } = await pool.query(text, params);
+                        return rows;
+                    },
+                    run: async (text, params) => {
+                        const res = await pool.query(text, params);
+                        return { lastID: res.insertId, changes: res.rowCount };
+                    },
+                    pool
+                };
+
+                // Tabelas PostgreSQL
+                await pool.query(`
+                    CREATE TABLE IF NOT EXISTS "User" (
+                        id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
+                        role TEXT DEFAULT 'user', name TEXT NOT NULL, email TEXT,
+                        "firstLogin" BOOLEAN DEFAULT true, "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        "passwordHistory" JSONB DEFAULT '[]'::jsonb, "accountLocked" BOOLEAN DEFAULT false,
+                        "failedAttempts" INTEGER DEFAULT 0, "isAuthorized" BOOLEAN DEFAULT false,
+                        "isBlockedByAdmin" BOOLEAN DEFAULT false, "lockUntil" TIMESTAMP,
+                        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS "AuditLog" (
+                        id TEXT PRIMARY KEY, "userId" TEXT, action TEXT NOT NULL,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "ipAddress" TEXT,
+                        "userAgent" TEXT, success BOOLEAN DEFAULT true, details JSONB
+                    );
+                    CREATE TABLE IF NOT EXISTS "BannerConfig" (
+                        id TEXT PRIMARY KEY, key TEXT UNIQUE NOT NULL, label TEXT NOT NULL,
+                        enabled BOOLEAN DEFAULT true, "orderIndex" INTEGER DEFAULT 0,
+                        "isFrozen" BOOLEAN DEFAULT false, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS "UserBannerConfig" (
+                        id TEXT PRIMARY KEY, "userId" TEXT NOT NULL, "bannerId" TEXT NOT NULL,
+                        enabled BOOLEAN DEFAULT true, "orderIndex" INTEGER DEFAULT 0,
+                        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE("userId", "bannerId")
+                    );
+                `);
+
+                const colMigrations = [
+                    { table: 'User', from: 'firstlogin', to: 'firstLogin' },
+                    { table: 'User', from: 'lastpasswordchange', to: 'lastPasswordChange' },
+                    { table: 'User', from: 'passwordhistory', to: 'passwordHistory' },
+                    { table: 'User', from: 'accountlocked', to: 'accountLocked' },
+                    { table: 'User', from: 'failedattempts', to: 'failedAttempts' },
+                    { table: 'User', from: 'isauthorized', to: 'isAuthorized' },
+                    { table: 'User', from: 'isblockedbyadmin', to: 'isBlockedByAdmin' },
+                    { table: 'User', from: 'lockuntil', to: 'lockUntil' },
+                    { table: 'User', from: 'createdat', to: 'createdAt' },
+                    { table: 'User', from: 'updatedat', to: 'updatedAt' },
+                    { table: 'AuditLog', from: 'ipaddress', to: 'ipAddress' },
+                    { table: 'AuditLog', from: 'useragent', to: 'userAgent' },
+                ];
+                for (const m of colMigrations) {
+                    try {
+                        await pool.query(`ALTER TABLE "${m.table}" RENAME COLUMN ${m.from} TO "${m.to}"`);
+                    } catch (e) { }
+                }
+
+                const migrations = [
+                    `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "orderIndex" INTEGER DEFAULT 0`,
+                    `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "isFrozen" BOOLEAN DEFAULT false`,
+                    `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "freezeReason" TEXT DEFAULT 'maintenance'`,
+                    `ALTER TABLE "BannerConfig" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountLocked" BOOLEAN DEFAULT false`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER DEFAULT 0`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lockUntil" TIMESTAMP`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firstLogin" BOOLEAN DEFAULT true`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastPasswordChange" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordHistory" JSONB DEFAULT '[]'::jsonb`,
+                    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isBlockedByAdmin" BOOLEAN DEFAULT false`,
+                ];
+                for (const mig of migrations) {
+                    try { await pool.query(mig); } catch (e) { }
+                }
+
+                const defaultBanners = [
+                    { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+                    { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+                    { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+                    { id: 'processos', key: 'processos', label: 'Análise de Processos' },
+                    { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+                    { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+                    { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
+                    { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+                    { id: 'receita', key: 'receita', label: 'Arrecadação' },
+                    { id: 'entes', key: 'entes', label: 'Entes Federados' },
+                    { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+                    { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+                    { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
+                    { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
+                    { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
+                    { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
+                    { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
+                    { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
+                    { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
+                    { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
+                    { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
+                    { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
+                    { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
+                    { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
+                    { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
+                ];
+                for (let i = 0; i < defaultBanners.length; i++) {
+                    const b = defaultBanners[i];
+                    await pool.query(
+                        `INSERT INTO "BannerConfig" (id, key, label, enabled, "orderIndex") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO NOTHING`,
+                        [b.id, b.key, b.label, true, i]
+                    );
+                }
+
+                return true;
+
+            } catch (err) {
+                console.error(`[DB] Erro ao conectar (Tentativa ${retries + 1}):`, err.message);
+                retries++;
+                if (retries < maxRetries) {
+                    const delay = Math.pow(2, retries) * 1000;
+                    console.log(`[DB] Tentando novamente em ${delay / 1000}s...`);
+                    await new Promise(res => setTimeout(res, delay));
+                    return tryConnect();
+                } else {
+                    console.error("[DB] Máximo de tentativas atingido.");
+                    throw err;
+                }
+            }
+        } else {
+            console.log("Usando SQLite Local...");
+            const sqlite3 = require('sqlite3').verbose();
+            const dbPath = process.env.SQLITE_PATH || './dev.sqlite3';
+            const sqldb = new sqlite3.Database(dbPath);
+
+            db = {
+                isPg: false,
+                query: (text, params) => new Promise((resolve, reject) => {
+                    const formattedText = text.replace(/\$\d+/g, '?');
+                    sqldb.all(formattedText, params, (err, rows) => {
+                        if (err) reject(err); else resolve(rows);
+                    });
+                }),
+                run: (text, params) => new Promise((resolve, reject) => {
+                    const formattedText = text.replace(/\$\d+/g, '?');
+                    sqldb.run(formattedText, params, function (err) {
+                        if (err) reject(err); else resolve({ lastID: this.lastID, changes: this.changes });
+                    });
+                })
+            };
+
+            await db.run(`CREATE TABLE IF NOT EXISTS User (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT DEFAULT 'user', name TEXT NOT NULL, email TEXT, firstLogin INTEGER DEFAULT 1, lastPasswordChange TEXT DEFAULT CURRENT_TIMESTAMP, passwordHistory TEXT DEFAULT '[]', accountLocked INTEGER DEFAULT 0, failedAttempts INTEGER DEFAULT 0, isAuthorized INTEGER DEFAULT 0, isBlockedByAdmin INTEGER DEFAULT 0, lockUntil TEXT, createdAt TEXT DEFAULT CURRENT_TIMESTAMP, updatedAt TEXT DEFAULT CURRENT_TIMESTAMP);`);
+            await db.run(`CREATE TABLE IF NOT EXISTS AuditLog (id TEXT PRIMARY KEY, userId TEXT, action TEXT NOT NULL, timestamp TEXT DEFAULT CURRENT_TIMESTAMP, ipAddress TEXT, userAgent TEXT, success INTEGER DEFAULT 1, details TEXT);`);
+            await db.run(`CREATE TABLE IF NOT EXISTS BannerConfig (id TEXT PRIMARY KEY, key TEXT UNIQUE NOT NULL, label TEXT NOT NULL, enabled INTEGER DEFAULT 1, orderIndex INTEGER DEFAULT 0, isFrozen INTEGER DEFAULT 0, updatedAt TEXT DEFAULT CURRENT_TIMESTAMP);`);
+            await db.run(`CREATE TABLE IF NOT EXISTS UserBannerConfig (id TEXT PRIMARY KEY, userId TEXT NOT NULL, bannerId TEXT NOT NULL, enabled INTEGER DEFAULT 1, orderIndex INTEGER DEFAULT 0, updatedAt TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(userId, bannerId));`);
+
+            try {
+                const columns = await db.query("PRAGMA table_info(BannerConfig)");
+                if (!columns.some(col => col.name === 'orderIndex')) await db.run(`ALTER TABLE BannerConfig ADD COLUMN orderIndex INTEGER DEFAULT 0;`);
+                if (!columns.some(col => col.name === 'isFrozen')) await db.run(`ALTER TABLE BannerConfig ADD COLUMN isFrozen INTEGER DEFAULT 0;`);
+                if (!columns.some(col => col.name === 'freezeReason')) await db.run(`ALTER TABLE BannerConfig ADD COLUMN freezeReason TEXT DEFAULT 'maintenance';`);
+                if (!columns.some(col => col.name === 'updatedAt')) await db.run(`ALTER TABLE BannerConfig ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP;`);
+            } catch (e) { }
+
+            const defaultBanners = [
+                { id: 'iss-cnae', key: 'iss-cnae', label: 'Consulta ISS / CNAE' },
+                { id: 'pareceres', key: 'pareceres', label: 'Gerador de Pareceres' },
+                { id: 'incidencia', key: 'incidencia', label: 'Incidência do ISS' },
+                { id: 'processos', key: 'processos', label: 'Análise de Processos' },
+                { id: 'nfse-nacional', key: 'nfse-nacional', label: 'NFS-e Nacional' },
+                { id: 'diario-oficial', key: 'diario-oficial', label: 'Diário Oficial' },
+                { id: 'dte', key: 'dte', label: 'Prefeitura Moderna' },
+                { id: 'arrecadacao', key: 'arrecadacao', label: 'Transparência' },
+                { id: 'receita', key: 'receita', label: 'Arrecadação' },
+                { id: 'entes', key: 'entes', label: 'Entes Federados' },
+                { id: 'empresa-facil', key: 'empresa-facil', label: 'Empresa Fácil' },
+                { id: 'biblioteca', key: 'biblioteca', label: 'Biblioteca' },
+                { id: 'sistema-ponto', key: 'sistema-ponto', label: 'Sistema de Ponto' },
+                { id: 'justificativas-ponto', key: 'justificativas-ponto', label: 'Justificativas de Ponto' },
+                { id: 'contra-cheque', key: 'contra-cheque', label: 'Contra-cheque' },
+                { id: 'dte-portal', key: 'dte-portal', label: 'Terra Cloud (DTE)' },
+                { id: 'dte-meuiss', key: 'dte-meuiss', label: 'Meu ISS (DTE)' },
+                { id: 'dte-nfe', key: 'dte-nfe', label: 'NFS-e / Nota Fiscal (DTE)' },
+                { id: 'dte-iptu', key: 'dte-iptu', label: 'Protocolo (DTE)' },
+                { id: 'dte-meuiptu', key: 'dte-meuiptu', label: 'Meu IPTU (DTE)' },
+                { id: 'dte-login', key: 'dte-login', label: 'DTE - Domicílio Tributário' },
+                { id: 'dte-simples-fiscal', key: 'dte-simples-fiscal', label: 'Simples Fiscal (DTE)' },
+                { id: 'dte-helpdesk', key: 'dte-helpdesk', label: 'HelpDesk Tickets (DTE)' },
+                { id: 'consultas-iss-cnae', key: 'consultas-iss-cnae', label: 'Consulta ISS / CNAE (CF)' },
+                { id: 'consultas-nfse-nacional', key: 'consultas-nfse-nacional', label: 'Consulta NFS-e Nacional (CF)' }
+            ];
+            for (let i = 0; i < defaultBanners.length; i++) {
+                const b = defaultBanners[i];
+                await db.run(`INSERT OR IGNORE INTO BannerConfig (id, key, label, enabled, orderIndex) VALUES ($1, $2, $3, $4, $5)`, [b.id, b.key, b.label, 1, i]);
+            }
+        }
+    };
+
+    // Executar a conexão com retry
+    await tryConnect();
 
     const bcrypt = require('bcrypt');
     const adminCheck = await db.query('SELECT * FROM "User" WHERE username = $1', ['admin']);
     console.log(`[Diagnostic] Verificação do admin inicial: Encontrados ${adminCheck ? adminCheck.length : 0} usuários 'admin'.`);
     if (!adminCheck || adminCheck.length === 0) {
-        const adminId = uuidv4(); // Use UUID dinâmico para evitar colisão de PK se o admin antigo foi renomeado
+        const adminId = uuidv4();
         const hashedAdminPass = await bcrypt.hash('Admin@123', 10);
-
         try {
-            await db.run(
-                `INSERT INTO "User" (id, username, password, name, role, "isAuthorized", "isBlockedByAdmin", "accountLocked", "failedAttempts", "firstLogin")
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]
-            );
-            console.log("[Diagnostic] Usuário admin padrão criado com sucesso (Fallback). Login: admin / Senha: Admin@123");
+            await db.run(`INSERT INTO "User" (id, username, password, name, role, "isAuthorized", "isBlockedByAdmin", "accountLocked", "failedAttempts", "firstLogin") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, [adminId, 'admin', hashedAdminPass, 'Administrador do Sistema', 'admin', true, false, false, 0, false]);
+            console.log("[Diagnostic] Usuário admin padrão criado.");
         } catch (e) {
-            console.log("[Diagnostic] Aviso: Admin não pôde ser criado.", e.message);
+            console.log("[Diagnostic] Erro ao criar admin:", e.message);
         }
     }
 
-    // Garantir que TODOS os administradores (não apenas 'admin') estejam desbloqueados na inicialização para evitar lockouts de produção
     try {
-        await db.run(
-            `UPDATE "User" SET "isBlockedByAdmin" = $1, "accountLocked" = $2, "failedAttempts" = $3, "isAuthorized" = $4, "lockUntil" = NULL WHERE role = $5`,
-            [false, false, 0, true, 'admin']
-        );
-        console.log("Todos os administradores foram desbloqueados e autorizados na inicialização.");
-    } catch (e) {
-        console.log("Aviso ao tentar desbloquear admins:", e.message);
-    }
+        await db.run(`UPDATE "User" SET "isBlockedByAdmin" = $1, "accountLocked" = $2, "failedAttempts" = $3, "isAuthorized" = $4, "lockUntil" = NULL WHERE role = $5`, [false, false, 0, true, 'admin']);
+        console.log("Administradores desbloqueados na inicialização.");
+    } catch (e) { }
 };
 
 // Conectar ao Banco de Dados na inicialização
