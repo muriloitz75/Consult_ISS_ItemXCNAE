@@ -2728,7 +2728,9 @@ function App() {
     const [noResults, setNoResults] = useState(false);
 
     // Estado da Tela de Bloqueio por inatividade
-    const [isLockedOut, setIsLockedOut] = useState(false);
+    const [isLockedOut, setIsLockedOut] = useState(() => {
+        return localStorage.getItem('isLockedOut') === 'true';
+    });
     const [unlockPassword, setUnlockPassword] = useState('');
     const [unlockError, setUnlockError] = useState('');
     const [isUnlocking, setIsUnlocking] = useState(false);
@@ -2960,8 +2962,10 @@ function App() {
         setIsAuthenticated(false);
         setCurrentUser(null);
         setCurrentView('home');
+        setIsLockedOut(false);
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('isLockedOut');
     };
 
     const handleCredentialsChanged = (updatedUser) => {
@@ -2986,8 +2990,13 @@ function App() {
         // 300000 ms = 5 minutos
         inactivityTimeoutRef.current = setTimeout(() => {
             setIsLockedOut(true);
+            localStorage.setItem('isLockedOut', 'true');
         }, 300000);
     };
+
+    useEffect(() => {
+        localStorage.setItem('isLockedOut', isLockedOut);
+    }, [isLockedOut]);
 
     useEffect(() => {
         if (isAuthenticated && !isLockedOut) {
@@ -3014,6 +3023,7 @@ function App() {
             // Tenta fazer login novamente com a mesma conta
             await ApiService.login(currentUser.username, unlockPassword);
             setIsLockedOut(false);
+            localStorage.setItem('isLockedOut', 'false');
             setUnlockPassword('');
         } catch (error) {
             setUnlockError('Senha incorreta. Tente novamente.');
