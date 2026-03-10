@@ -1134,6 +1134,25 @@ app.get('/api/admin/audit/stats', authenticateToken, requireAdmin, async (req, r
     }
 });
 
+// Registrar evento de auditoria genérico (Front-end)
+app.post('/api/audit/log', authenticateToken, requireDB, async (req, res) => {
+    try {
+        const { action, details } = req.body;
+        if (!action) return res.status(400).json({ error: 'Ação é obrigatória' });
+
+        await db.run(
+            `INSERT INTO "AuditLog" (id, "userId", action, "ipAddress", "userAgent", details) 
+             VALUES ($1, $2, $3, $4, $5, $6${db.isPg ? '::jsonb' : ''})`,
+            [uuidv4(), req.user.id, action, req.ip || 'unknown', req.headers['user-agent'] || 'unknown', JSON.stringify(details || {})]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao registrar log de auditoria:', error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
 // ================= ROTAS DE CONSULTA FISCAL =================
 
 // Busca de itens ISS / CNAE (MCP Tool Support)

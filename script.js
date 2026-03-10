@@ -311,6 +311,13 @@ class ApiService {
         });
     }
 
+    static async logEvent(action, details) {
+        return this.request('/audit/log', {
+            method: 'POST',
+            body: JSON.stringify({ action, details })
+        });
+    }
+
     static getCurrentUser() {
         try {
             return JSON.parse(localStorage.getItem('currentUser'));
@@ -2941,8 +2948,11 @@ function App() {
 
     // Funções para estatísticas seguras (Apenas compatibilidade para evitar quebras em logs locais)
     const updateStatistics = (type, data = {}) => {
-        // Obsoleto: Dados agora são gerenciados puramente via Banco de Dados no server.js.
-        // Mantemos a função vazia apenas para não gerar 'undefined function error' no código legado.
+        if (type === 'bannerClick') {
+            ApiService.logEvent('banner_clicked', {
+                bannerLabel: data.bannerLabel
+            }).catch(e => console.error('Erro ao registrar clique:', e));
+        }
     };
     // Funções de autenticação
     const handleLogin = (user) => {
