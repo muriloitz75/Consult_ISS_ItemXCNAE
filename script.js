@@ -157,12 +157,21 @@ class ApiService {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
+                // Se for 503 (Banco dormindo) dispara evento global para acordar suavemente
+                if (response.status === 503 || (data.error && data.error.includes("sleeping"))) {
+                    window.dispatchEvent(new CustomEvent('railway-sleeping'));
+                }
                 throw new Error(data.error || 'Erro na requisição');
             }
 
             return data;
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
+            // Network Errors (TypeError: Failed to fetch) indicam que o próprio container web está off/sleeping
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                 window.dispatchEvent(new CustomEvent('railway-sleeping'));
+                 throw new Error('Servidor está despertando, por favor aguarde um instante e tente novamente.');
+            }
             throw error;
         }
     }
@@ -2795,6 +2804,65 @@ function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
+
+    // Estado do Soft Loading Global
+    const [isCheckingHealthGlobal, setIsCheckingHealthGlobal] = useState(false);
+    const [globalHealthMessage, setGlobalHealthMessage] = useState('Reconectando ao servidor...');
+    const [globalHealthProgress, setGlobalHealthProgress] = useState(0);
+
+    // Escutar eventos de servidor dormindo globalmente
+    useEffect(() => {
+        let globalIntervalId;
+        let globalProgressInterval;
+        let attempts = 0;
+
+        const handleRailwaySleeping = () => {
+            if (isCheckingHealthGlobal) return; // Ja esta carregando
+            
+            setIsCheckingHealthGlobal(true);
+            setGlobalHealthProgress(0);
+            attempts = 0;
+
+            globalProgressInterval = setInterval(() => {
+                setGlobalHealthProgress(prev => {
+                    if (prev >= 95) return prev;
+                    return prev + (Math.random() * 5); 
+                });
+            }, 500);
+
+            const checkHealth = async () => {
+                try {
+                    attempts++;
+                    const res = await fetch(`${API_BASE_URL}/health`);
+                    if (res.ok) {
+                        setGlobalHealthProgress(100);
+                        clearInterval(globalProgressInterval);
+                        clearInterval(globalIntervalId);
+                        setTimeout(() => {
+                            setIsCheckingHealthGlobal(false);
+                            // Opcional: recarregar os dados que falharam ou dar um refresh suave
+                        }, 500); 
+                    } else if (attempts > 1) {
+                        setGlobalHealthMessage('Sincronizando bancos de dados...');
+                    }
+                } catch (error) {
+                    if (attempts > 3) setGlobalHealthMessage('Sincronizando bancos de dados...');
+                    if (attempts > 6) setGlobalHealthMessage('Despertando ambiente Cloud...');
+                }
+            };
+
+            checkHealth();
+            globalIntervalId = setInterval(checkHealth, 3000);
+        };
+
+        window.addEventListener('railway-sleeping', handleRailwaySleeping);
+
+        return () => {
+            window.removeEventListener('railway-sleeping', handleRailwaySleeping);
+            clearInterval(globalIntervalId);
+            clearInterval(globalProgressInterval);
+        };
+    }, [isCheckingHealthGlobal]);
 
     // Estado da Tela de Bloqueio por inatividade
     const [isLockedOut, setIsLockedOut] = useState(() => {
