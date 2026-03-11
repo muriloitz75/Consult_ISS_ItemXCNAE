@@ -738,7 +738,52 @@ function LoginForm({ onLogin, darkMode }) {
     const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
     const [firstLoginUser, setFirstLoginUser] = useState(null);
 
+    // Estados do Soft Loading (Railway Wake up)
+    const [isCheckingHealth, setIsCheckingHealth] = useState(true);
+    const [healthMessage, setHealthMessage] = useState('Iniciando conexão segura...');
+    const [healthProgress, setHealthProgress] = useState(0);
+
     // Efeitos
+    useEffect(() => {
+        let intervalId;
+        let progressInterval;
+        let attempts = 0;
+        
+        progressInterval = setInterval(() => {
+            setHealthProgress(prev => {
+                if (prev >= 95) return prev;
+                return prev + (Math.random() * 5); 
+            });
+        }, 500);
+
+        const checkHealth = async () => {
+            try {
+                attempts++;
+                const res = await fetch(`${API_BASE_URL}/health`);
+                if (res.ok) {
+                    setHealthProgress(100);
+                    clearInterval(progressInterval);
+                    clearInterval(intervalId);
+                    // Pequeno delay para a barra encher totalmente antes de sumir
+                    setTimeout(() => setIsCheckingHealth(false), 500); 
+                } else if (attempts > 1) {
+                    setHealthMessage('Sincronizando bancos de dados...');
+                }
+            } catch (error) {
+                if (attempts > 3) setHealthMessage('Sincronizando bancos de dados...');
+                if (attempts > 6) setHealthMessage('Despertando ambiente Cloud...');
+            }
+        };
+
+        checkHealth(); // 1ª tentativa
+        intervalId = setInterval(checkHealth, 3000); // Polling a cada 3s
+
+        return () => {
+            clearInterval(intervalId);
+            clearInterval(progressInterval);
+        };
+    }, []);
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('resetAdmin') === '1' || params.get('resetAdmin') === 'sim') {
@@ -901,7 +946,24 @@ function LoginForm({ onLogin, darkMode }) {
                     </p>
                 </div>
 
-                {isForgotPassword ? (
+                {isCheckingHealth ? (
+                    <div className="py-8 flex flex-col items-center justify-center animate-fadeIn text-center space-y-8">
+                        <div className="relative w-24 h-24">
+                            <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
+                            <div className="absolute inset-0 border-4 border-t-blue-500 border-r-cyan-400 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <svg className="w-10 h-10 text-cyan-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
+                        </div>
+                        <div className="space-y-4 w-full px-2">
+                            <h3 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>{healthMessage}</h3>
+                            <div className={`w-full h-2.5 rounded-full overflow-hidden shadow-inner ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(56,189,248,0.5)]" style={{ width: `${Math.min(100, healthProgress)}%` }}></div>
+                            </div>
+                            <p className={`text-xs font-semibold uppercase tracking-wider animate-pulse ${darkMode ? 'text-blue-400/80' : 'text-blue-600/80'}`}>Estabelecendo túnel seguro...</p>
+                        </div>
+                    </div>
+                ) : isForgotPassword ? (
                     <form className="space-y-6 animate-fadeIn" onSubmit={handleForgotPasswordSubmit}>
                         <div className="space-y-2">
                             <label htmlFor="forgot-username" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
