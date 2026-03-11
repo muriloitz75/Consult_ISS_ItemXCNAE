@@ -3166,7 +3166,13 @@ function App() {
             localStorage.setItem('isLockedOut', 'false');
             setUnlockPassword('');
         } catch (error) {
-            setUnlockError('Senha incorreta. Tente novamente.');
+            // Se o erro vier do Soft Loading (TypeError fetch / 503), ele já lançou o evento global.
+            // Nao exibimos "Senha incorreta" nesse caso especifico.
+            if (error.message.includes('fetch') || error.message.includes('despertando') || (error.message && error.message.includes('sleeping'))) {
+                setUnlockError('Servidor acordando, aguarde...');
+            } else {
+                setUnlockError(error.message || 'Senha incorreta. Tente novamente.');
+            }
         } finally {
             setIsUnlocking(false);
         }
