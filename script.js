@@ -2840,7 +2840,7 @@ function App() {
                         clearInterval(globalIntervalId);
                         setTimeout(() => {
                             setIsCheckingHealthGlobal(false);
-                            // Opcional: recarregar os dados que falharam ou dar um refresh suave
+                            window.dispatchEvent(new CustomEvent('railway-awoke'));
                         }, 500); 
                     } else if (attempts > 1) {
                         setGlobalHealthMessage('Sincronizando bancos de dados...');
@@ -3155,7 +3155,7 @@ function App() {
     }, [isAuthenticated, isLockedOut]);
 
     const handleUnlockSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setUnlockError('');
         setIsUnlocking(true);
 
@@ -3165,16 +3165,23 @@ function App() {
             setIsLockedOut(false);
             localStorage.setItem('isLockedOut', 'false');
             setUnlockPassword('');
+            setIsUnlocking(false);
         } catch (error) {
             // Se o erro vier do Soft Loading (TypeError fetch / 503), ele já lançou o evento global.
-            // Nao exibimos "Senha incorreta" nesse caso especifico.
+            // Acionamos um retry automático para re-submeter a senha validada quando o backend acordar.
             if (error.message.includes('fetch') || error.message.includes('despertando') || (error.message && error.message.includes('sleeping'))) {
-                setUnlockError('Servidor acordando, aguarde...');
+                setUnlockError('Servidor acordando, autenticando automaticamente...');
+                
+                const retryLogin = () => {
+                    window.removeEventListener('railway-awoke', retryLogin);
+                    handleUnlockSubmit(); // Retry silencioso (fuga do 'f5' manual)
+                };
+                window.addEventListener('railway-awoke', retryLogin);
+                // Não desativamos `isUnlocking` aqui, deixamos carregando pois ele vai tentar novamente sozinho.
             } else {
                 setUnlockError(error.message || 'Senha incorreta. Tente novamente.');
+                setIsUnlocking(false);
             }
-        } finally {
-            setIsUnlocking(false);
         }
     };
     // ----------------------------------------------
