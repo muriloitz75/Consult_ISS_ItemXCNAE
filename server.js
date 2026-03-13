@@ -26,7 +26,7 @@ const connectDB = async () => {
     console.log(`[DB] PGHOST presente: ${!!process.env.PGHOST}`);
     console.log(`[DB] Connection via: ${dbUrl ? 'PostgreSQL' : 'SQLite (fallback)'}`);
 
-    const maxRetries = 5;
+    const maxRetries = 10;
     let retries = 0;
 
     // Diagnóstico de DNS para o hostname do banco
@@ -174,7 +174,7 @@ const connectDB = async () => {
                 console.error(`[DB] Erro ao conectar (Tentativa ${retries + 1}):`, err.message);
                 retries++;
                 if (retries < maxRetries) {
-                    const delay = Math.pow(2, retries) * 1000;
+                    const delay = Math.min(Math.pow(2, retries) * 1000, 15000);
                     console.log(`[DB] Tentando novamente em ${delay / 1000}s...`);
                     await new Promise(res => setTimeout(res, delay));
                     return tryConnect();
@@ -1211,6 +1211,6 @@ app.get(/^(?!\/api).*/, (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`\uD83D\uDE80 Servidor rodando na porta ${PORT}`);
 });
