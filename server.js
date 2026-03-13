@@ -327,6 +327,52 @@ app.get('/api/health', async (req, res) => {
 
 /* --- Rotas de Autenticação (Agnósticas - Sem ORM) --- */
 
+// Validação de Sessão
+app.get('/api/auth/validate', requireDB, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        const users = await db.query('SELECT * FROM "User" WHERE id = $1', [userId]);
+        const user = users.length > 0 ? users[0] : null;
+
+        if (!user) {
+            return res.status(401).json({ error: "Sessão inválida: Usuário não encontrado." });
+        }
+
+        const isLocked = String(user.accountLocked).toLowerCase() === 'true' || user.accountLocked === true || user.accountLocked === 1 || user.accountLocked === 't';
+        const isBlocked = String(user.isBlockedByAdmin).toLowerCase() === 'true' || user.isBlockedByAdmin === true || user.isBlockedByAdmin === 1 || user.isBlockedByAdmin === 't';
+        const isAuthorized = String(user.isAuthorized).toLowerCase() === 'true' || user.isAuthorized === true || user.isAuthorized === 1 || user.isAuthorized === 't';
+
+        if (isLocked) {
+            return res.status(403).json({ error: "Conta temporariamente bloqueada.", isLocked: true });
+        }
+        
+        if (isBlocked) {
+            return res.status(403).json({ error: "Sua conta foi bloqueada pelo administrador.", isBlocked: true });
+        }
+        
+        if (!isAuthorized) {
+            return res.status(403).json({ error: "Sua conta ainda não foi aprovada pelo administrador." });
+        }
+
+        const firstLogin = String(user.firstLogin).toLowerCase() === 'true' || user.firstLogin === true || user.firstLogin === 1 || user.firstLogin === 't';
+
+        res.json({
+            user: {
+                id: user.id, 
+                username: user.username, 
+                name: user.name,
+                email: user.email, 
+                role: user.role, 
+                firstLogin
+            }
+        });
+    } catch (error) {
+        console.error("Erro na validação de token:", error);
+        res.status(500).json({ error: "Erro interno no servidor ao validar sessão" });
+    }
+});
+
 // Registro de Usuário
 app.post('/api/auth/register', requireDB, async (req, res) => {
     try {
