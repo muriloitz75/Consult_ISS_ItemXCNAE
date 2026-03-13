@@ -158,7 +158,7 @@ class ApiService {
 
             if (!response.ok) {
                 // Se for 503 (Banco dormindo) dispara evento global para acordar suavemente
-                if (response.status === 503 || (data.error && data.error.includes("sleeping"))) {
+                if (response.status === 503 || (data.error && (data.error.includes("sleeping") || data.error.includes("despertando")))) {
                     window.dispatchEvent(new CustomEvent('railway-sleeping'));
                 }
                 throw new Error(data.error || 'Erro na requisição');
@@ -168,7 +168,7 @@ class ApiService {
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
             // Network Errors (TypeError: Failed to fetch) indicam que o próprio container web está off/sleeping
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
                  window.dispatchEvent(new CustomEvent('railway-sleeping'));
                  throw new Error('Servidor está despertando, por favor aguarde um instante e tente novamente.');
             }
@@ -2708,6 +2708,62 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
     );
 }
 
+// ==================== OVERLAY GLOBAL DE WAKE-UP (RAILWAY) ====================
+function GlobalHealthCheckOverlay({ message, progress, darkMode }) {
+    return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-auto">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-fadeIn" />
+            <div className={`relative max-w-sm w-full mx-4 p-8 rounded-3xl shadow-2xl border ${darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-white'} animate-scaleIn`}>
+                <div className="flex flex-col items-center text-center">
+                    <div className="relative mb-8">
+                        {/* Círculo de Progresso */}
+                        <svg className="w-24 h-24 transform -rotate-90">
+                            <circle
+                                cx="48"
+                                cy="48"
+                                r="42"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                className={darkMode ? 'text-gray-700' : 'text-gray-100'}
+                            />
+                            <circle
+                                cx="48"
+                                cy="48"
+                                r="42"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                strokeDasharray={264}
+                                strokeDashoffset={264 - (264 * progress) / 100}
+                                strokeLinecap="round"
+                                className="text-blue-500 transition-all duration-500 ease-out"
+                            />
+                        </svg>
+                        <div className={`absolute inset-0 flex items-center justify-center font-black text-xl ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {Math.round(progress)}%
+                        </div>
+                    </div>
+
+                    <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Despertando Servidor
+                    </h3>
+                    
+                    <p className={`text-sm mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {message}
+                    </p>
+
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 text-blue-500 font-bold text-xs animate-pulse">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        SINCRONIZANDO EM TEMPO REAL
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
 // ==================== PAINEL DE CONTROLE DE BANNERS ====================
 function AdminBannersPanel({ darkMode }) {
     const [users, setUsers] = useState([]);
@@ -2904,6 +2960,8 @@ function App() {
                         setTimeout(() => {
                             setIsCheckingHealthGlobal(false);
                             window.dispatchEvent(new CustomEvent('railway-awoke'));
+                            // Refresh para garantir estado limpo após despertar
+                            window.location.reload();
                         }, 500); 
                     } else if (attempts > 1) {
                         setGlobalHealthMessage('Sincronizando bancos de dados...');
@@ -3219,6 +3277,13 @@ function App() {
 
     const handleUnlockSubmit = async (e) => {
         if (e) e.preventDefault();
+        
+        // Se já estiver despertando o servidor globalmente, avisar o usuário
+        if (isCheckingHealthGlobal) {
+            setUnlockError('Servidor em processo de despertar... aguarde a conclusão.');
+            return;
+        }
+
         setUnlockError('');
         setIsUnlocking(true);
 
@@ -3537,6 +3602,15 @@ function App() {
     return (
         <div className="flex h-screen overflow-hidden relative">
 
+            {/* Overlay Global de Reconexão (Railway Wake-up) */}
+            {isCheckingHealthGlobal && (
+                <GlobalHealthCheckOverlay 
+                    message={globalHealthMessage} 
+                    progress={globalHealthProgress} 
+                    darkMode={darkMode} 
+                />
+            )}
+
             {/* Overlay da Tela de Bloqueio por inatividade (Sobreposto na UI Atual) */}
             {isLockedOut && (
                 <div className={`absolute inset-0 z-[100] flex items-center justify-center ${darkMode ? 'bg-gray-900/25' : 'bg-gray-500/10'} backdrop-blur-sm transition-all duration-300`}>
@@ -3778,7 +3852,7 @@ function App() {
                                 <div className="flex items-center gap-3 animate-fadeInRight">
                                     {currentView === 'home' && (
                                         <div className="glass-card-header flex items-center gap-2 p-1 rounded-2xl shadow-xl">
-                                            <div className="relative flex items-center">
+                                            <div className="relative flex items-center gap-3">
                                                 <a
                                                     href="https://chat.nextplan.tec.br/login"
                                                     target="_blank"
@@ -3807,17 +3881,20 @@ function App() {
                                                     href="https://mail.imperatriz.ma.gov.br/"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="relative group p-0.5 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 ring-2 ring-indigo-500/20 bg-indigo-500/5 shadow-inner"
+                                                    className="relative group p-0.5 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 ring-2 ring-amber-500/20 bg-amber-500/5 shadow-inner"
                                                     title="E-mail Institucional"
                                                 >
-                                                    <div className={`w-12 h-12 overflow-hidden rounded-xl shadow-lg border-2 border-white/40 ring-4 ring-indigo-400/10 transition-all ${darkMode ? 'bg-gray-800' : 'bg-white'} flex items-center justify-center`}>
-                                                        <svg className={`w-7 h-7 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <div className={`w-12 h-12 overflow-hidden rounded-xl shadow-lg border-2 border-white/40 ring-4 ring-amber-400/10 transition-all ${darkMode ? 'bg-gray-800' : 'bg-white'} flex items-center justify-center`}>
+                                                        <svg className={`w-7 h-7 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                         </svg>
                                                     </div>
 
-                                                    <div className="absolute top-[60px] right-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none shadow-2xl bg-indigo-600 text-white z-50">
-                                                        <div className="absolute top-[-6px] right-4 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-indigo-600"></div>
+                                                    {/* Badge de Destaque (Email) */}
+                                                    <div className={`absolute top-0 -right-1 w-4 h-4 rounded-full border-2 border-white bg-amber-500 ${darkMode ? 'shadow-[0_0_10px_rgba(245,158,11,0.6)]' : ''}`}></div>
+
+                                                    <div className="absolute top-[60px] right-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 pointer-events-none shadow-2xl bg-amber-600 text-white z-50">
+                                                        <div className="absolute top-[-6px] right-4 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-amber-600"></div>
                                                         E-mail Institucional
                                                     </div>
                                                 </a>
