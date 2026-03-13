@@ -3200,12 +3200,26 @@ function App() {
             if (error.message.includes('fetch') || error.message.includes('despertando') || (error.message && error.message.includes('sleeping'))) {
                 setUnlockError('Servidor acordando, autenticando automaticamente...');
                 
-                const retryLogin = () => {
-                    window.removeEventListener('railway-awoke', retryLogin);
-                    handleUnlockSubmit(); // Retry silencioso (fuga do 'f5' manual)
+                let retryCount = 0;
+                const retryLogin = async () => {
+                    retryCount++;
+                    try {
+                        await ApiService.login(currentUser.username, unlockPassword);
+                        setIsLockedOut(false);
+                        localStorage.setItem('isLockedOut', 'false');
+                        setUnlockPassword('');
+                        setIsUnlocking(false);
+                        setUnlockError('');
+                    } catch (retryError) {
+                        if (retryCount < 15) { // 15 tentativas * 2s = 30s
+                            setTimeout(retryLogin, 2000);
+                        } else {
+                            setUnlockError('Servidor não respondeu a tempo. Atualize a página e tente novamente.');
+                            setIsUnlocking(false);
+                        }
+                    }
                 };
-                window.addEventListener('railway-awoke', retryLogin);
-                // Não desativamos `isUnlocking` aqui, deixamos carregando pois ele vai tentar novamente sozinho.
+                setTimeout(retryLogin, 2000);
             } else {
                 setUnlockError(error.message || 'Senha incorreta. Tente novamente.');
                 setIsUnlocking(false);
