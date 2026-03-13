@@ -787,9 +787,37 @@ function LoginForm({ onLogin, darkMode }) {
         checkHealth(); // 1ª tentativa
         intervalId = setInterval(checkHealth, 3000); // Polling a cada 3s
 
+        const handleRailwaySleeping = () => {
+            setError('');
+            setIsCheckingHealth(true);
+            setHealthMessage('Banco de dados despertando. Por favor, aguarde...');
+            setHealthProgress(0);
+            
+            // Clear any previous intervals to avoid conflicts
+            if (intervalId) clearInterval(intervalId);
+            if (progressInterval) clearInterval(progressInterval);
+            
+            let simulatedProgress = 0;
+            progressInterval = setInterval(() => {
+                simulatedProgress += Math.random() * 8;
+                if (simulatedProgress >= 100) {
+                    clearInterval(progressInterval);
+                    setHealthProgress(100);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    setHealthProgress(simulatedProgress);
+                }
+            }, 800);
+        };
+
+        window.addEventListener('railway-sleeping', handleRailwaySleeping);
+
         return () => {
             clearInterval(intervalId);
             clearInterval(progressInterval);
+            window.removeEventListener('railway-sleeping', handleRailwaySleeping);
         };
     }, []);
 
