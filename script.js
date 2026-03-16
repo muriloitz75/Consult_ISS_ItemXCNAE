@@ -2709,11 +2709,23 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
 }
 
 // ==================== OVERLAY GLOBAL DE WAKE-UP (RAILWAY) ====================
-function GlobalHealthCheckOverlay({ message, progress, darkMode }) {
+function GlobalHealthCheckOverlay({ message, progress, darkMode, onClose }) {
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-auto">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-fadeIn" />
             <div className={`relative max-w-sm w-full mx-4 p-8 rounded-3xl shadow-2xl border ${darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-white'} animate-scaleIn`}>
+                
+                {/* Botão de Fechar Fallback (X) */}
+                <button 
+                    onClick={onClose}
+                    className={`absolute top-4 right-4 p-2 rounded-full transition-all ${darkMode ? 'hover:bg-gray-700 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
+                    title="Fechar (Caso o processo trave)"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
                 <div className="flex flex-col items-center text-center">
                     <div className="relative mb-8">
                         {/* Círculo de Progresso */}
@@ -2737,7 +2749,7 @@ function GlobalHealthCheckOverlay({ message, progress, darkMode }) {
                                 strokeDasharray={264}
                                 strokeDashoffset={264 - (264 * progress) / 100}
                                 strokeLinecap="round"
-                                className="text-blue-500 transition-all duration-500 ease-out"
+                                className={`${progress >= 100 ? 'text-green-500' : 'text-blue-500'} transition-all duration-500 ease-out`}
                             />
                         </svg>
                         <div className={`absolute inset-0 flex items-center justify-center font-black text-xl ${darkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -2746,17 +2758,26 @@ function GlobalHealthCheckOverlay({ message, progress, darkMode }) {
                     </div>
 
                     <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Despertando Servidor
+                        {progress >= 100 ? 'Ambiente Pronto!' : 'Despertando Servidor'}
                     </h3>
                     
                     <p className={`text-sm mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {message}
+                        {progress >= 100 ? 'Reiniciando a sessão para você começar...' : message}
                     </p>
 
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 text-blue-500 font-bold text-xs animate-pulse">
-                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                        SINCRONIZANDO EM TEMPO REAL
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${progress >= 100 ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'} font-bold text-xs ${progress < 100 ? 'animate-pulse' : ''}`}>
+                        <div className={`w-2 h-2 rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} />
+                        {progress >= 100 ? 'CONCORDÂNCIA COMPLETA' : 'SINCRONIZANDO EM TEMPO REAL'}
                     </div>
+
+                    {progress < 100 && (
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className={`mt-6 text-[10px] uppercase tracking-widest font-bold ${darkMode ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-500'} transition-colors underline underline-offset-4`}
+                        >
+                            Tentar Atualizar Manualmente
+                        </button>
+                    )}
                 </div>
             </div>
         </div>,
@@ -2957,12 +2978,14 @@ function App() {
                         setGlobalHealthProgress(100);
                         clearInterval(globalProgressInterval);
                         clearInterval(globalIntervalId);
+                        
+                        // Delay de 2.5 segundos para o fechamento automático (conforme pedido do usuário)
                         setTimeout(() => {
                             setIsCheckingHealthGlobal(false);
                             window.dispatchEvent(new CustomEvent('railway-awoke'));
                             // Refresh para garantir estado limpo após despertar
                             window.location.reload();
-                        }, 500); 
+                        }, 2500); 
                     } else if (attempts > 1) {
                         setGlobalHealthMessage('Sincronizando bancos de dados...');
                     }
@@ -2980,8 +3003,8 @@ function App() {
 
         return () => {
             window.removeEventListener('railway-sleeping', handleRailwaySleeping);
-            clearInterval(globalIntervalId);
-            clearInterval(globalProgressInterval);
+            if (globalIntervalId) clearInterval(globalIntervalId);
+            if (globalProgressInterval) clearInterval(globalProgressInterval);
         };
     }, [isCheckingHealthGlobal]);
 
@@ -3607,7 +3630,10 @@ function App() {
                 <GlobalHealthCheckOverlay 
                     message={globalHealthMessage} 
                     progress={globalHealthProgress} 
-                    darkMode={darkMode} 
+                    darkMode={darkMode}
+                    onClose={() => {
+                        setIsCheckingHealthGlobal(false);
+                    }}
                 />
             )}
 
