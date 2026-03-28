@@ -157,21 +157,12 @@ class ApiService {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                // Se for 503 (Banco dormindo) dispara evento global para acordar suavemente
-                if (response.status === 503 || (data.error && (data.error.includes("sleeping") || data.error.includes("despertando")))) {
-                    window.dispatchEvent(new CustomEvent('railway-sleeping'));
-                }
                 throw new Error(data.error || 'Erro na requisição');
             }
 
             return data;
         } catch (error) {
             console.error(`API Error (${endpoint}):`, error);
-            // Network Errors (TypeError: Failed to fetch) indicam que o próprio container web está off/sleeping
-            if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
-                 window.dispatchEvent(new CustomEvent('railway-sleeping'));
-                 throw new Error('Servidor está despertando, por favor aguarde um instante e tente novamente.');
-            }
             throw error;
         }
     }
@@ -764,80 +755,6 @@ function LoginForm({ onLogin, darkMode }) {
     const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
     const [firstLoginUser, setFirstLoginUser] = useState(null);
 
-    // Estados do Soft Loading (Railway Wake up)
-    const [isCheckingHealth, setIsCheckingHealth] = useState(true);
-    const [healthMessage, setHealthMessage] = useState('Iniciando conexão segura...');
-    const [healthProgress, setHealthProgress] = useState(0);
-
-    // Efeitos
-    useEffect(() => {
-        let intervalId;
-        let progressInterval;
-        let attempts = 0;
-        
-        progressInterval = setInterval(() => {
-            setHealthProgress(prev => {
-                if (prev >= 95) return prev;
-                return prev + (Math.random() * 5); 
-            });
-        }, 500);
-
-        const checkHealth = async () => {
-            try {
-                attempts++;
-                const res = await fetch(`${API_BASE_URL}/health`);
-                if (res.ok) {
-                    setHealthProgress(100);
-                    clearInterval(progressInterval);
-                    clearInterval(intervalId);
-                    // Pequeno delay para a barra encher totalmente antes de sumir
-                    setTimeout(() => setIsCheckingHealth(false), 500); 
-                } else if (attempts > 1) {
-                    setHealthMessage('Sincronizando bancos de dados...');
-                }
-            } catch (error) {
-                if (attempts > 3) setHealthMessage('Sincronizando bancos de dados...');
-                if (attempts > 6) setHealthMessage('Despertando ambiente Cloud...');
-            }
-        };
-
-        checkHealth(); // 1ª tentativa
-        intervalId = setInterval(checkHealth, 3000); // Polling a cada 3s
-
-        const handleRailwaySleeping = () => {
-            setError('');
-            setIsCheckingHealth(true);
-            setHealthMessage('Banco de dados despertando. Por favor, aguarde...');
-            setHealthProgress(0);
-            
-            // Clear any previous intervals to avoid conflicts
-            if (intervalId) clearInterval(intervalId);
-            if (progressInterval) clearInterval(progressInterval);
-            
-            let simulatedProgress = 0;
-            progressInterval = setInterval(() => {
-                simulatedProgress += Math.random() * 8;
-                if (simulatedProgress >= 100) {
-                    clearInterval(progressInterval);
-                    setHealthProgress(100);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    setHealthProgress(simulatedProgress);
-                }
-            }, 800);
-        };
-
-        window.addEventListener('railway-sleeping', handleRailwaySleeping);
-
-        return () => {
-            clearInterval(intervalId);
-            clearInterval(progressInterval);
-            window.removeEventListener('railway-sleeping', handleRailwaySleeping);
-        };
-    }, []);
-
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('resetAdmin') === '1' || params.get('resetAdmin') === 'sim') {
@@ -1000,24 +917,7 @@ function LoginForm({ onLogin, darkMode }) {
                     </p>
                 </div>
 
-                {isCheckingHealth ? (
-                    <div className="py-8 flex flex-col items-center justify-center animate-fadeIn text-center space-y-8">
-                        <div className="relative w-24 h-24">
-                            <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
-                            <div className="absolute inset-0 border-4 border-t-blue-500 border-r-cyan-400 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-cyan-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            </div>
-                        </div>
-                        <div className="space-y-4 w-full px-2">
-                            <h3 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-800'}`}>{healthMessage}</h3>
-                            <div className={`w-full h-2.5 rounded-full overflow-hidden shadow-inner ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(56,189,248,0.5)]" style={{ width: `${Math.min(100, healthProgress)}%` }}></div>
-                            </div>
-                            <p className={`text-xs font-semibold uppercase tracking-wider animate-pulse ${darkMode ? 'text-blue-400/80' : 'text-blue-600/80'}`}>Estabelecendo túnel seguro...</p>
-                        </div>
-                    </div>
-                ) : isForgotPassword ? (
+                {isForgotPassword ? (
                     <form className="space-y-6 animate-fadeIn" onSubmit={handleForgotPasswordSubmit}>
                         <div className="space-y-2">
                             <label htmlFor="forgot-username" className={`block text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nome de Usuário</label>
@@ -2708,82 +2608,7 @@ function AdminUserBannersModal({ userId, userName, darkMode, onClose }) {
     );
 }
 
-// ==================== OVERLAY GLOBAL DE WAKE-UP (RAILWAY) ====================
-function GlobalHealthCheckOverlay({ message, progress, darkMode, onClose }) {
-    return ReactDOM.createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-auto">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-fadeIn" />
-            <div className={`relative max-w-sm w-full mx-4 p-8 rounded-3xl shadow-2xl border ${darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-white'} animate-scaleIn`}>
-                
-                {/* Botão de Fechar Fallback (X) */}
-                <button 
-                    onClick={onClose}
-                    className={`absolute top-4 right-4 p-2 rounded-full transition-all ${darkMode ? 'hover:bg-gray-700 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
-                    title="Fechar (Caso o processo trave)"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
 
-                <div className="flex flex-col items-center text-center">
-                    <div className="relative mb-8">
-                        {/* Círculo de Progresso */}
-                        <svg className="w-24 h-24 transform -rotate-90">
-                            <circle
-                                cx="48"
-                                cy="48"
-                                r="42"
-                                stroke="currentColor"
-                                strokeWidth="6"
-                                fill="transparent"
-                                className={darkMode ? 'text-gray-700' : 'text-gray-100'}
-                            />
-                            <circle
-                                cx="48"
-                                cy="48"
-                                r="42"
-                                stroke="currentColor"
-                                strokeWidth="6"
-                                fill="transparent"
-                                strokeDasharray={264}
-                                strokeDashoffset={264 - (264 * progress) / 100}
-                                strokeLinecap="round"
-                                className={`${progress >= 100 ? 'text-green-500' : 'text-blue-500'} transition-all duration-500 ease-out`}
-                            />
-                        </svg>
-                        <div className={`absolute inset-0 flex items-center justify-center font-black text-xl ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {Math.round(progress)}%
-                        </div>
-                    </div>
-
-                    <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {progress >= 100 ? 'Ambiente Pronto!' : 'Despertando Servidor'}
-                    </h3>
-                    
-                    <p className={`text-sm mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {progress >= 100 ? 'Reiniciando a sessão para você começar...' : message}
-                    </p>
-
-                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${progress >= 100 ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'} font-bold text-xs ${progress < 100 ? 'animate-pulse' : ''}`}>
-                        <div className={`w-2 h-2 rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} />
-                        {progress >= 100 ? 'CONCORDÂNCIA COMPLETA' : 'SINCRONIZANDO EM TEMPO REAL'}
-                    </div>
-
-                    {progress < 100 && (
-                        <button 
-                            onClick={() => window.location.reload()} 
-                            className={`mt-6 text-[10px] uppercase tracking-widest font-bold ${darkMode ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-500'} transition-colors underline underline-offset-4`}
-                        >
-                            Tentar Atualizar Manualmente
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>,
-        document.body
-    );
-}
 
 // ==================== PAINEL DE CONTROLE DE BANNERS ====================
 function AdminBannersPanel({ darkMode }) {
@@ -2945,68 +2770,7 @@ function App() {
     const [modalResults, setModalResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
 
-    // Estado do Soft Loading Global
-    const [isCheckingHealthGlobal, setIsCheckingHealthGlobal] = useState(false);
-    const [globalHealthMessage, setGlobalHealthMessage] = useState('Reconectando ao servidor...');
-    const [globalHealthProgress, setGlobalHealthProgress] = useState(0);
 
-    // Escutar eventos de servidor dormindo globalmente
-    useEffect(() => {
-        let globalIntervalId;
-        let globalProgressInterval;
-        let attempts = 0;
-
-        const handleRailwaySleeping = () => {
-            if (isCheckingHealthGlobal) return; // Ja esta carregando
-            
-            setIsCheckingHealthGlobal(true);
-            setGlobalHealthProgress(0);
-            attempts = 0;
-
-            globalProgressInterval = setInterval(() => {
-                setGlobalHealthProgress(prev => {
-                    if (prev >= 95) return prev;
-                    return prev + (Math.random() * 5); 
-                });
-            }, 500);
-
-            const checkHealth = async () => {
-                try {
-                    attempts++;
-                    const res = await fetch(`${API_BASE_URL}/health`);
-                    if (res.ok) {
-                        setGlobalHealthProgress(100);
-                        clearInterval(globalProgressInterval);
-                        clearInterval(globalIntervalId);
-                        
-                        // Delay de 2.5 segundos para o fechamento automático (conforme pedido do usuário)
-                        setTimeout(() => {
-                            setIsCheckingHealthGlobal(false);
-                            window.dispatchEvent(new CustomEvent('railway-awoke'));
-                            // Refresh para garantir estado limpo após despertar
-                            window.location.reload();
-                        }, 2500); 
-                    } else if (attempts > 1) {
-                        setGlobalHealthMessage('Sincronizando bancos de dados...');
-                    }
-                } catch (error) {
-                    if (attempts > 3) setGlobalHealthMessage('Sincronizando bancos de dados...');
-                    if (attempts > 6) setGlobalHealthMessage('Despertando ambiente Cloud...');
-                }
-            };
-
-            checkHealth();
-            globalIntervalId = setInterval(checkHealth, 3000);
-        };
-
-        window.addEventListener('railway-sleeping', handleRailwaySleeping);
-
-        return () => {
-            window.removeEventListener('railway-sleeping', handleRailwaySleeping);
-            if (globalIntervalId) clearInterval(globalIntervalId);
-            if (globalProgressInterval) clearInterval(globalProgressInterval);
-        };
-    }, [isCheckingHealthGlobal]);
 
     // Estado da Tela de Bloqueio por inatividade
     const [isLockedOut, setIsLockedOut] = useState(() => {
@@ -3625,17 +3389,7 @@ function App() {
     return (
         <div className="flex h-screen overflow-hidden relative">
 
-            {/* Overlay Global de Reconexão (Railway Wake-up) */}
-            {isCheckingHealthGlobal && (
-                <GlobalHealthCheckOverlay 
-                    message={globalHealthMessage} 
-                    progress={globalHealthProgress} 
-                    darkMode={darkMode}
-                    onClose={() => {
-                        setIsCheckingHealthGlobal(false);
-                    }}
-                />
-            )}
+
 
             {/* Overlay da Tela de Bloqueio por inatividade (Sobreposto na UI Atual) */}
             {isLockedOut && (
