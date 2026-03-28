@@ -3064,12 +3064,6 @@ function App() {
 
     const handleUnlockSubmit = async (e) => {
         if (e) e.preventDefault();
-        
-        // Se já estiver despertando o servidor globalmente, avisar o usuário
-        if (isCheckingHealthGlobal) {
-            setUnlockError('Servidor em processo de despertar... aguarde a conclusão.');
-            return;
-        }
 
         setUnlockError('');
         setIsUnlocking(true);
